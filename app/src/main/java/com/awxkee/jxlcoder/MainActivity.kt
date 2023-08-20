@@ -22,8 +22,14 @@ class MainActivity : ComponentActivity() {
 
         val buffer1 = this.assets.open("first_jxl.jxl").source().buffer().readByteArray()
         val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
-        val image = JxlCoder().decode(buffer2)
-        val compressedBuffer = JxlCoder().encode(image)
+        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
+        val image = JxlCoder().decode(buffer3)
+        val compressedBuffer = JxlCoder().encode(
+            image,
+            colorSpace = JxlColorSpace.RGBA,
+            compressionOption = JxlCompressionOption.LOOSY,
+            loosyLevel = 5.0f
+        )
         val decompressedImage = JxlCoder().decode(compressedBuffer)
 
         setContent {

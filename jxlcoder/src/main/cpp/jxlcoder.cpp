@@ -13,6 +13,16 @@
 #include <jxl/encode_cxx.h>
 #include "android/bitmap.h"
 
+enum jxl_colorspace {
+    rgb = 1,
+    rgba = 2
+};
+
+enum jxl_compression_option {
+    loseless = 1,
+    loosy = 2
+};
+
 /**
  * Compresses the provided pixels.
  *
@@ -22,7 +32,9 @@
  * @param compressed will be populated with the compressed bytes
  */
 bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
-                      const uint32_t ysize, std::vector<uint8_t> *compressed) {
+                      const uint32_t ysize, std::vector<uint8_t> *compressed,
+                      jxl_colorspace colorspace, jxl_compression_option compression_option,
+                      float compression_distance) {
     auto enc = JxlEncoderMake(/*memory_manager=*/nullptr);
     auto runner = JxlThreadParallelRunnerMake(
             /*memory_manager=*/nullptr,
@@ -34,7 +46,15 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
         return false;
     }
 
-    JxlPixelFormat pixel_format = {3, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
+    JxlPixelFormat pixel_format;
+    switch (colorspace) {
+        case rgb:
+            pixel_format = {3, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
+            break;
+        case rgba:
+            pixel_format = {4, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
+            break;
+    }
 
     JxlBasicInfo basic_info;
     JxlEncoderInitBasicInfo(&basic_info);
@@ -42,17 +62,37 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     basic_info.ysize = ysize;
     basic_info.bits_per_sample = 32;
     basic_info.exponent_bits_per_sample = 8;
-    basic_info.uses_original_profile = JXL_FALSE;
+    basic_info.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
     basic_info.num_color_channels = 3;
-    basic_info.alpha_bits = 0;
+
+    if (colorspace == rgba) {
+        basic_info.num_extra_channels = 1;
+        basic_info.alpha_bits = 8;
+    }
+
     if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basic_info)) {
         fprintf(stderr, "JxlEncoderSetBasicInfo failed\n");
         return false;
     }
 
+    switch (colorspace) {
+        case rgb:
+            basic_info.num_color_channels = 3;
+            break;
+        case rgba:
+            basic_info.num_color_channels = 4;
+            JxlExtraChannelInfo channelInfo;
+            JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
+            channelInfo.bits_per_sample = 8;
+            channelInfo.alpha_premultiplied = false;
+            if (JXL_ENC_SUCCESS != JxlEncoderSetExtraChannelInfo(enc.get(), 0, &channelInfo)) {
+                return false;
+            }
+            break;
+    }
+
     JxlColorEncoding color_encoding = {};
-    JxlColorEncodingSetToSRGB(&color_encoding,
-            /*is_gray=*/pixel_format.num_channels < 3);
+    JxlColorEncodingSetToSRGB(&color_encoding, pixel_format.num_channels < 3);
     if (JXL_ENC_SUCCESS !=
         JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
         fprintf(stderr, "JxlEncoderSetColorEncoding failed\n");
@@ -69,6 +109,16 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
         fprintf(stderr, "JxlEncoderAddImageFrame failed\n");
         return false;
     }
+
+    if (compression_option == loseless &&
+        JXL_ENC_SUCCESS != JxlEncoderSetFrameDistance(frame_settings, JXL_TRUE)) {
+        return false;
+    } else if (compression_option == loosy &&
+               JXL_ENC_SUCCESS !=
+               JxlEncoderSetFrameDistance(frame_settings, compression_distance)) {
+        return false;
+    }
+
     JxlEncoderCloseInput(enc.get());
 
     compressed->resize(64);
@@ -223,6 +273,18 @@ jint throwCantCompressImage(JNIEnv *env) {
     return env->ThrowNew(exClass, "");
 }
 
+jint throwInvalidColorSpaceException(JNIEnv *env) {
+    jclass exClass;
+    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidColorSpaceException");
+    return env->ThrowNew(exClass, "");
+}
+
+jint throwInvalidCompressionOptionException(JNIEnv *env) {
+    jclass exClass;
+    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidCompressionOptionException");
+    return env->ThrowNew(exClass, "");
+}
+
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_decodeImpl(JNIEnv *env, jobject thiz, jbyteArray byte_array) {
@@ -273,7 +335,19 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeImpl(JNIEnv *env, jobject thiz, jbyteArr
 }
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap) {
+Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap,
+                                             jint javaColorSpace, jint javaCompressionOption,
+                                             jfloat compression_level) {
+    auto colorspace = static_cast<jxl_colorspace>(javaColorSpace);
+    if (!colorspace) {
+        throwInvalidColorSpaceException(env);
+        return static_cast<jbyteArray>(nullptr);
+    }
+    auto compression_option = static_cast<jxl_compression_option>(javaCompressionOption);
+    if (!compression_option) {
+        throwInvalidCompressionOptionException(env);
+        return static_cast<jbyteArray>(nullptr);
+    }
     AndroidBitmapInfo info;
     if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) {
         throwPixelsException(env);
@@ -302,22 +376,30 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
     AndroidBitmap_unlockPixels(env, bitmap);
 
     std::vector<uint8_t> rgbPixels;
-    rgbPixels.resize(info.width * info.height * 3);
-    libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(info.stride), rgbPixels.data(),
-                        static_cast<int>(info.width * 3), static_cast<int>(info.width),
-                        static_cast<int>(info.height));
+    switch (colorspace) {
+        case rgb:
+            rgbPixels.resize(info.width * info.height * 3);
+            libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(info.stride), rgbPixels.data(),
+                                static_cast<int>(info.width * 3), static_cast<int>(info.width),
+                                static_cast<int>(info.height));
+            break;
+        case rgba:
+            rgbPixels.resize(info.stride * info.height);
+            libyuv::ARGBToABGR(rgbaPixels.data(), static_cast<int>(info.stride), rgbPixels.data(),
+                               static_cast<int>(info.stride), static_cast<int>(info.width),
+                               static_cast<int>(info.height));
+            break;
+    }
     rgbaPixels.clear();
     rgbaPixels.resize(1);
 
     std::vector<uint8_t> compressedVector;
 
-    if (!EncodeJxlOneshot(rgbPixels, info.width, info.height, &compressedVector)) {
+    if (!EncodeJxlOneshot(rgbPixels, info.width, info.height, &compressedVector, colorspace,
+                          compression_option, compression_level)) {
         throwCantCompressImage(env);
         return static_cast<jbyteArray>(nullptr);
     }
-
-    rgbaPixels.clear();
-    rgbaPixels.resize(1);
 
     jbyteArray byteArray = env->NewByteArray((jsize) compressedVector.size());
     char *memBuf = (char *) ((void *) compressedVector.data());
