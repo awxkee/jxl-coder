@@ -1,8 +1,8 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
+import android.util.Size
 import androidx.annotation.FloatRange
-import androidx.annotation.IntRange
 import androidx.annotation.Keep
 
 @Keep
@@ -10,6 +10,10 @@ class JxlCoder {
 
     fun decode(byteArray: ByteArray): Bitmap {
         return decodeImpl(byteArray)
+    }
+
+    fun decodeSampled(byteArray: ByteArray, width: Int, height: Int): Bitmap {
+        return decodeSampledImpl(byteArray, width, height)
     }
 
     /**
@@ -29,9 +33,17 @@ class JxlCoder {
         return encodeImpl(bitmap, colorSpace.cValue, compressionOption.cValue, loosyLevel)
     }
 
+    fun getSize(byteArray: ByteArray): Size? {
+        return getSizeImpl(byteArray)
+    }
+
+    private external fun getSizeImpl(byteArray: ByteArray): Size?
+
     private external fun decodeImpl(
         byteArray: ByteArray
     ): Bitmap
+
+    private external fun decodeSampledImpl(byteArray: ByteArray, width: Int, height: Int): Bitmap
 
     private external fun encodeImpl(
         bitmap: Bitmap,

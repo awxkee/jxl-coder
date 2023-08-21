@@ -42,7 +42,6 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
                                                        JxlThreadParallelRunner,
                                                        runner.get())) {
-        fprintf(stderr, "JxlEncoderSetParallelRunner failed\n");
         return false;
     }
 
@@ -71,7 +70,6 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     }
 
     if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basic_info)) {
-        fprintf(stderr, "JxlEncoderSetBasicInfo failed\n");
         return false;
     }
 
@@ -95,7 +93,6 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     JxlColorEncodingSetToSRGB(&color_encoding, pixel_format.num_channels < 3);
     if (JXL_ENC_SUCCESS !=
         JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
-        fprintf(stderr, "JxlEncoderSetColorEncoding failed\n");
         return false;
     }
 
@@ -106,7 +103,6 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
         JxlEncoderAddImageFrame(frame_settings, &pixel_format,
                                 (void *) pixels.data(),
                                 sizeof(uint8_t) * pixels.size())) {
-        fprintf(stderr, "JxlEncoderAddImageFrame failed\n");
         return false;
     }
 
@@ -136,7 +132,6 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     }
     compressed->resize(next_out - compressed->data());
     if (JXL_ENC_SUCCESS != process_result) {
-        fprintf(stderr, "JxlEncoderProcessOutput failed\n");
         return false;
     }
 
@@ -154,14 +149,12 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
         JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_BASIC_INFO |
                                              JXL_DEC_COLOR_ENCODING |
                                              JXL_DEC_FULL_IMAGE)) {
-        fprintf(stderr, "JxlDecoderSubscribeEvents failed\n");
         return false;
     }
 
     if (JXL_DEC_SUCCESS != JxlDecoderSetParallelRunner(dec.get(),
                                                        JxlResizableParallelRunner,
                                                        runner.get())) {
-        fprintf(stderr, "JxlDecoderSetParallelRunner failed\n");
         return false;
     }
 
@@ -175,14 +168,11 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
         JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
 
         if (status == JXL_DEC_ERROR) {
-            fprintf(stderr, "Decoder error\n");
             return false;
         } else if (status == JXL_DEC_NEED_MORE_INPUT) {
-            fprintf(stderr, "Error, already provided all input\n");
             return false;
         } else if (status == JXL_DEC_BASIC_INFO) {
             if (JXL_DEC_SUCCESS != JxlDecoderGetBasicInfo(dec.get(), &info)) {
-                fprintf(stderr, "JxlDecoderGetBasicInfo failed\n");
                 return false;
             }
             *xsize = info.xsize;
@@ -196,27 +186,21 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
             if (JXL_DEC_SUCCESS !=
                 JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                                             &icc_size)) {
-                fprintf(stderr, "JxlDecoderGetICCProfileSize failed\n");
                 return false;
             }
             icc_profile->resize(icc_size);
             if (JXL_DEC_SUCCESS != JxlDecoderGetColorAsICCProfile(
                     dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                     icc_profile->data(), icc_profile->size())) {
-                fprintf(stderr, "JxlDecoderGetColorAsICCProfile failed\n");
                 return false;
             }
         } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
             size_t buffer_size;
             if (JXL_DEC_SUCCESS !=
                 JxlDecoderImageOutBufferSize(dec.get(), &format, &buffer_size)) {
-                fprintf(stderr, "JxlDecoderImageOutBufferSize failed\n");
                 return false;
             }
             if (buffer_size != *xsize * *ysize * 4) {
-                fprintf(stderr, "Invalid out buffer size %" PRIu64 " %" PRIu64 "\n",
-                        static_cast<uint64_t>(buffer_size),
-                        static_cast<uint64_t>(*xsize * *ysize * 4));
                 return false;
             }
             pixels->resize(*xsize * *ysize * 4);
@@ -225,7 +209,6 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
             if (JXL_DEC_SUCCESS != JxlDecoderSetImageOutBuffer(dec.get(), &format,
                                                                pixels_buffer,
                                                                pixels_buffer_size)) {
-                fprintf(stderr, "JxlDecoderSetImageOutBuffer failed\n");
                 return false;
             }
         } else if (status == JXL_DEC_FULL_IMAGE) {
@@ -237,11 +220,63 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
             // the decoder will be destroyed.
             return true;
         } else {
-            fprintf(stderr, "Unknown decoder status\n");
             return false;
         }
     }
 }
+
+bool DecodeBasicInfo(const uint8_t *jxl, size_t size,
+                     std::vector<uint8_t> *pixels, size_t *xsize,
+                     size_t *ysize) {
+    // Multi-threaded parallel runner.
+    auto runner = JxlResizableParallelRunnerMake(nullptr);
+
+    auto dec = JxlDecoderMake(nullptr);
+    if (JXL_DEC_SUCCESS !=
+        JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_BASIC_INFO |
+                                             JXL_DEC_COLOR_ENCODING |
+                                             JXL_DEC_FULL_IMAGE)) {
+        return false;
+    }
+
+    if (JXL_DEC_SUCCESS != JxlDecoderSetParallelRunner(dec.get(),
+                                                       JxlResizableParallelRunner,
+                                                       runner.get())) {
+        return false;
+    }
+
+    JxlBasicInfo info;
+    JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
+
+    JxlDecoderSetInput(dec.get(), jxl, size);
+    JxlDecoderCloseInput(dec.get());
+
+    for (;;) {
+        JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
+
+        if (status == JXL_DEC_ERROR) {
+            return false;
+        } else if (status == JXL_DEC_NEED_MORE_INPUT) {
+            return false;
+        } else if (status == JXL_DEC_BASIC_INFO) {
+            if (JXL_DEC_SUCCESS != JxlDecoderGetBasicInfo(dec.get(), &info)) {
+                return false;
+            }
+            *xsize = info.xsize;
+            *ysize = info.ysize;
+            return true;
+        } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
+            return false;
+        } else if (status == JXL_DEC_FULL_IMAGE) {
+            return false;
+        } else if (status == JXL_DEC_SUCCESS) {
+            return false;
+        } else {
+            return false;
+        }
+    }
+}
+
 
 jint throwInvalidJXLException(JNIEnv *env) {
     jclass exClass;
@@ -282,6 +317,12 @@ jint throwInvalidColorSpaceException(JNIEnv *env) {
 jint throwInvalidCompressionOptionException(JNIEnv *env) {
     jclass exClass;
     exClass = env->FindClass("com/awxkee/jxlcoder/InvalidCompressionOptionException");
+    return env->ThrowNew(exClass, "");
+}
+
+jint throwInvalidSizeException(JNIEnv *env) {
+    jclass exClass;
+    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidSizeParameterException");
     return env->ThrowNew(exClass, "");
 }
 
@@ -333,6 +374,76 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeImpl(JNIEnv *env, jobject thiz, jbyteArr
 
     return bitmapObj;
 }
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
+                                                    jbyteArray byte_array, jint width,
+                                                    jint height) {
+    if (width <= 0 || height <= 0) {
+        throwInvalidSizeException(env);
+        return nullptr;
+    }
+    auto totalLength = env->GetArrayLength(byte_array);
+    std::shared_ptr<void> srcBuffer(static_cast<char *>(malloc(totalLength)),
+                                    [](void *b) { free(b); });
+    env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
+
+    std::vector<uint8_t> rgbaPixels;
+    std::vector<uint8_t> icc_profile;
+    size_t xsize = 0, ysize = 0;
+    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
+                             &xsize, &ysize,
+                             &icc_profile)) {
+        throwInvalidJXLException(env);
+        return nullptr;
+    }
+
+    jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");
+    jfieldID rgba8888FieldID = env->GetStaticFieldID(bitmapConfig, "ARGB_8888",
+                                                     "Landroid/graphics/Bitmap$Config;");
+    jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
+
+    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
+    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
+                                                            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+                                                    static_cast<jint>(width),
+                                                    static_cast<jint>(height), rgba8888Obj);
+
+    std::vector<uint8_t> newImageData;
+    newImageData.resize(width * height * 4 * sizeof(uint8_t));
+
+    libyuv::ABGRToARGB(rgbaPixels.data(), static_cast<int>(xsize * 4), rgbaPixels.data(),
+                       static_cast<int>(xsize * 4), (int) xsize,
+                       (int) ysize);
+
+
+    libyuv::ARGBScale(rgbaPixels.data(), static_cast<int>(xsize * 4), static_cast<int>(xsize),
+                      static_cast<int>(ysize),
+                      newImageData.data(), width * 4, width, height, libyuv::kFilterBox);
+
+    rgbaPixels.clear();
+    rgbaPixels.resize(1);
+
+    auto returningLength = newImageData.size() / sizeof(uint32_t);
+    jintArray pixels = env->NewIntArray((jsize) returningLength);
+
+    env->SetIntArrayRegion(pixels, 0, (jsize) (newImageData.size() / sizeof(uint32_t)),
+                           reinterpret_cast<const jint *>(newImageData.data()));
+
+    newImageData.resize(1);
+
+    jmethodID setPixelsMid = env->GetMethodID(bitmapClass, "setPixels", "([IIIIIII)V");
+    env->CallVoidMethod(bitmapObj, setPixelsMid, pixels, 0,
+                        static_cast<jint >(width), 0, 0,
+                        static_cast<jint>(width),
+                        static_cast<jint>(height));
+    env->DeleteLocalRef(pixels);
+
+    return bitmapObj;
+}
+
 extern "C"
 JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap,
@@ -348,6 +459,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         throwInvalidCompressionOptionException(env);
         return static_cast<jbyteArray>(nullptr);
     }
+
+    if (compression_option == loosy && (compression_level < 0 || compression_level > 15)) {
+        throwInvalidCompressionOptionException(env);
+        return static_cast<jbyteArray>(nullptr);
+    }
+
     AndroidBitmapInfo info;
     if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) {
         throwPixelsException(env);
@@ -407,4 +524,26 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                             reinterpret_cast<const jbyte *>(memBuf));
     compressedVector.clear();
     return byteArray;
+}
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_com_awxkee_jxlcoder_JxlCoder_getSizeImpl(JNIEnv *env, jobject thiz, jbyteArray byte_array) {
+    auto totalLength = env->GetArrayLength(byte_array);
+    std::shared_ptr<void> srcBuffer(static_cast<char *>(malloc(totalLength)),
+                                    [](void *b) { free(b); });
+    env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
+
+    std::vector<uint8_t> rgbaPixels;
+    std::vector<uint8_t> icc_profile;
+    size_t xsize = 0, ysize = 0;
+    if (!DecodeBasicInfo(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
+                         &xsize, &ysize)) {
+        return nullptr;
+    }
+
+    jclass sizeClass = env->FindClass("android/util/Size");
+    jmethodID methodID = env->GetMethodID(sizeClass, "<init>", "(II)V");
+    auto sizeObject = env->NewObject(sizeClass, methodID, static_cast<jint >(xsize),
+                                     static_cast<jint>(ysize));
+    return sizeObject;
 }

@@ -22,11 +22,18 @@ class MainActivity : ComponentActivity() {
 
         val buffer1 = this.assets.open("first_jxl.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer1))
+        assert(JxlCoder().getSize(buffer1) != null)
         val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer2))
+        assert(JxlCoder().getSize(buffer2) != null)
         val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer3))
-        val image = JxlCoder().decode(buffer3)
+        assert(JxlCoder().getSize(buffer3) != null)
+        val buffer4 = this.assets.open("large_jxl.jxl").source().buffer().readByteArray()
+        assert(JxlCoder.isJXL(buffer4))
+        val largeImageSize = JxlCoder().getSize(buffer4)
+        assert(largeImageSize != null)
+        val image = JxlCoder().decodeSampled(buffer4, largeImageSize!!.width / 4, largeImageSize!!.height / 4)
         val compressedBuffer = JxlCoder().encode(
             image,
             colorSpace = JxlColorSpace.RGBA,
@@ -42,7 +49,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Image(bitmap = decompressedImage.asImageBitmap(), contentDescription = "ok")
+                    Image(
+                        bitmap = decompressedImage.asImageBitmap(),
+                        contentDescription = "ok"
+                    )
                 }
             }
         }
