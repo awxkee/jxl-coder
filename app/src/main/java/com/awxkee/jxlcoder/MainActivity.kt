@@ -21,8 +21,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val buffer1 = this.assets.open("first_jxl.jxl").source().buffer().readByteArray()
+        assert(JxlCoder.isJXL(buffer1))
         val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
+        assert(JxlCoder.isJXL(buffer2))
         val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
+        assert(JxlCoder.isJXL(buffer3))
         val image = JxlCoder().decode(buffer3)
         val compressedBuffer = JxlCoder().encode(
             image,

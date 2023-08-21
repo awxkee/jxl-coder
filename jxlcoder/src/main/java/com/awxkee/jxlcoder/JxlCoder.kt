@@ -41,9 +41,34 @@ class JxlCoder {
     ): ByteArray
 
     companion object {
-        // Used to load the 'jxlcoder' library on application startup.
+
+        private val MAGIC_1 = byteArrayOf(0xFF.toByte(), 0x0A)
+        private val MAGIC_2 = byteArrayOf(
+            0x0.toByte(),
+            0x0.toByte(),
+            0x0.toByte(),
+            0x0C.toByte(),
+            0x4A,
+            0x58,
+            0x4C,
+            0x20,
+            0x0D,
+            0x0A,
+            0x87.toByte(),
+            0x0A
+        )
+
         init {
             System.loadLibrary("jxlcoder")
+        }
+
+        fun isJXL(byteArray: ByteArray): Boolean {
+            if (byteArray.size < MAGIC_2.size) {
+                return false
+            }
+            val sample1 = byteArray.copyOfRange(0, 2)
+            val sample2 = byteArray.copyOfRange(0, MAGIC_2.size)
+            return sample1.contentEquals(MAGIC_1) || sample2.contentEquals(MAGIC_2)
         }
     }
 }
