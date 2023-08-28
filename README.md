@@ -22,3 +22,8 @@ repositories {
 ```groovy
 implementation 'com.github.awxkee:jxlcoder:1.0.5' // or any version above picker from release tags
 ```
+
+# Copyrights
+
+This library created with [`libjxl`](https://github.com/libjxl/libjxl/tree/main) which belongs to JPEG XL Project
+Authors which licensed with BSD-3 license
