@@ -23,6 +23,26 @@ repositories {
 implementation 'com.github.awxkee:jxlcoder:1.0.5' // or any version above picker from release tags
 ```
 
+# Self-build
+
+## Requirements
+
+libjxl:
+
+- ndk
+- ninja
+- cmake
+- nasm
+
+**All commands are require the NDK path set by NDK_PATH environment variable**
+
+* If you wish to build for **x86** you have to add a **$INCLUDE_X86** environment variable for
+  example:*
+
+```shell
+NDK_PATH=/path/to/ndk INCLUDE_X86=yes bash build_jxl.sh
+```
+
 # Copyrights
 
 This library created with [`libjxl`](https://github.com/libjxl/libjxl/tree/main) which belongs to JPEG XL Project
