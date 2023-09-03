@@ -20,23 +20,24 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val buffer1 = this.assets.open("first_jxl.jxl").source().buffer().readByteArray()
+        val buffer1 = this.assets.open("hdr_cosmos.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer1))
         assert(JxlCoder().getSize(buffer1) != null)
+        val iccCosmosImage = JxlCoder().decode(buffer1)
         val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer2))
         assert(JxlCoder().getSize(buffer2) != null)
         val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer3))
         assert(JxlCoder().getSize(buffer3) != null)
-        val buffer4 = this.assets.open("large_jxl.jxl").source().buffer().readByteArray()
+        val buffer4 = this.assets.open("summer_nature.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer4))
         val largeImageSize = JxlCoder().getSize(buffer4)
         assert(largeImageSize != null)
-        val image = JxlCoder().decodeSampled(buffer4, largeImageSize!!.width / 4, largeImageSize!!.height / 4)
+        val image = JxlCoder().decodeSampled(buffer4, largeImageSize!!.width / 2, largeImageSize!!.height / 2)
         val compressedBuffer = JxlCoder().encode(
             image,
-            colorSpace = JxlColorSpace.RGBA,
+            colorSpace = JxlColorSpace.RGB,
             compressionOption = JxlCompressionOption.LOOSY,
             loosyLevel = 5.0f
         )

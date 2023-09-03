@@ -12,6 +12,7 @@
 #include <jxl/encode.h>
 #include <jxl/encode_cxx.h>
 #include "android/bitmap.h"
+#include "colorspace.h"
 
 enum jxl_colorspace {
     rgb = 1,
@@ -335,11 +336,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeImpl(JNIEnv *env, jobject thiz, jbyteArr
     env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
 
     std::vector<uint8_t> rgbaPixels;
-    std::vector<uint8_t> icc_profile;
+    std::vector<uint8_t> iccProfile;
     size_t xsize = 0, ysize = 0;
     if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
                              &xsize, &ysize,
-                             &icc_profile)) {
+                             &iccProfile)) {
         throwInvalidJXLException(env);
         return nullptr;
     }
@@ -355,22 +356,25 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeImpl(JNIEnv *env, jobject thiz, jbyteArr
     jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
                                                     static_cast<jint>(xsize),
                                                     static_cast<jint>(ysize), rgba8888Obj);
-    auto returningLength = rgbaPixels.size() / sizeof(uint32_t);
-    jintArray pixels = env->NewIntArray((jsize) returningLength);
 
-    libyuv::ABGRToARGB(rgbaPixels.data(), static_cast<int>(xsize * 4), rgbaPixels.data(),
-                       static_cast<int>(xsize * 4), (int) xsize,
-                       (int) ysize);
+    if (!iccProfile.empty()) {
+        convertUseDefinedColorSpace(rgbaPixels, (int)xsize * 4, (int)ysize, iccProfile.data(),
+                                    iccProfile.size(),
+                                    false);
+    }
 
-    env->SetIntArrayRegion(pixels, 0, (jsize) returningLength,
-                           reinterpret_cast<const jint *>(rgbaPixels.data()));
-    rgbaPixels.clear();
-    jmethodID setPixelsMid = env->GetMethodID(bitmapClass, "setPixels", "([IIIIIII)V");
-    env->CallVoidMethod(bitmapObj, setPixelsMid, pixels, 0,
-                        static_cast<jint >(xsize), 0, 0,
-                        static_cast<jint>(xsize),
-                        static_cast<jint>(ysize));
-    env->DeleteLocalRef(pixels);
+    void *addr;
+    if (AndroidBitmap_lockPixels(env, bitmapObj, &addr) != 0) {
+        throwPixelsException(env);
+        return static_cast<jobject>(nullptr);
+    }
+
+    std::copy(rgbaPixels.begin(), rgbaPixels.end(), (char *) addr);
+
+    if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {
+        throwPixelsException(env);
+        return static_cast<jobject>(nullptr);
+    }
 
     return bitmapObj;
 }
@@ -390,11 +394,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
 
     std::vector<uint8_t> rgbaPixels;
-    std::vector<uint8_t> icc_profile;
+    std::vector<uint8_t> iccProfile;
     size_t xsize = 0, ysize = 0;
     if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
                              &xsize, &ysize,
-                             &icc_profile)) {
+                             &iccProfile)) {
         throwInvalidJXLException(env);
         return nullptr;
     }
@@ -411,13 +415,14 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     static_cast<jint>(width),
                                                     static_cast<jint>(height), rgba8888Obj);
 
+    if (!iccProfile.empty()) {
+        convertUseDefinedColorSpace(rgbaPixels, (int)xsize * 4, (int)ysize, iccProfile.data(),
+                                    iccProfile.size(),
+                                    false);
+    }
+
     std::vector<uint8_t> newImageData;
     newImageData.resize(width * height * 4 * sizeof(uint8_t));
-
-    libyuv::ABGRToARGB(rgbaPixels.data(), static_cast<int>(xsize * 4), rgbaPixels.data(),
-                       static_cast<int>(xsize * 4), (int) xsize,
-                       (int) ysize);
-
 
     libyuv::ARGBScale(rgbaPixels.data(), static_cast<int>(xsize * 4), static_cast<int>(xsize),
                       static_cast<int>(ysize),
@@ -426,20 +431,20 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     rgbaPixels.clear();
     rgbaPixels.resize(1);
 
-    auto returningLength = newImageData.size() / sizeof(uint32_t);
-    jintArray pixels = env->NewIntArray((jsize) returningLength);
+    void *addr;
+    if (AndroidBitmap_lockPixels(env, bitmapObj, &addr) != 0) {
+        throwPixelsException(env);
+        return static_cast<jobject>(nullptr);
+    }
 
-    env->SetIntArrayRegion(pixels, 0, (jsize) (newImageData.size() / sizeof(uint32_t)),
-                           reinterpret_cast<const jint *>(newImageData.data()));
+    std::copy(newImageData.begin(), newImageData.end(), (char *) addr);
+
+    if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {
+        throwPixelsException(env);
+        return static_cast<jobject>(nullptr);
+    }
 
     newImageData.resize(1);
-
-    jmethodID setPixelsMid = env->GetMethodID(bitmapClass, "setPixels", "([IIIIIII)V");
-    env->CallVoidMethod(bitmapObj, setPixelsMid, pixels, 0,
-                        static_cast<jint >(width), 0, 0,
-                        static_cast<jint>(width),
-                        static_cast<jint>(height));
-    env->DeleteLocalRef(pixels);
 
     return bitmapObj;
 }
@@ -499,12 +504,19 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(info.stride), rgbPixels.data(),
                                 static_cast<int>(info.width * 3), static_cast<int>(info.width),
                                 static_cast<int>(info.height));
+            {
+                auto rgbData = rgbPixels.data();
+                auto rgbaData = rgbaPixels.data();
+                for (int i = 0, k = 0; i < info.width * info.height; i += 4, k += 3) {
+                    rgbData[k] = rgbaData[i];
+                    rgbData[k + 1] = rgbaData[i + 1];
+                    rgbData[k + 2] = rgbaData[i + 2];
+                }
+            }
             break;
         case rgba:
             rgbPixels.resize(info.stride * info.height);
-            libyuv::ARGBToABGR(rgbaPixels.data(), static_cast<int>(info.stride), rgbPixels.data(),
-                               static_cast<int>(info.stride), static_cast<int>(info.width),
-                               static_cast<int>(info.height));
+            std::copy(rgbaPixels.begin(), rgbaPixels.end(), rgbPixels.begin());
             break;
     }
     rgbaPixels.clear();

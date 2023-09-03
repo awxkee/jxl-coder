@@ -3,6 +3,8 @@
 Library provides simple interface to decode or encode ( create ) JXL images for Android
 Based on libjxl
 
+ICC profiles supported.
+
 # Usage example
 
 ```kotlin
