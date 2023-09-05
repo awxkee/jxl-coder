@@ -83,7 +83,7 @@ class JxlCoder {
         )
 
         init {
-            if (Build.VERSION.SDK_INT >= 24) {
+            if (Build.VERSION.SDK_INT >= 21) {
                 System.loadLibrary("jxlcoder")
             }
         }

@@ -36,7 +36,7 @@ for abi in ${ABI_LIST}; do
     -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=${abi} -DCMAKE_ANDROID_ARCH_ABI=${abi} \
     -DANDROID_NDK=${NDK} \
     -DSJPEG_ANDROID_NDK_PATH=${NDK} \
-    -DANDROID_PLATFORM=android-24 \
+    -DANDROID_PLATFORM=android-21 \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=ON \
     -DCMAKE_SYSTEM_NAME=Generic \
