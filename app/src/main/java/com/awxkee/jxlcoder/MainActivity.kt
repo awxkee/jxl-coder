@@ -38,15 +38,14 @@ class MainActivity : ComponentActivity() {
         assert(JxlCoder.isJXL(buffer4))
         val largeImageSize = JxlCoder().getSize(buffer4)
         assert(largeImageSize != null)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val image = JxlCoder().decodeSampled(
-                buffer4,
-                largeImageSize!!.width / 2,
-                largeImageSize!!.height / 2
-            )
-            val image10Bit = image.copy(Bitmap.Config.RGBA_1010102, true)
+        val image = JxlCoder().decodeSampled(
+            buffer4,
+            largeImageSize!!.width / 2,
+            largeImageSize!!.height / 2
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val image10Bit = image.copy(Bitmap.Config.RGBA_F16, true)
 //            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
-            image10Bit.setColorSpace(ColorSpace.getFromDataSpace(DataSpace.DATASPACE_BT2020_PQ)!!)
             val compressedBuffer = JxlCoder().encode(
                 image10Bit,
                 colorSpace = JxlColorSpace.RGB,

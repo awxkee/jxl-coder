@@ -12,6 +12,10 @@
 #include <libyuv.h>
 #include "android/bitmap.h"
 
+int androidOSVersion() {
+    return android_get_device_api_level();
+}
+
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
@@ -29,7 +33,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     bool alphaPremultiplied = false;
     if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
                              &xsize, &ysize,
-                             &iccProfile, &useBitmapFloats, &alphaPremultiplied)) {
+                             &iccProfile, &useBitmapFloats, &alphaPremultiplied,
+                             androidOSVersion() >= 26)) {
         throwInvalidJXLException(env);
         return nullptr;
     }
@@ -54,7 +59,9 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     rgba8888Obj);
 
     if (!iccProfile.empty()) {
-        convertUseDefinedColorSpace(rgbaPixels, (int) xsize * 4 * (int)(useBitmapFloats ? sizeof(uint32_t) : sizeof(uint8_t)),
+        convertUseDefinedColorSpace(rgbaPixels, (int) xsize * 4 *
+                                                (int) (useBitmapFloats ? sizeof(uint32_t)
+                                                                       : sizeof(uint8_t)),
                                     (int) xsize,
                                     (int) ysize, iccProfile.data(),
                                     iccProfile.size(),
@@ -73,7 +80,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                     reinterpret_cast<float *>(newImageData.data()), scaledWidth,
                     scaledHeight, 0,
                     4, 3, alphaPremultiplied ? STBIR_FLAG_ALPHA_PREMULTIPLIED : 0,
-                    STBIR_EDGE_CLAMP, STBIR_FILTER_TRIANGLE, STBIR_COLORSPACE_SRGB,
+                    STBIR_EDGE_CLAMP, STBIR_FILTER_MITCHELL, STBIR_COLORSPACE_SRGB,
                     nullptr
             );
             if (result != 1) {

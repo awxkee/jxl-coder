@@ -12,7 +12,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
                          size_t *ysize, std::vector<uint8_t> *icc_profile,
                          bool *useFloats,
-                         bool *alphaPremultiplied) {
+                         bool *alphaPremultiplied, bool allowedFloats) {
     // Multi-threaded parallel runner.
     auto runner = JxlResizableParallelRunnerMake(nullptr);
 
@@ -52,7 +52,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
             *xsize = info.xsize;
             *ysize = info.ysize;
             *alphaPremultiplied = info.alpha_premultiplied;
-            if (info.bits_per_sample > 8) {
+            if (info.bits_per_sample > 8 && allowedFloats) {
                 *useFloats = true;
                 useBitmapHalfFloats = true;
                 format = {4, JXL_TYPE_FLOAT, JXL_LITTLE_ENDIAN, 0};
