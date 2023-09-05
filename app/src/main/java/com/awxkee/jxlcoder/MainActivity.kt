@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
 //        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
-        val buffer4 = this.assets.open("jxl_icc_12.bit.jxl").source().buffer().readByteArray()
+        val buffer4 = this.assets.open("first_jxl.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer4))
         val largeImageSize = JxlCoder().getSize(buffer4)
         assert(largeImageSize != null)
