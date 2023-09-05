@@ -83,7 +83,9 @@ class JxlCoder {
         )
 
         init {
-            System.loadLibrary("jxlcoder")
+            if (Build.VERSION.SDK_INT >= 24) {
+                System.loadLibrary("jxlcoder")
+            }
         }
 
         fun isJXL(byteArray: ByteArray): Boolean {

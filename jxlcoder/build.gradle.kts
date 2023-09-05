@@ -15,7 +15,7 @@ afterEvaluate {
             create<MavenPublication>("mavenJava") {
                 groupId = "com.github.awxkee"
                 artifactId = "jxl-coder"
-                version = "1.0.0"
+                version = "1.2.2"
                 from(components["release"])
 //                artifact(androidSourcesJar)
             }
