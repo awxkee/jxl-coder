@@ -1,4 +1,4 @@
-# JXL Coder for Android 24+
+# JXL Coder for Android 21+
 
 Library provides simple interface to decode or encode ( create ) JXL images for Android
 Based on libjxl
@@ -8,7 +8,7 @@ ICC profiles supported.
 # Usage example
 
 ```kotlin
-// May decode JXL images, supported RGBA_8888
+// May decode JXL images, supported RGBA_8888, RGBA_F16, RGBA_1010102, RGB_565
 val bitmap: Bitmap = JxlCoder().decode(buffer) // Decode jxl from ByteArray
 val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JXL
 ```
@@ -22,7 +22,7 @@ repositories {
 ```
 
 ```groovy
-implementation 'com.github.awxkee:jxlcoder:1.1.0' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder:1.2.3' // or any version above picker from release tags
 ```
 
 # Self-build
