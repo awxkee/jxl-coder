@@ -34,7 +34,8 @@ android {
         consumerProguardFiles("consumer-rules.pro")
         externalNativeBuild {
             cmake {
-                cppFlags("")
+                ndkVersion = "25.2.9519653"
+                abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
             }
         }
     }

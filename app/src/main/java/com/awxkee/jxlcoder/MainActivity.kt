@@ -1,5 +1,9 @@
 package com.awxkee.jxlcoder
 
+import android.graphics.Bitmap
+import android.graphics.ColorSpace
+import android.hardware.DataSpace
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,40 +24,50 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val buffer1 = this.assets.open("hdr_cosmos.jxl").source().buffer().readByteArray()
-        assert(JxlCoder.isJXL(buffer1))
-        assert(JxlCoder().getSize(buffer1) != null)
-        val iccCosmosImage = JxlCoder().decode(buffer1)
-        val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
-        assert(JxlCoder.isJXL(buffer2))
-        assert(JxlCoder().getSize(buffer2) != null)
-        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
-        assert(JxlCoder.isJXL(buffer3))
-        assert(JxlCoder().getSize(buffer3) != null)
-        val buffer4 = this.assets.open("summer_nature.jxl").source().buffer().readByteArray()
+//        val buffer1 = this.assets.open("hdr_cosmos.jxl").source().buffer().readByteArray()
+//        assert(JxlCoder.isJXL(buffer1))
+//        assert(JxlCoder().getSize(buffer1) != null)
+//        val iccCosmosImage = JxlCoder().decode(buffer1)
+//        val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
+//        assert(JxlCoder.isJXL(buffer2))
+//        assert(JxlCoder().getSize(buffer2) != null)
+//        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
+//        assert(JxlCoder.isJXL(buffer3))
+//        assert(JxlCoder().getSize(buffer3) != null)
+        val buffer4 = this.assets.open("jxl_icc_12.bit.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer4))
         val largeImageSize = JxlCoder().getSize(buffer4)
         assert(largeImageSize != null)
-        val image = JxlCoder().decodeSampled(buffer4, largeImageSize!!.width / 2, largeImageSize!!.height / 2)
-        val compressedBuffer = JxlCoder().encode(
-            image,
-            colorSpace = JxlColorSpace.RGB,
-            compressionOption = JxlCompressionOption.LOOSY,
-            loosyLevel = 5.0f
-        )
-        val decompressedImage = JxlCoder().decode(compressedBuffer)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val image = JxlCoder().decodeSampled(
+                buffer4,
+                largeImageSize!!.width / 2,
+                largeImageSize!!.height / 2
+            )
+            val image10Bit = image.copy(Bitmap.Config.RGBA_1010102, true)
+//            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
+            image10Bit.setColorSpace(ColorSpace.getFromDataSpace(DataSpace.DATASPACE_BT2020_PQ)!!)
+            val compressedBuffer = JxlCoder().encode(
+                image10Bit,
+                colorSpace = JxlColorSpace.RGB,
+                compressionOption = JxlCompressionOption.LOOSY,
+                loosyLevel = 5.0f
+            )
+            val decompressedImage = JxlCoder().decode(compressedBuffer)
 
-        setContent {
-            JXLCoderTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Image(
-                        bitmap = decompressedImage.asImageBitmap(),
-                        contentDescription = "ok"
-                    )
+
+            setContent {
+                JXLCoderTheme {
+                    // A surface container using the 'background' color from the theme
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        Image(
+                            bitmap = decompressedImage.asImageBitmap(),
+                            contentDescription = "ok"
+                        )
+                    }
                 }
             }
         }

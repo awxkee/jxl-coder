@@ -7,7 +7,7 @@
 #include "icc/lcms2.h"
 #include <android/log.h>
 
-void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int height,
+void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int width, int height,
                                  const unsigned char *colorSpace, size_t colorSpaceSize,
                                  bool image16Bits) {
     cmsContext context = cmsCreateContext(nullptr, nullptr);
@@ -29,9 +29,9 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int h
         cmsCloseProfile(reinterpret_cast<cmsHPROFILE>(profile));
     });
     cmsHTRANSFORM transform = cmsCreateTransform(ptrSrcProfile.get(),
-                                                 image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
+                                                 image16Bits ? TYPE_RGBA_FLT : TYPE_RGBA_8,
                                                  ptrDstProfile.get(),
-                                                 image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
+                                                 image16Bits ? TYPE_RGBA_FLT : TYPE_RGBA_8,
                                                  INTENT_PERCEPTUAL,
                                                  cmsFLAGS_BLACKPOINTCOMPENSATION |
                                                  cmsFLAGS_NOWHITEONWHITEFIXUP |
@@ -46,7 +46,16 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int h
     });
     std::vector<char> iccARGB;
     iccARGB.resize(stride * height);
-    cmsDoTransform(ptrTransform.get(), vector.data(), iccARGB.data(),
-                   stride * height / (image16Bits ? sizeof(uint64_t) : sizeof(uint32_t)));
+    cmsDoTransformLineStride(
+            ptrTransform.get(),
+            vector.data(),
+            iccARGB.data(),
+            width,
+            height,
+            stride,
+            stride,
+            0,
+            0
+    );
     std::copy(iccARGB.begin(), iccARGB.end(), vector.begin());
 }

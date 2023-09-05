@@ -1,459 +1,30 @@
 #include <jni.h>
 #include <string>
-#include "jxl/decode.h"
-#include "jxl/decode_cxx.h"
 #include <vector>
 #include <inttypes.h>
-#include "jxl/resizable_parallel_runner.h"
-#include "jxl/resizable_parallel_runner_cxx.h"
-#include "thread_parallel_runner.h"
-#include "thread_parallel_runner_cxx.h"
 #include <libyuv.h>
-#include <jxl/encode.h>
-#include <jxl/encode_cxx.h>
 #include "android/bitmap.h"
-#include "colorspace.h"
-
-enum jxl_colorspace {
-    rgb = 1,
-    rgba = 2
-};
-
-enum jxl_compression_option {
-    loseless = 1,
-    loosy = 2
-};
-
-/**
- * Compresses the provided pixels.
- *
- * @param pixels input pixels
- * @param xsize width of the input image
- * @param ysize height of the input image
- * @param compressed will be populated with the compressed bytes
- */
-bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
-                      const uint32_t ysize, std::vector<uint8_t> *compressed,
-                      jxl_colorspace colorspace, jxl_compression_option compression_option,
-                      float compression_distance) {
-    auto enc = JxlEncoderMake(/*memory_manager=*/nullptr);
-    auto runner = JxlThreadParallelRunnerMake(
-            /*memory_manager=*/nullptr,
-                               JxlThreadParallelRunnerDefaultNumWorkerThreads());
-    if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
-                                                       JxlThreadParallelRunner,
-                                                       runner.get())) {
-        return false;
-    }
-
-    JxlPixelFormat pixel_format;
-    switch (colorspace) {
-        case rgb:
-            pixel_format = {3, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
-            break;
-        case rgba:
-            pixel_format = {4, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
-            break;
-    }
-
-    JxlBasicInfo basic_info;
-    JxlEncoderInitBasicInfo(&basic_info);
-    basic_info.xsize = xsize;
-    basic_info.ysize = ysize;
-    basic_info.bits_per_sample = 32;
-    basic_info.exponent_bits_per_sample = 8;
-    basic_info.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
-    basic_info.num_color_channels = 3;
-
-    if (colorspace == rgba) {
-        basic_info.num_extra_channels = 1;
-        basic_info.alpha_bits = 8;
-    }
-
-    if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basic_info)) {
-        return false;
-    }
-
-    switch (colorspace) {
-        case rgb:
-            basic_info.num_color_channels = 3;
-            break;
-        case rgba:
-            basic_info.num_color_channels = 4;
-            JxlExtraChannelInfo channelInfo;
-            JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
-            channelInfo.bits_per_sample = 8;
-            channelInfo.alpha_premultiplied = false;
-            if (JXL_ENC_SUCCESS != JxlEncoderSetExtraChannelInfo(enc.get(), 0, &channelInfo)) {
-                return false;
-            }
-            break;
-    }
-
-    JxlColorEncoding color_encoding = {};
-    JxlColorEncodingSetToSRGB(&color_encoding, pixel_format.num_channels < 3);
-    if (JXL_ENC_SUCCESS !=
-        JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
-        return false;
-    }
-
-    JxlEncoderFrameSettings *frame_settings =
-            JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
-
-    if (JXL_ENC_SUCCESS !=
-        JxlEncoderAddImageFrame(frame_settings, &pixel_format,
-                                (void *) pixels.data(),
-                                sizeof(uint8_t) * pixels.size())) {
-        return false;
-    }
-
-    if (compression_option == loseless &&
-        JXL_ENC_SUCCESS != JxlEncoderSetFrameDistance(frame_settings, JXL_TRUE)) {
-        return false;
-    } else if (compression_option == loosy &&
-               JXL_ENC_SUCCESS !=
-               JxlEncoderSetFrameDistance(frame_settings, compression_distance)) {
-        return false;
-    }
-
-    JxlEncoderCloseInput(enc.get());
-
-    compressed->resize(64);
-    uint8_t *next_out = compressed->data();
-    size_t avail_out = compressed->size() - (next_out - compressed->data());
-    JxlEncoderStatus process_result = JXL_ENC_NEED_MORE_OUTPUT;
-    while (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
-        process_result = JxlEncoderProcessOutput(enc.get(), &next_out, &avail_out);
-        if (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
-            size_t offset = next_out - compressed->data();
-            compressed->resize(compressed->size() * 2);
-            next_out = compressed->data() + offset;
-            avail_out = compressed->size() - offset;
-        }
-    }
-    compressed->resize(next_out - compressed->data());
-    if (JXL_ENC_SUCCESS != process_result) {
-        return false;
-    }
-
-    return true;
-}
-
-bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
-                         std::vector<uint8_t> *pixels, size_t *xsize,
-                         size_t *ysize, std::vector<uint8_t> *icc_profile) {
-    // Multi-threaded parallel runner.
-    auto runner = JxlResizableParallelRunnerMake(nullptr);
-
-    auto dec = JxlDecoderMake(nullptr);
-    if (JXL_DEC_SUCCESS !=
-        JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_BASIC_INFO |
-                                             JXL_DEC_COLOR_ENCODING |
-                                             JXL_DEC_FULL_IMAGE)) {
-        return false;
-    }
-
-    if (JXL_DEC_SUCCESS != JxlDecoderSetParallelRunner(dec.get(),
-                                                       JxlResizableParallelRunner,
-                                                       runner.get())) {
-        return false;
-    }
-
-    JxlBasicInfo info;
-    JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
-
-    JxlDecoderSetInput(dec.get(), jxl, size);
-    JxlDecoderCloseInput(dec.get());
-
-    for (;;) {
-        JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
-
-        if (status == JXL_DEC_ERROR) {
-            return false;
-        } else if (status == JXL_DEC_NEED_MORE_INPUT) {
-            return false;
-        } else if (status == JXL_DEC_BASIC_INFO) {
-            if (JXL_DEC_SUCCESS != JxlDecoderGetBasicInfo(dec.get(), &info)) {
-                return false;
-            }
-            *xsize = info.xsize;
-            *ysize = info.ysize;
-            JxlResizableParallelRunnerSetThreads(
-                    runner.get(),
-                    JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize));
-        } else if (status == JXL_DEC_COLOR_ENCODING) {
-            // Get the ICC color profile of the pixel data
-            size_t icc_size;
-            if (JXL_DEC_SUCCESS !=
-                JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
-                                            &icc_size)) {
-                return false;
-            }
-            icc_profile->resize(icc_size);
-            if (JXL_DEC_SUCCESS != JxlDecoderGetColorAsICCProfile(
-                    dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
-                    icc_profile->data(), icc_profile->size())) {
-                return false;
-            }
-        } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
-            size_t buffer_size;
-            if (JXL_DEC_SUCCESS !=
-                JxlDecoderImageOutBufferSize(dec.get(), &format, &buffer_size)) {
-                return false;
-            }
-            if (buffer_size != *xsize * *ysize * 4) {
-                return false;
-            }
-            pixels->resize(*xsize * *ysize * 4);
-            void *pixels_buffer = (void *) pixels->data();
-            size_t pixels_buffer_size = pixels->size() * sizeof(uint8_t);
-            if (JXL_DEC_SUCCESS != JxlDecoderSetImageOutBuffer(dec.get(), &format,
-                                                               pixels_buffer,
-                                                               pixels_buffer_size)) {
-                return false;
-            }
-        } else if (status == JXL_DEC_FULL_IMAGE) {
-            // Nothing to do. Do not yet return. If the image is an animation, more
-            // full frames may be decoded. This example only keeps the last one.
-        } else if (status == JXL_DEC_SUCCESS) {
-            // All decoding successfully finished.
-            // It's not required to call JxlDecoderReleaseInput(dec.get()) here since
-            // the decoder will be destroyed.
-            return true;
-        } else {
-            return false;
-        }
-    }
-}
-
-bool DecodeBasicInfo(const uint8_t *jxl, size_t size,
-                     std::vector<uint8_t> *pixels, size_t *xsize,
-                     size_t *ysize) {
-    // Multi-threaded parallel runner.
-    auto runner = JxlResizableParallelRunnerMake(nullptr);
-
-    auto dec = JxlDecoderMake(nullptr);
-    if (JXL_DEC_SUCCESS !=
-        JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_BASIC_INFO |
-                                             JXL_DEC_COLOR_ENCODING |
-                                             JXL_DEC_FULL_IMAGE)) {
-        return false;
-    }
-
-    if (JXL_DEC_SUCCESS != JxlDecoderSetParallelRunner(dec.get(),
-                                                       JxlResizableParallelRunner,
-                                                       runner.get())) {
-        return false;
-    }
-
-    JxlBasicInfo info;
-    JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN, 0};
-
-    JxlDecoderSetInput(dec.get(), jxl, size);
-    JxlDecoderCloseInput(dec.get());
-
-    for (;;) {
-        JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
-
-        if (status == JXL_DEC_ERROR) {
-            return false;
-        } else if (status == JXL_DEC_NEED_MORE_INPUT) {
-            return false;
-        } else if (status == JXL_DEC_BASIC_INFO) {
-            if (JXL_DEC_SUCCESS != JxlDecoderGetBasicInfo(dec.get(), &info)) {
-                return false;
-            }
-            *xsize = info.xsize;
-            *ysize = info.ysize;
-            return true;
-        } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
-            return false;
-        } else if (status == JXL_DEC_FULL_IMAGE) {
-            return false;
-        } else if (status == JXL_DEC_SUCCESS) {
-            return false;
-        } else {
-            return false;
-        }
-    }
-}
-
-
-jint throwInvalidJXLException(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidJXLException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwPixelsException(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/LockPixelsException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwHardwareBitmapException(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/HardwareBitmapException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwInvalidPixelsFormat(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidPixelsFormatException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwCantCompressImage(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/JXLCoderCompressionException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwInvalidColorSpaceException(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidColorSpaceException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwInvalidCompressionOptionException(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidCompressionOptionException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwInvalidSizeException(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/InvalidSizeParameterException");
-    return env->ThrowNew(exClass, "");
-}
-
-extern "C"
-JNIEXPORT jobject JNICALL
-Java_com_awxkee_jxlcoder_JxlCoder_decodeImpl(JNIEnv *env, jobject thiz, jbyteArray byte_array) {
-    auto totalLength = env->GetArrayLength(byte_array);
-    std::shared_ptr<void> srcBuffer(static_cast<char *>(malloc(totalLength)),
-                                    [](void *b) { free(b); });
-    env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
-
-    std::vector<uint8_t> rgbaPixels;
-    std::vector<uint8_t> iccProfile;
-    size_t xsize = 0, ysize = 0;
-    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
-                             &xsize, &ysize,
-                             &iccProfile)) {
-        throwInvalidJXLException(env);
-        return nullptr;
-    }
-
-    jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");
-    jfieldID rgba8888FieldID = env->GetStaticFieldID(bitmapConfig, "ARGB_8888",
-                                                     "Landroid/graphics/Bitmap$Config;");
-    jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
-
-    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
-                                                            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
-                                                    static_cast<jint>(xsize),
-                                                    static_cast<jint>(ysize), rgba8888Obj);
-
-    if (!iccProfile.empty()) {
-        convertUseDefinedColorSpace(rgbaPixels, (int)xsize * 4, (int)ysize, iccProfile.data(),
-                                    iccProfile.size(),
-                                    false);
-    }
-
-    void *addr;
-    if (AndroidBitmap_lockPixels(env, bitmapObj, &addr) != 0) {
-        throwPixelsException(env);
-        return static_cast<jobject>(nullptr);
-    }
-
-    std::copy(rgbaPixels.begin(), rgbaPixels.end(), (char *) addr);
-
-    if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {
-        throwPixelsException(env);
-        return static_cast<jobject>(nullptr);
-    }
-
-    return bitmapObj;
-}
-
-extern "C"
-JNIEXPORT jobject JNICALL
-Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
-                                                    jbyteArray byte_array, jint width,
-                                                    jint height) {
-    if (width <= 0 || height <= 0) {
-        throwInvalidSizeException(env);
-        return nullptr;
-    }
-    auto totalLength = env->GetArrayLength(byte_array);
-    std::shared_ptr<void> srcBuffer(static_cast<char *>(malloc(totalLength)),
-                                    [](void *b) { free(b); });
-    env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
-
-    std::vector<uint8_t> rgbaPixels;
-    std::vector<uint8_t> iccProfile;
-    size_t xsize = 0, ysize = 0;
-    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
-                             &xsize, &ysize,
-                             &iccProfile)) {
-        throwInvalidJXLException(env);
-        return nullptr;
-    }
-
-    jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");
-    jfieldID rgba8888FieldID = env->GetStaticFieldID(bitmapConfig, "ARGB_8888",
-                                                     "Landroid/graphics/Bitmap$Config;");
-    jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
-
-    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
-                                                            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
-                                                    static_cast<jint>(width),
-                                                    static_cast<jint>(height), rgba8888Obj);
-
-    if (!iccProfile.empty()) {
-        convertUseDefinedColorSpace(rgbaPixels, (int)xsize * 4, (int)ysize, iccProfile.data(),
-                                    iccProfile.size(),
-                                    false);
-    }
-
-    std::vector<uint8_t> newImageData;
-    newImageData.resize(width * height * 4 * sizeof(uint8_t));
-
-    libyuv::ARGBScale(rgbaPixels.data(), static_cast<int>(xsize * 4), static_cast<int>(xsize),
-                      static_cast<int>(ysize),
-                      newImageData.data(), width * 4, width, height, libyuv::kFilterBox);
-
-    rgbaPixels.clear();
-    rgbaPixels.resize(1);
-
-    void *addr;
-    if (AndroidBitmap_lockPixels(env, bitmapObj, &addr) != 0) {
-        throwPixelsException(env);
-        return static_cast<jobject>(nullptr);
-    }
-
-    std::copy(newImageData.begin(), newImageData.end(), (char *) addr);
-
-    if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {
-        throwPixelsException(env);
-        return static_cast<jobject>(nullptr);
-    }
-
-    newImageData.resize(1);
-
-    return bitmapObj;
-}
+#include <android/log.h>
+#include "jniExceptions.h"
+#include "jxlEncoding.h"
+#include "rgba2Rgb.h"
+#include "rgb1010102toHalf.h"
+#include "colorspaces/bt709_colorspace.h"
+#include "colorspaces/bt2020_colorspace.h"
+#include "colorspaces/displayP3_HLG.h"
+#include "colorspaces/linear_extended_bt2020.h"
+#include <android/data_space.h>
+#include "colorspaces/adobeRGB1998.h"
+#include "colorspaces/dcip3.h"
+#include "colorspaces/itur2020_HLG.h"
+#include "colorspaces/bt2020_pq_colorspace.h"
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap,
                                              jint javaColorSpace, jint javaCompressionOption,
-                                             jfloat compression_level) {
+                                             jfloat compression_level, jstring bitmapColorProfile,
+                                             jint dataSpace) {
     auto colorspace = static_cast<jxl_colorspace>(javaColorSpace);
     if (!colorspace) {
         throwInvalidColorSpaceException(env);
@@ -481,8 +52,13 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         return static_cast<jbyteArray>(nullptr);
     }
 
-    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
-        throwInvalidPixelsFormat(env);
+    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888 &&
+        info.format != ANDROID_BITMAP_FORMAT_RGBA_F16 &&
+        info.format != ANDROID_BITMAP_FORMAT_RGBA_1010102 &&
+        info.format != ANDROID_BITMAP_FORMAT_RGB_565) {
+        std::string msg(
+                "Currently support encoding only RGBA_8888, RGBA_F16, RGBA_1010102, RBR_565 images pixel format");
+        throwException(env, msg);
         return static_cast<jbyteArray>(nullptr);
     }
 
@@ -492,40 +68,118 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         return static_cast<jbyteArray>(nullptr);
     }
 
-    std::vector<uint8_t> rgbaPixels;
-    rgbaPixels.resize(info.stride * info.height);
+    std::vector<uint8_t> rgbaPixels(info.stride * info.height);
     memcpy(rgbaPixels.data(), addr, info.stride * info.height);
     AndroidBitmap_unlockPixels(env, bitmap);
+
+    int imageStride = (int) info.stride;
+
+    if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
+        std::vector<uint8_t> halfFloatPixels(info.width * sizeof(uint16_t) * 4 * info.height);
+        convertRGBA1010102toHalf(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
+                                 (int) info.stride,
+                                 reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
+                                 (int) info.width * (int) sizeof(uint16_t) * 4,
+                                 (int) info.width,
+                                 (int) info.height);
+        imageStride = (int) info.width * 4 * (int) sizeof(uint16_t);
+        rgbaPixels = halfFloatPixels;
+    } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
+        int newStride = (int) info.width * 4 * (int) sizeof(uint8_t);
+        std::vector<uint8_t> rgba8888Pixels(newStride * info.height);
+        libyuv::RGB565ToARGB(rgbaPixels.data(), (int) info.stride,
+                             rgba8888Pixels.data(), newStride,
+                             (int) info.width, (int) info.height);
+        libyuv::ARGBToABGR(rgba8888Pixels.data(), newStride,
+                           rgba8888Pixels.data(), newStride,
+                           (int) info.width, (int) info.height);
+        imageStride = newStride;
+        rgbaPixels = rgba8888Pixels;
+    }
+
+    bool useFloat16 = info.format == ANDROID_BITMAP_FORMAT_RGBA_F16 ||
+                      info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102;
 
     std::vector<uint8_t> rgbPixels;
     switch (colorspace) {
         case rgb:
-            rgbPixels.resize(info.width * info.height * 3);
-            libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(info.stride), rgbPixels.data(),
-                                static_cast<int>(info.width * 3), static_cast<int>(info.width),
-                                static_cast<int>(info.height));
-            {
-                auto rgbData = rgbPixels.data();
-                auto rgbaData = rgbaPixels.data();
-                for (int i = 0, k = 0; i < info.width * info.height; i += 4, k += 3) {
-                    rgbData[k] = rgbaData[i];
-                    rgbData[k + 1] = rgbaData[i + 1];
-                    rgbData[k + 2] = rgbaData[i + 2];
-                }
+            rgbPixels.resize(info.width * info.height * 3 *
+                             (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t)));
+            if (useFloat16) {
+#if HAVE_NEON
+                rgba16Bit2RgbNEON(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                                  (int) imageStride,
+                                  reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                                  (int) info.width * (int) sizeof(uint16_t) * 3,
+                                  (int) info.height, (int) info.width);
+#else
+                rgb16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                             (int)info.stride,
+                             reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                             (int)info.width * (int)sizeof(uint16_t) * 3,
+                             (int)info.height, (int)info.width);
+#endif
+            } else {
+                libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(imageStride),
+                                    rgbPixels.data(),
+                                    static_cast<int>(info.width * 3), static_cast<int>(info.width),
+                                    static_cast<int>(info.height));
             }
             break;
         case rgba:
-            rgbPixels.resize(info.stride * info.height);
+            rgbPixels.resize(imageStride * info.height);
             std::copy(rgbaPixels.begin(), rgbaPixels.end(), rgbPixels.begin());
             break;
     }
     rgbaPixels.clear();
-    rgbaPixels.resize(1);
 
     std::vector<uint8_t> compressedVector;
 
-    if (!EncodeJxlOneshot(rgbPixels, info.width, info.height, &compressedVector, colorspace,
-                          compression_option, compression_level)) {
+    std::vector<uint8_t> iccProfile;
+
+    if (bitmapColorProfile) {
+        const char *utf8String = env->GetStringUTFChars(bitmapColorProfile, nullptr);
+        std::string stdString(utf8String);
+        env->ReleaseStringUTFChars(bitmapColorProfile, utf8String);
+
+        if (stdString == "Rec. ITU-R BT.709-5" || dataSpace == ADataSpace::ADATASPACE_BT709) {
+            iccProfile.resize(sizeof(bt709));
+            std::copy(&bt709[0], &bt709[0] + sizeof(bt709), iccProfile.begin());
+        } else if (stdString == "Rec. ITU-R BT.2020-1" ||
+                   dataSpace == ADataSpace::ADATASPACE_BT2020) {
+            iccProfile.resize(sizeof(bt2020));
+            std::copy(&bt2020[0], &bt2020[0] + sizeof(bt2020), iccProfile.begin());
+        } else if (stdString == "Display P3" || dataSpace == ADataSpace::ADATASPACE_DISPLAY_P3) {
+            iccProfile.resize(sizeof(displayP3_HLG));
+            std::copy(&displayP3_HLG[0], &displayP3_HLG[0] + sizeof(displayP3_HLG),
+                      iccProfile.begin());
+        } else if (stdString == "sRGB IEC61966-2.1 (Linear)" ||
+                   dataSpace == ADataSpace::ADATASPACE_SCRGB_LINEAR) {
+            iccProfile.resize(sizeof(linearExtendedBT2020));
+            std::copy(&linearExtendedBT2020[0],
+                      &linearExtendedBT2020[0] + sizeof(linearExtendedBT2020), iccProfile.begin());
+        } else if (stdString == "Perceptual Quantizer encoding" ||
+                   dataSpace == ADataSpace::ADATASPACE_BT2020_ITU_PQ) {
+            iccProfile.resize(sizeof(bt2020PQ));
+            std::copy(&bt2020PQ[0], &bt2020PQ[0] + sizeof(bt2020PQ),
+                      iccProfile.begin());
+        } else if (stdString == "Adobe RGB (1998)" ||
+                    dataSpace == ADataSpace::ADATASPACE_ADOBE_RGB) {
+            iccProfile.resize(sizeof(adobeRGB1998));
+            std::copy(&adobeRGB1998[0], &adobeRGB1998[0] + sizeof(adobeRGB1998),
+                      iccProfile.begin());
+        } else if (stdString == "SMPTE RP 431-2-2007 DCI (P3)" ||
+                   dataSpace == ADataSpace::ADATASPACE_DCI_P3) {
+            iccProfile.resize(sizeof(dcip3));
+            std::copy(&dcip3[0], &dcip3[0] + sizeof(dcip3),
+                      iccProfile.begin());
+        }
+    }
+
+    if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
+                          &compressedVector, colorspace,
+                          compression_option,
+                          compression_level, useFloat16, iccProfile)) {
         throwCantCompressImage(env);
         return static_cast<jbyteArray>(nullptr);
     }
@@ -536,26 +190,4 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                             reinterpret_cast<const jbyte *>(memBuf));
     compressedVector.clear();
     return byteArray;
-}
-extern "C"
-JNIEXPORT jobject JNICALL
-Java_com_awxkee_jxlcoder_JxlCoder_getSizeImpl(JNIEnv *env, jobject thiz, jbyteArray byte_array) {
-    auto totalLength = env->GetArrayLength(byte_array);
-    std::shared_ptr<void> srcBuffer(static_cast<char *>(malloc(totalLength)),
-                                    [](void *b) { free(b); });
-    env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
-
-    std::vector<uint8_t> rgbaPixels;
-    std::vector<uint8_t> icc_profile;
-    size_t xsize = 0, ysize = 0;
-    if (!DecodeBasicInfo(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
-                         &xsize, &ysize)) {
-        return nullptr;
-    }
-
-    jclass sizeClass = env->FindClass("android/util/Size");
-    jmethodID methodID = env->GetMethodID(sizeClass, "<init>", "(II)V");
-    auto sizeObject = env->NewObject(sizeClass, methodID, static_cast<jint >(xsize),
-                                     static_cast<jint>(ysize));
-    return sizeObject;
 }

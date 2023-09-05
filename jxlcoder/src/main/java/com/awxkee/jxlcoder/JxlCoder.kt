@@ -1,6 +1,8 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
+import android.graphics.ColorSpace
+import android.os.Build
 import android.util.Size
 import androidx.annotation.FloatRange
 import androidx.annotation.Keep
@@ -9,7 +11,7 @@ import androidx.annotation.Keep
 class JxlCoder {
 
     fun decode(byteArray: ByteArray): Bitmap {
-        return decodeImpl(byteArray)
+        return decodeSampledImpl(byteArray, -1, -1)
     }
 
     fun decodeSampled(byteArray: ByteArray, width: Int, height: Int): Bitmap {
@@ -30,7 +32,19 @@ class JxlCoder {
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOOSY,
         @FloatRange(from = 0.0, to = 15.0) loosyLevel: Float = 1.0f,
     ): ByteArray {
-        return encodeImpl(bitmap, colorSpace.cValue, compressionOption.cValue, loosyLevel)
+        var dataSpaceValue: Int = -1
+        var bitmapColorSpace: String? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val colorSpaceValue = bitmap.colorSpace?.name
+            if (colorSpaceValue != null) {
+                bitmapColorSpace = colorSpaceValue
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                dataSpaceValue = bitmap.colorSpace?.dataSpace ?: -1
+            }
+        }
+
+        return encodeImpl(bitmap, colorSpace.cValue, compressionOption.cValue, loosyLevel, bitmapColorSpace, dataSpaceValue)
     }
 
     fun getSize(byteArray: ByteArray): Size? {
@@ -39,10 +53,6 @@ class JxlCoder {
 
     private external fun getSizeImpl(byteArray: ByteArray): Size?
 
-    private external fun decodeImpl(
-        byteArray: ByteArray
-    ): Bitmap
-
     private external fun decodeSampledImpl(byteArray: ByteArray, width: Int, height: Int): Bitmap
 
     private external fun encodeImpl(
@@ -50,6 +60,8 @@ class JxlCoder {
         colorSpace: Int,
         compressionOption: Int,
         loosyLevel: Float,
+        bitmapColorSpace: String?,
+        dataSpaceValue: Int
     ): ByteArray
 
     companion object {
