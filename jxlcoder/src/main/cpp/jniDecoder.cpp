@@ -11,32 +11,10 @@
 #include "stb_image_resize.h"
 #include <libyuv.h>
 #include "android/bitmap.h"
+#include "rgba16bitCopy.h"
 
 int androidOSVersion() {
     return android_get_device_api_level();
-}
-
-void copyRGBA16(std::vector<uint8_t> &source, int srcStride, uint8_t *destination, int dstStride,
-                int width, int height) {
-    auto src = reinterpret_cast<uint8_t *>(source.data());
-    auto dst = reinterpret_cast<uint8_t *>(destination);
-
-    for (int y = 0; y < height; ++y) {
-
-        auto srcPtr = reinterpret_cast<uint16_t *>(src);
-        auto dstPtr = reinterpret_cast<uint16_t *>(dst);
-
-        for (int x = 0; x < width; ++x) {
-            auto srcPtr64 = reinterpret_cast<uint64_t *>(srcPtr);
-            auto dstPtr64 = reinterpret_cast<uint64_t *>(dstPtr);
-            dstPtr64[0] = srcPtr64[0];
-            srcPtr += 4;
-            dstPtr += 4;
-        }
-
-        src += srcStride;
-        dst += dstStride;
-    }
 }
 
 extern "C"
@@ -151,11 +129,13 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     }
 
     if (useBitmapFloats) {
-        copyRGBA16(rgbaPixels, finalWidth * 4 * (int) sizeof(uint16_t),
-                   reinterpret_cast<uint8_t *>(addr), (int)info.stride, (int)info.width, (int)info.height);
+        copyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                   finalWidth * 4 * (int) sizeof(uint16_t),
+                   reinterpret_cast<uint16_t *>(addr), (int) info.stride, (int) info.width,
+                   (int) info.height);
     } else {
         libyuv::ARGBCopy(reinterpret_cast<uint8_t *>(rgbaPixels.data()),
-                         (int) finalHeight * 4 * (int) sizeof(uint8_t),
+                         (int) finalWidth * 4 * (int) sizeof(uint8_t),
                          reinterpret_cast<uint8_t *>(addr), (int) info.stride, (int) info.width,
                          (int) info.height);
     }

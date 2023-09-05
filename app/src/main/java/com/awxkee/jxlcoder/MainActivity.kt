@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
 //        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
-        val buffer4 = this.assets.open("first_jxl.jxl").source().buffer().readByteArray()
+        val buffer4 = this.assets.open("wide_gamut.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer4))
         val largeImageSize = JxlCoder().getSize(buffer4)
         assert(largeImageSize != null)
@@ -53,7 +53,6 @@ class MainActivity : ComponentActivity() {
                 loosyLevel = 5.0f
             )
             val decompressedImage = JxlCoder().decode(compressedBuffer)
-
 
             setContent {
                 JXLCoderTheme {
