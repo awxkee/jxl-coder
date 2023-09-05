@@ -8,7 +8,7 @@ ICC profiles supported.
 # Usage example
 
 ```kotlin
-// May decode JXL images, supported RGBA_8888
+// May decode JXL images, supported RGBA_8888, RGBA_F16, RGBA_1010102, RGB_565
 val bitmap: Bitmap = JxlCoder().decode(buffer) // Decode jxl from ByteArray
 val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JXL
 ```
