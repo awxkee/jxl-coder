@@ -29,7 +29,7 @@ class JxlCoder {
     fun encode(
         bitmap: Bitmap,
         colorSpace: JxlColorSpace = JxlColorSpace.RGB,
-        compressionOption: JxlCompressionOption = JxlCompressionOption.LOOSY,
+        compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         @FloatRange(from = 0.0, to = 15.0) loosyLevel: Float = 1.0f,
     ): ByteArray {
         var dataSpaceValue: Int = -1

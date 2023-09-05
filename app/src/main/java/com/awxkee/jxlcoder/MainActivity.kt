@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
             val compressedBuffer = JxlCoder().encode(
                 image10Bit,
                 colorSpace = JxlColorSpace.RGB,
-                compressionOption = JxlCompressionOption.LOOSY,
+                compressionOption = JxlCompressionOption.LOSSY,
                 loosyLevel = 5.0f
             )
             val decompressedImage = JxlCoder().decode(compressedBuffer)
