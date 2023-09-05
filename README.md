@@ -1,4 +1,4 @@
-# JXL Coder for Android 24+
+# JXL Coder for Android 21+
 
 Library provides simple interface to decode or encode ( create ) JXL images for Android
 Based on libjxl
@@ -22,7 +22,7 @@ repositories {
 ```
 
 ```groovy
-implementation 'com.github.awxkee:jxlcoder:1.1.0' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxlcoder:1.2.3' // or any version above picker from release tags
 ```
 
 # Self-build
