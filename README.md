@@ -22,7 +22,7 @@ repositories {
 ```
 
 ```groovy
-implementation 'com.github.awxkee:jxlcoder:1.2.3' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder:1.2.3' // or any version above picker from release tags
 ```
 
 # Self-build
