@@ -5,6 +5,7 @@ import android.graphics.ColorSpace
 import android.os.Build
 import android.util.Size
 import androidx.annotation.FloatRange
+import androidx.annotation.IntRange
 import androidx.annotation.Keep
 
 @Keep
@@ -30,7 +31,7 @@ class JxlCoder {
         bitmap: Bitmap,
         colorSpace: JxlColorSpace = JxlColorSpace.RGB,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
-        @FloatRange(from = 0.0, to = 15.0) loosyLevel: Float = 1.0f,
+        @IntRange(from = 0L, to = 10L) effort: Int = 3,
     ): ByteArray {
         var dataSpaceValue: Int = -1
         var bitmapColorSpace: String? = null
@@ -44,7 +45,7 @@ class JxlCoder {
             }
         }
 
-        return encodeImpl(bitmap, colorSpace.cValue, compressionOption.cValue, loosyLevel, bitmapColorSpace, dataSpaceValue)
+        return encodeImpl(bitmap, colorSpace.cValue, compressionOption.cValue, effort, bitmapColorSpace, dataSpaceValue)
     }
 
     fun getSize(byteArray: ByteArray): Size? {
@@ -59,7 +60,7 @@ class JxlCoder {
         bitmap: Bitmap,
         colorSpace: Int,
         compressionOption: Int,
-        loosyLevel: Float,
+        loosyLevel: Int,
         bitmapColorSpace: String?,
         dataSpaceValue: Int
     ): ByteArray

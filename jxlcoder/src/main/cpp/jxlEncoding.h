@@ -28,7 +28,6 @@ enum jxl_compression_option {
 bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       const uint32_t ysize, std::vector<uint8_t> *compressed,
                       jxl_colorspace colorspace, jxl_compression_option compression_option,
-                      float compression_distance, bool useFloat16,
-                      std::vector<uint8_t> iccProfile);
+                      bool useFloat16, std::vector<uint8_t> iccProfile, int effort);
 
 #endif //JXLCODER_JXLENCODING_H

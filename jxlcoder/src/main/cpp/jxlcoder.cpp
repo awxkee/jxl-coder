@@ -23,7 +23,7 @@ extern "C"
 JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap,
                                              jint javaColorSpace, jint javaCompressionOption,
-                                             jfloat compression_level, jstring bitmapColorProfile,
+                                             jint effort, jstring bitmapColorProfile,
                                              jint dataSpace) {
     auto colorspace = static_cast<jxl_colorspace>(javaColorSpace);
     if (!colorspace) {
@@ -36,7 +36,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         return static_cast<jbyteArray>(nullptr);
     }
 
-    if (compression_option == loosy && (compression_level < 0 || compression_level > 15)) {
+    if (effort < 0 || effort > 10) {
         throwInvalidCompressionOptionException(env);
         return static_cast<jbyteArray>(nullptr);
     }
@@ -114,10 +114,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                                   (int) info.height, (int) info.width);
 #else
                 rgb16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                             (int)info.stride,
+                             (int) info.stride,
                              reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                             (int)info.width * (int)sizeof(uint16_t) * 3,
-                             (int)info.height, (int)info.width);
+                             (int) info.width * (int) sizeof(uint16_t) * 3,
+                             (int) info.height, (int) info.width);
 #endif
             } else {
                 libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(imageStride),
@@ -164,7 +164,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             std::copy(&bt2020PQ[0], &bt2020PQ[0] + sizeof(bt2020PQ),
                       iccProfile.begin());
         } else if (stdString == "Adobe RGB (1998)" ||
-                    dataSpace == ADataSpace::ADATASPACE_ADOBE_RGB) {
+                   dataSpace == ADataSpace::ADATASPACE_ADOBE_RGB) {
             iccProfile.resize(sizeof(adobeRGB1998));
             std::copy(&adobeRGB1998[0], &adobeRGB1998[0] + sizeof(adobeRGB1998),
                       iccProfile.begin());
@@ -178,8 +178,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
     if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
                           &compressedVector, colorspace,
-                          compression_option,
-                          compression_level, useFloat16, iccProfile)) {
+                          compression_option, useFloat16, iccProfile, effort)) {
         throwCantCompressImage(env);
         return static_cast<jbyteArray>(nullptr);
     }

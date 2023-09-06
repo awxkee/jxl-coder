@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 image10Bit,
                 colorSpace = JxlColorSpace.RGB,
                 compressionOption = JxlCompressionOption.LOSSY,
-                loosyLevel = 5.0f
+                effort = 5,
             )
             val decompressedImage = JxlCoder().decode(compressedBuffer)
 
@@ -64,19 +64,19 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        AsyncImage(
-                            model = "https://pdfconverter1984.blob.core.windows.net/simple/wide_gamut.jxl",
-                            contentDescription = null,
-                            imageLoader = ImageLoader.Builder(this)
-                                .components {
-                                    add(JxlDecoder.Factory())
-                                }
-                                .build()
-                        )
-//                        Image(
-//                            bitmap = decompressedImage.asImageBitmap(),
-//                            contentDescription = "ok"
+//                        AsyncImage(
+//                            model = "https://pdfconverter1984.blob.core.windows.net/simple/wide_gamut.jxl",
+//                            contentDescription = null,
+//                            imageLoader = ImageLoader.Builder(this)
+//                                .components {
+//                                    add(JxlDecoder.Factory())
+//                                }
+//                                .build()
 //                        )
+                        Image(
+                            bitmap = decompressedImage.asImageBitmap(),
+                            contentDescription = "ok"
+                        )
                     }
                 }
             }

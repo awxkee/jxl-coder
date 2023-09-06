@@ -12,8 +12,7 @@
 bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       const uint32_t ysize, std::vector<uint8_t> *compressed,
                       jxl_colorspace colorspace, jxl_compression_option compression_option,
-                      float compression_distance, bool useFloat16,
-                      std::vector<uint8_t> iccProfile) {
+                      bool useFloat16, std::vector<uint8_t> iccProfile, int effort) {
     auto enc = JxlEncoderMake(/*memory_manager=*/nullptr);
     auto runner = JxlThreadParallelRunnerMake(
             /*memory_manager=*/nullptr,
@@ -87,19 +86,21 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     JxlEncoderFrameSettings *frame_settings =
             JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
 
-    if (JXL_ENC_SUCCESS !=
-        JxlEncoderAddImageFrame(frame_settings, &pixel_format,
-                                (void *) pixels.data(),
-                                sizeof(uint8_t) * pixels.size())) {
+
+    if (JxlEncoderFrameSettingsSetOption(frame_settings,
+                                         JXL_ENC_FRAME_SETTING_EFFORT,effort) != JXL_ENC_SUCCESS) {
         return false;
     }
 
     if (compression_option == loseless &&
-        JXL_ENC_SUCCESS != JxlEncoderSetFrameDistance(frame_settings, JXL_TRUE)) {
+        JXL_ENC_SUCCESS != JxlEncoderSetFrameLossless(frame_settings, JXL_TRUE)) {
         return false;
-    } else if (compression_option == loosy &&
-               JXL_ENC_SUCCESS !=
-               JxlEncoderSetFrameDistance(frame_settings, compression_distance)) {
+    }
+
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderAddImageFrame(frame_settings, &pixel_format,
+                                (void *) pixels.data(),
+                                sizeof(uint8_t) * pixels.size())) {
         return false;
     }
 
