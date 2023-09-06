@@ -16,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
+import coil.ImageLoader
+import coil.compose.AsyncImage
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import okio.buffer
 import okio.source
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
             largeImageSize!!.width / 2,
             largeImageSize!!.height / 2
         )
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val image10Bit = image.copy(Bitmap.Config.RGBA_F16, true)
 //            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
@@ -61,10 +64,19 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        Image(
-                            bitmap = decompressedImage.asImageBitmap(),
-                            contentDescription = "ok"
+                        AsyncImage(
+                            model = "https://pdfconverter1984.blob.core.windows.net/simple/wide_gamut.jxl",
+                            contentDescription = null,
+                            imageLoader = ImageLoader.Builder(this)
+                                .components {
+                                    add(JxlDecoder.Factory())
+                                }
+                                .build()
                         )
+//                        Image(
+//                            bitmap = decompressedImage.asImageBitmap(),
+//                            contentDescription = "ok"
+//                        )
                     }
                 }
             }
