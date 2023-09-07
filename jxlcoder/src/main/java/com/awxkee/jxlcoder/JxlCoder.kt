@@ -31,8 +31,11 @@ class JxlCoder {
         bitmap: Bitmap,
         colorSpace: JxlColorSpace = JxlColorSpace.RGB,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
-        @IntRange(from = 0L, to = 10L) effort: Int = 3,
+        @IntRange(from = 1L, to = 9L) effort: Int = 3,
     ): ByteArray {
+        if (effort < 1 || effort > 10) {
+            throw Exception("Effort must be on 1...10")
+        }
         var dataSpaceValue: Int = -1
         var bitmapColorSpace: String? = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
