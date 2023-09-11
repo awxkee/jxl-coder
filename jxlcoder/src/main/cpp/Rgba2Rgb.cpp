@@ -2,8 +2,10 @@
 // Created by Radzivon Bartoshyk on 04/09/2023.
 //
 
-#include "rgba2Rgb.h"
+#include "Rgba2Rgb.h"
 #include <cstdint>
+#include <vector>
+#include "ThreadPool.hpp"
 
 #if HAVE_NEON
 
@@ -76,26 +78,36 @@ rgb8bit2RGB(const uint8_t *src, int srcStride, uint8_t *dst, int dstStride, int 
     }
 }
 
-void rgb16bit2RGB(const uint16_t *src, int srcStride,
-                  uint16_t *dst, int dstStride, int height,
-                  int width) {
+void Rgba16bitToRGB_C(const uint16_t *src, uint16_t *dst, int width) {
+    auto srcPixels = reinterpret_cast<const uint16_t *>(src);
+    auto dstPixels = reinterpret_cast<uint16_t *>(dst);
+    for (int x = 0; x < width; ++x) {
+        dstPixels[0] = srcPixels[0];
+        dstPixels[1] = srcPixels[1];
+        dstPixels[2] = srcPixels[2];
+
+        srcPixels += 4;
+        dstPixels += 3;
+    }
+}
+
+void Rgba16bit2RGB(const uint16_t *src, int srcStride,
+                   uint16_t *dst, int dstStride, int height,
+                   int width) {
     auto rgbData = reinterpret_cast<uint8_t *>(dst);
     auto rgbaData = reinterpret_cast<const uint8_t *>(src);
+
+    ThreadPool pool;
+    std::vector<std::future<void>> results;
+
     for (int y = 0; y < height; ++y) {
+        auto r = pool.enqueue(Rgba16bitToRGB_C,
+                     reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
+                     reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
+        results.push_back(std::move(r));
+    }
 
-        auto srcPixels = reinterpret_cast<const uint16_t *>(rgbaData);
-        auto dstPixels = reinterpret_cast<uint16_t *>(rgbData);
-
-        for (int x = 0; x < width; ++x) {
-            dstPixels[0] = srcPixels[0];
-            dstPixels[1] = srcPixels[1];
-            dstPixels[2] = srcPixels[2];
-
-            srcPixels += 4;
-            dstPixels += 3;
-        }
-
-        rgbData += dstStride;
-        rgbaData += srcStride;
+    for (auto &result: results) {
+        result.wait();
     }
 }

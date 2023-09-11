@@ -2,7 +2,7 @@
 // Created by Radzivon Bartoshyk on 04/09/2023.
 //
 
-#include "jxlEncoding.h"
+#include "JxlEncoding.h"
 #include <jxl/encode.h>
 #include <jxl/encode_cxx.h>
 #include "thread_parallel_runner.h"

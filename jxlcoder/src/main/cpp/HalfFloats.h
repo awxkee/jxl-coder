@@ -8,12 +8,15 @@
 #include <cstdint>
 
 #if HAVE_NEON
-void RGBAfloat32_to_float16_NEON(const float *src, int srcStride, uint16_t *dst, int dstStride,
-                                 int width, int height) ;
+void RgbaF32ToF16Neon(const float *src, int srcStride, uint16_t *dst, int dstStride,
+                      int width, int height) ;
 #endif
 
-void RGBAfloat32_to_float16(const float * src, uint16_t* dst, int numElements);
+void RgbaF32ToF16(const float *src, int srcStride, uint16_t *dst, int dstStride, int width,
+                  int height);
+
 float half_to_float(const uint16_t x);
+
 uint16_t float_to_half(const float x);
 
 #endif //JXLCODER_HALFFLOATS_H

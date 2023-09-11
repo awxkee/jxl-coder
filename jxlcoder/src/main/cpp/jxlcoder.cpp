@@ -6,9 +6,9 @@
 #include "android/bitmap.h"
 #include <android/log.h>
 #include "jniExceptions.h"
-#include "jxlEncoding.h"
-#include "rgba2Rgb.h"
-#include "rgb1010102toHalf.h"
+#include "JxlEncoding.h"
+#include "Rgba2Rgb.h"
+#include "Rgb1010102toF16.h"
 #include "colorspaces/bt709_colorspace.h"
 #include "colorspaces/bt2020_colorspace.h"
 #include "colorspaces/displayP3_HLG.h"
@@ -76,12 +76,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
     if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
         std::vector<uint8_t> halfFloatPixels(info.width * sizeof(uint16_t) * 4 * info.height);
-        convertRGBA1010102toHalf(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
-                                 (int) info.stride,
-                                 reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
-                                 (int) info.width * (int) sizeof(uint16_t) * 4,
-                                 (int) info.width,
-                                 (int) info.height);
+        ConvertRGBA1010102toF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
+                                (int) info.stride,
+                                reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
+                                (int) info.width * (int) sizeof(uint16_t) * 4,
+                                (int) info.width,
+                                (int) info.height);
         imageStride = (int) info.width * 4 * (int) sizeof(uint16_t);
         rgbaPixels = halfFloatPixels;
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
@@ -113,11 +113,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                                   (int) info.width * (int) sizeof(uint16_t) * 3,
                                   (int) info.height, (int) info.width);
 #else
-                rgb16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                             (int) info.stride,
-                             reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                             (int) info.width * (int) sizeof(uint16_t) * 3,
-                             (int) info.height, (int) info.width);
+                Rgba16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                              (int) info.stride,
+                              reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                              (int) info.width * (int) sizeof(uint16_t) * 3,
+                              (int) info.height, (int) info.width);
 #endif
             } else {
                 libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(imageStride),

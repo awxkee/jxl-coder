@@ -2,7 +2,7 @@
 // Created by Radzivon Bartoshyk on 04/09/2023.
 //
 
-#include "jxlDecoding.h"
+#include "JxlDecoding.h"
 #include "jxl/decode.h"
 #include "jxl/decode_cxx.h"
 #include "jxl/resizable_parallel_runner.h"

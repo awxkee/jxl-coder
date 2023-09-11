@@ -36,26 +36,26 @@ class MainActivity : ComponentActivity() {
 //        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
-        val buffer4 = this.assets.open("wide_gamut.jxl").source().buffer().readByteArray()
+        val buffer4 = this.assets.open("summer_nature.jxl").source().buffer().readByteArray()
         assert(JxlCoder.isJXL(buffer4))
         val largeImageSize = JxlCoder().getSize(buffer4)
         assert(largeImageSize != null)
         val image = JxlCoder().decodeSampled(
             buffer4,
-            largeImageSize!!.width / 2,
-            largeImageSize!!.height / 2
+            largeImageSize!!.width,
+            largeImageSize!!.height
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
 //            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
-            val compressedBuffer = JxlCoder().encode(
-                image10Bit,
-                colorSpace = JxlColorSpace.RGBA,
-                compressionOption = JxlCompressionOption.LOSSLESS,
-                effort = 1,
-            )
-            val decompressedImage = JxlCoder().decode(compressedBuffer)
+//            val compressedBuffer = JxlCoder().encode(
+//                image10Bit,
+//                colorSpace = JxlColorSpace.RGBA,
+//                compressionOption = JxlCompressionOption.LOSSLESS,
+//                effort = 1,
+//            )
+//            val decompressedImage = JxlCoder().decode(compressedBuffer)
 
             setContent {
                 JXLCoderTheme {
@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
 //                                .build()
 //                        )
                         Image(
-                            bitmap = decompressedImage.asImageBitmap(),
+                            bitmap = image10Bit.asImageBitmap(),
                             contentDescription = "ok"
                         )
                     }

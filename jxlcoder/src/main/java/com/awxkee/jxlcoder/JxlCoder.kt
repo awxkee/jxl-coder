@@ -1,22 +1,35 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
-import android.graphics.ColorSpace
 import android.os.Build
 import android.util.Size
-import androidx.annotation.FloatRange
 import androidx.annotation.IntRange
 import androidx.annotation.Keep
 
 @Keep
 class JxlCoder {
 
-    fun decode(byteArray: ByteArray): Bitmap {
-        return decodeSampledImpl(byteArray, -1, -1)
+    /**
+     * @author Radzivon Bartoshyk
+     * @param preferHDRF16 Should it prefer float16 points for OS 33+ when image in HDR? Since most
+     * of phones won't display HDR and float16 requires twice more memory that RGBA1010102
+     */
+    fun decode(byteArray: ByteArray, preferHDRF16: Boolean = false): Bitmap {
+        return decodeSampledImpl(byteArray, -1, -1, preferHDRF16)
     }
 
-    fun decodeSampled(byteArray: ByteArray, width: Int, height: Int): Bitmap {
-        return decodeSampledImpl(byteArray, width, height)
+    /**
+     * @author Radzivon Bartoshyk
+     * @param preferHDRF16 Should it prefer float16 points for OS 33+ when image in HDR? Since most
+     * of phones won't display HDR and float16 requires twice more memory that RGBA1010102
+     */
+    fun decodeSampled(
+        byteArray: ByteArray,
+        width: Int,
+        height: Int,
+        preferHDRF16: Boolean = false
+    ): Bitmap {
+        return decodeSampledImpl(byteArray, width, height, preferHDRF16)
     }
 
     /**
@@ -33,8 +46,8 @@ class JxlCoder {
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         @IntRange(from = 1L, to = 9L) effort: Int = 3,
     ): ByteArray {
-        if (effort < 1 || effort > 10) {
-            throw Exception("Effort must be on 1...10")
+        if (effort < 1 || effort > 9) {
+            throw Exception("Effort must be on 1..<10")
         }
         var dataSpaceValue: Int = -1
         var bitmapColorSpace: String? = null
@@ -43,12 +56,20 @@ class JxlCoder {
             if (colorSpaceValue != null) {
                 bitmapColorSpace = colorSpaceValue
             }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 dataSpaceValue = bitmap.colorSpace?.dataSpace ?: -1
             }
         }
 
-        return encodeImpl(bitmap, colorSpace.cValue, compressionOption.cValue, effort, bitmapColorSpace, dataSpaceValue)
+        return encodeImpl(
+            bitmap,
+            colorSpace.cValue,
+            compressionOption.cValue,
+            effort,
+            bitmapColorSpace,
+            dataSpaceValue
+        )
     }
 
     fun getSize(byteArray: ByteArray): Size? {
@@ -57,7 +78,12 @@ class JxlCoder {
 
     private external fun getSizeImpl(byteArray: ByteArray): Size?
 
-    private external fun decodeSampledImpl(byteArray: ByteArray, width: Int, height: Int): Bitmap
+    private external fun decodeSampledImpl(
+        byteArray: ByteArray,
+        width: Int,
+        height: Int,
+        preferF16HDR: Boolean
+    ): Bitmap
 
     private external fun encodeImpl(
         bitmap: Bitmap,

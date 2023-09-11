@@ -20,3 +20,4 @@ local.properties
 *.aab
 build
 .idea
+/app/release/output-metadata.json

@@ -6,6 +6,8 @@
 #include <vector>
 #include "icc/lcms2.h"
 #include <android/log.h>
+#include <thread>
+#include "ThreadPool.hpp"
 
 void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int width, int height,
                                  const unsigned char *colorSpace, size_t colorSpaceSize,
@@ -44,18 +46,32 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
     std::shared_ptr<void> ptrTransform(transform, [](void *transform) {
         cmsDeleteTransform(reinterpret_cast<cmsHTRANSFORM>(transform));
     });
+
+    ThreadPool pool;
+    std::vector<std::future<void>> results;
+
     std::vector<char> iccARGB;
     iccARGB.resize(stride * height);
-    cmsDoTransformLineStride(
-            ptrTransform.get(),
-            vector.data(),
-            iccARGB.data(),
-            width,
-            height,
-            stride,
-            stride,
-            0,
-            0
-    );
+    for (int y = 0; y < height; ++y) {
+        auto r = pool.enqueue(cmsDoTransformLineStride, ptrTransform.get(),
+                           vector.data() + stride * y, iccARGB.data() + stride * y, width, 1,
+                           stride, stride, 0, 0);
+        results.push_back(std::move(r));
+    }
+
+    for (auto &result: results) {
+        result.wait();
+    }
+//    cmsDoTransformLineStride(
+//            ptrTransform.get(),
+//            vector.data(),
+//            iccARGB.data(),
+//            width,
+//            height,
+//            stride,
+//            stride,
+//            0,
+//            0
+//    );
     std::copy(iccARGB.begin(), iccARGB.end(), vector.begin());
 }

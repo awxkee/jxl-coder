@@ -35,6 +35,7 @@ android {
         externalNativeBuild {
             cmake {
                 ndkVersion = "25.2.9519653"
+                cppFlags.add ("-std=c++17")
                 abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
             }
         }

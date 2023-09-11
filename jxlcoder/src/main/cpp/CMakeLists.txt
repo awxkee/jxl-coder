@@ -22,8 +22,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         jxlcoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
         icc/cmsgmt.c icc/cmshalf.c icc/cmsintrp.c icc/cmsio0.c icc/cmsio1.c icc/cmslut.c icc/cmsmd5.c icc/cmsmtrx.c icc/cmsnamed.c
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
-        icc/cmswtpnt.c icc/cmsxform.c colorspace.cpp stb_image_resize.h halfFloats.cpp jniExceptions.cpp jxlEncoding.cpp
-        jxlDecoding.cpp jniDecoder.cpp rgba2Rgb.cpp rgb1010102toHalf.cpp rgba16bitCopy.cpp)
+        icc/cmswtpnt.c icc/cmsxform.c colorspace.cpp stb_image_resize.h HalfFloats.cpp jniExceptions.cpp JxlEncoding.cpp
+        JxlDecoding.cpp jniDecoder.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp ThreadPool.hpp F32ToRGB1010102.cpp)
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
 
@@ -39,15 +39,20 @@ target_include_directories(cpufeatures PUBLIC ${ANDROID_NDK}/sources/android/cpu
 target_link_libraries(cpufeatures dl)
 list(APPEND EXTRA_LIBS cpufeatures)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 include(CheckCXXCompilerFlag)
-if(ANDROID_ABI STREQUAL arm64-v8a)
+if (ANDROID_ABI STREQUAL arm64-v8a)
     set_target_properties(jxlcoder PROPERTIES COMPILE_FLAGS -mfpu=neon)
     add_definitions(-DHAVE_NEON=1)
-endif()
+endif ()
 
-add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION)
+add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION -DCMS_NO_REGISTER_KEYWORD)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -ffast-math")
+endif ()
 
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this
