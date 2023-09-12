@@ -12,8 +12,10 @@ void RgbaF32ToF16Neon(const float *src, int srcStride, uint16_t *dst, int dstStr
                       int width, int height) ;
 #endif
 
-void RgbaF32ToF16(const float *src, int srcStride, uint16_t *dst, int dstStride, int width,
-                  int height);
+namespace coder {
+    void RgbaF32ToF16(const float *src, int srcStride, uint16_t *dst, int dstStride, int width,
+                      int height);
+}
 
 float half_to_float(const uint16_t x);
 

@@ -6,96 +6,88 @@
 #include <cstdint>
 #include "ThreadPool.hpp"
 
-#if HAVE_NEON
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "Rgba16bitCopy.cpp"
+#include "hwy/foreach_target.h"
+#include "hwy/highway.h"
 
-#include <arm_neon.h>
+HWY_BEFORE_NAMESPACE();
 
-void CopyRGBA16RowNEON(const uint16_t *src, uint16_t *dst, int width) {
-    auto srcPtr = reinterpret_cast<const uint16_t *>(src);
-    auto dstPtr = reinterpret_cast<uint16_t *>(dst);
-    int x;
+namespace coder {
+    namespace HWY_NAMESPACE {
+        namespace hn = hwy::HWY_NAMESPACE;
+        using hwy::HWY_NAMESPACE::ScalableTag;
+        using hwy::HWY_NAMESPACE::Load;
+        using hwy::HWY_NAMESPACE::Store;
 
-    for (x = 0; x + 2 < width; x += 2) {
-        uint16x8_t neonSrc = vld1q_u16(srcPtr);
-        vst1q_u16(dstPtr, neonSrc);
-        srcPtr += 8;
-        dstPtr += 8;
-    }
+        void CopyRGBA16RowHWY(const uint16_t *HWY_RESTRICT data, uint16_t *dst, int width) {
+            const ScalableTag<uint16_t> du;
+            using V = hn::Vec<decltype(du)>;
+            int pixels = du.MaxLanes() / (sizeof(uint16_t) * 2);
+            int x;
+            for (x = 0; x + pixels < width; x += pixels) {
+                V color = Load(du, data);
+                Store(color, du, dst);
+                data += 4 * pixels;
+                dst += 4 * pixels;
+            }
 
-    for (; x < width; ++x) {
-        auto srcPtr64 = reinterpret_cast<const uint64_t *>(srcPtr);
-        auto dstPtr64 = reinterpret_cast<uint64_t *>(dstPtr);
-        dstPtr64[0] = srcPtr64[0];
-        srcPtr += 4;
-        dstPtr += 4;
+            for (; x < width; ++x) {
+                auto srcPtr64 = reinterpret_cast<const uint64_t *>(data);
+                auto dstPtr64 = reinterpret_cast<uint64_t *>(dst);
+                dstPtr64[0] = srcPtr64[0];
+                data += 4;
+                dst += 4;
+            }
+        }
+
+        void CopyRGBA16(const uint16_t *HWY_RESTRICT source, int srcStride,
+                        uint16_t *HWY_RESTRICT destination, int dstStride,
+                        int width, int height) {
+            auto src = reinterpret_cast<const uint8_t *>(source);
+            auto dst = reinterpret_cast<uint8_t *>(destination);
+            int minimumTilingAreaSize = 850 * 850;
+            int currentAreaSize = width * height;
+
+            if (minimumTilingAreaSize > currentAreaSize) {
+                for (int y = 0; y < height; ++y) {
+                    CopyRGBA16RowHWY(reinterpret_cast<const uint16_t *HWY_RESTRICT>(src),
+                                     reinterpret_cast<uint16_t *HWY_RESTRICT>(dst), width);
+                    src += srcStride;
+                    dst += dstStride;
+                }
+
+            } else {
+                ThreadPool pool;
+                std::vector<std::future<void>> results;
+
+                for (int y = 0; y < height; ++y) {
+                    auto r = pool.enqueue(CopyRGBA16RowHWY,
+                                          reinterpret_cast<const uint16_t *HWY_RESTRICT>(src),
+                                          reinterpret_cast<uint16_t *HWY_RESTRICT>(dst), width);
+                    results.push_back(std::move(r));
+                    src += srcStride;
+                    dst += dstStride;
+                }
+
+                for (auto &result: results) {
+                    result.wait();
+                }
+            }
+        }
+
     }
 }
 
-void CopyRGBA16NEON(const uint16_t *source, int srcStride,
-                    uint16_t *destination, int dstStride,
-                    int width, int height) {
-    auto src = reinterpret_cast<const uint8_t *>(source);
-    auto dst = reinterpret_cast<uint8_t *>(destination);
+HWY_AFTER_NAMESPACE();
 
-    ThreadPool pool;
-    std::vector<std::future<void>> results;
-
-    for (int y = 0; y < height; ++y) {
-        auto r = pool.enqueue(CopyRGBA16RowNEON, reinterpret_cast<const uint16_t *>(src),
-                             reinterpret_cast<uint16_t *>(dst), width);
-        results.push_back(std::move(r));
-        src += srcStride;
-        dst += dstStride;
-    }
-
-    for (auto &result: results) {
-        result.wait();
+#if HWY_ONCE
+namespace coder {
+    HWY_EXPORT(CopyRGBA16);
+    HWY_DLLEXPORT void CopyRGBA16(const uint16_t *HWY_RESTRICT source, int srcStride,
+                                  uint16_t *HWY_RESTRICT destination, int dstStride,
+                                  int width, int height) {
+        HWY_DYNAMIC_DISPATCH(CopyRGBA16)(source, srcStride, destination, dstStride, width, height);
     }
 }
-
 #endif
-
-void CopyRGBA16RowC(const uint16_t *src, uint16_t *dst, int width) {
-    auto srcPtr = reinterpret_cast<const uint16_t *>(src);
-    auto dstPtr = reinterpret_cast<uint16_t *>(dst);
-
-    for (int x = 0; x < width; ++x) {
-        auto srcPtr64 = reinterpret_cast<const uint64_t *>(srcPtr);
-        auto dstPtr64 = reinterpret_cast<uint64_t *>(dstPtr);
-        dstPtr64[0] = srcPtr64[0];
-        srcPtr += 4;
-        dstPtr += 4;
-    }
-}
-
-void CopyRGBA16C(const uint16_t *source, int srcStride,
-                 uint16_t *destination, int dstStride,
-                 int width, int height) {
-    auto src = reinterpret_cast<const uint8_t *>(source);
-    auto dst = reinterpret_cast<uint8_t *>(destination);
-
-    ThreadPool pool;
-    std::vector<std::future<void>> results;
-
-    for (int y = 0; y < height; ++y) {
-        auto r = pool.enqueue(CopyRGBA16RowC, reinterpret_cast<const uint16_t *>(src),
-                     reinterpret_cast<uint16_t *>(dst), width);
-        results.push_back(std::move(r));
-        src += srcStride;
-        dst += dstStride;
-    }
-
-    for (auto &result: results) {
-        result.wait();
-    }
-}
-
-void CopyRGBA16(const uint16_t *source, int srcStride,
-                uint16_t *destination, int dstStride,
-                int width, int height) {
-#if HAVE_NEON
-    CopyRGBA16NEON(source, srcStride, destination, dstStride, width, height);
-#else
-    CopyRGBA16C(source, srcStride, destination, dstStride, width, height);
-#endif
-}

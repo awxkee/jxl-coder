@@ -8,6 +8,11 @@
 #include <HalfFloats.h>
 #include <vector>
 
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "Rgb1010102toF16.cpp"
+#include "hwy/foreach_target.h"
+#include "hwy/highway.h"
+
 // Conversion function from 1010102 to half floats
 
 void ConvertRGBA1010102toF16Row(const uint8_t *src, uint16_t *dst,

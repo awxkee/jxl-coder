@@ -30,8 +30,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         throwInvalidColorSpaceException(env);
         return static_cast<jbyteArray>(nullptr);
     }
-    auto compression_option = static_cast<jxl_compression_option>(javaCompressionOption);
-    if (!compression_option) {
+    auto compressionOption = static_cast<jxl_compression_option>(javaCompressionOption);
+    if (!compressionOption) {
         throwInvalidCompressionOptionException(env);
         return static_cast<jbyteArray>(nullptr);
     }
@@ -106,19 +106,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             rgbPixels.resize(info.width * info.height * 3 *
                              (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t)));
             if (useFloat16) {
-#if HAVE_NEON
-                rgba16Bit2RgbNEON(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                                  (int) imageStride,
-                                  reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                                  (int) info.width * (int) sizeof(uint16_t) * 3,
-                                  (int) info.height, (int) info.width);
-#else
-                Rgba16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                              (int) info.stride,
-                              reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                              (int) info.width * (int) sizeof(uint16_t) * 3,
-                              (int) info.height, (int) info.width);
-#endif
+                coder::Rgba16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                                     (int) info.stride,
+                                     reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                                     (int) info.width * (int) sizeof(uint16_t) * 3,
+                                     (int) info.height, (int) info.width);
             } else {
                 libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(imageStride),
                                     rgbPixels.data(),
@@ -178,7 +170,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
     if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
                           &compressedVector, colorspace,
-                          compression_option, useFloat16, iccProfile, effort)) {
+                          compressionOption, useFloat16, iccProfile, effort)) {
         throwCantCompressImage(env);
         return static_cast<jbyteArray>(nullptr);
     }

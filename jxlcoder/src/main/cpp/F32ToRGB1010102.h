@@ -7,7 +7,10 @@
 
 #include <vector>
 
-void
-F16ToRGBA1010102(std::vector<uint8_t> &data, int srcStride, int *dstStride, int width, int height);
+namespace coder {
+    void
+    F16ToRGBA1010102(std::vector<uint8_t> &data, int srcStride, int *dstStride, int width,
+                     int height);
+}
 
 #endif //JXLCODER_F32TORGB1010102_H

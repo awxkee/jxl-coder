@@ -62,16 +62,5 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
     for (auto &result: results) {
         result.wait();
     }
-//    cmsDoTransformLineStride(
-//            ptrTransform.get(),
-//            vector.data(),
-//            iccARGB.data(),
-//            width,
-//            height,
-//            stride,
-//            stride,
-//            0,
-//            0
-//    );
     std::copy(iccARGB.begin(), iccARGB.end(), vector.begin());
 }

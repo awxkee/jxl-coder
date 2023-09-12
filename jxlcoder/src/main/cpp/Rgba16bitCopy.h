@@ -7,8 +7,10 @@
 
 #include <vector>
 
-void CopyRGBA16(const uint16_t *source, int srcStride,
-                uint16_t *destination, int dstStride,
-                int width, int height);
+namespace coder {
+    void CopyRGBA16(const uint16_t *source, int srcStride,
+                    uint16_t *destination, int dstStride,
+                    int width, int height);
+}
 
 #endif //AVIF_RGBA16BITCOPY_H

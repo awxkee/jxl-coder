@@ -17,6 +17,7 @@ add_library(libbrotlienc SHARED IMPORTED)
 add_library(libjxl SHARED IMPORTED)
 add_library(libjxl_threads SHARED IMPORTED)
 add_library(libyuv STATIC IMPORTED)
+add_library(libhwy STATIC IMPORTED)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
         jxlcoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
@@ -32,7 +33,8 @@ set_target_properties(jxlcoder libbrotlidec PROPERTIES IMPORTED_LOCATION ${CMAKE
 set_target_properties(jxlcoder libbrotlienc PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libbrotlienc.so)
 set_target_properties(jxlcoder libjxl PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl.so)
 set_target_properties(jxlcoder libjxl_threads PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_threads.so)
-set_target_properties(libyuv PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libyuv.a)
+set_target_properties(jxlcoder libyuv PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libyuv.a)
+set_target_properties(jxlcoder libhwy PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libhwy.a)
 
 add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)
 target_include_directories(cpufeatures PUBLIC ${ANDROID_NDK}/sources/android/cpufeatures)
@@ -43,15 +45,40 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CheckCXXCompilerFlag)
-if (ANDROID_ABI STREQUAL arm64-v8a)
-    set_target_properties(jxlcoder PROPERTIES COMPILE_FLAGS -mfpu=neon)
-    add_definitions(-DHAVE_NEON=1)
+#if (ANDROID_ABI STREQUAL arm64-v8a)
+#    set_target_properties(jxlcoder PROPERTIES COMPILE_FLAGS -mfpu=neon)
+#    add_definitions(-DHAVE_NEON=1)
+#endif ()
+
+if (ANDROID_ABI STREQUAL x86)
+    target_compile_options(jxlcoder PRIVATE "-msse2")
+
+    if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+    endif()
 endif ()
 
-add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION -DCMS_NO_REGISTER_KEYWORD)
+if (ANDROID_ABI STREQUAL x86-64)
+    set_target_properties(jxlcoder PROPERTIES COMPILE_FLAGS "-march=i686")
+
+    if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+    endif()
+endif ()
+
+
+add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION -DCMS_NO_REGISTER_KEYWORD -DHWY_COMPILE_ONLY_STATIC)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -ffast-math")
+endif ()
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DHWY_COMPILE_ONLY_STATIC)
 endif ()
 
 # Specifies libraries CMake should link to your target library. You
@@ -64,6 +91,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         libbrotlicommon
         libbrotlidec
         libbrotlienc
+        libhwy
         libjxl
         libjxl_threads
         -ljnigraphics

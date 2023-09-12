@@ -42,20 +42,20 @@ class MainActivity : ComponentActivity() {
         assert(largeImageSize != null)
         val image = JxlCoder().decodeSampled(
             buffer4,
-            largeImageSize!!.width,
-            largeImageSize!!.height
+            largeImageSize!!.width / 4,
+            largeImageSize!!.height / 4
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
 //            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
-//            val compressedBuffer = JxlCoder().encode(
-//                image10Bit,
-//                colorSpace = JxlColorSpace.RGBA,
-//                compressionOption = JxlCompressionOption.LOSSLESS,
-//                effort = 1,
-//            )
-//            val decompressedImage = JxlCoder().decode(compressedBuffer)
+            val compressedBuffer = JxlCoder().encode(
+                image10Bit,
+                colorSpace = JxlColorSpace.RGB,
+                compressionOption = JxlCompressionOption.LOSSY,
+                effort = 2,
+            )
+            val decompressedImage = JxlCoder().decode(compressedBuffer)
 
             setContent {
                 JXLCoderTheme {
@@ -74,7 +74,7 @@ class MainActivity : ComponentActivity() {
 //                                .build()
 //                        )
                         Image(
-                            bitmap = image10Bit.asImageBitmap(),
+                            bitmap = decompressedImage.asImageBitmap(),
                             contentDescription = "ok"
                         )
                     }

@@ -7,107 +7,99 @@
 #include <vector>
 #include "ThreadPool.hpp"
 
-#if HAVE_NEON
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "Rgba2Rgb.cpp"
+#include <hwy/foreach_target.h>  // IWYU pragma: keep
 
-#include <arm_neon.h>
+#include <hwy/highway.h>
+#include "hwy/base.h"
 
-void rgba16Bit2RgbNEON(const uint16_t *src, int srcStride, uint16_t *dst, int dstStride, int height,
-                       int width) {
-    auto rgbData = reinterpret_cast<uint8_t *>(dst);
-    auto rgbaData = reinterpret_cast<const uint8_t *>(src);
-    for (int y = 0; y < height; ++y) {
-        int x;
+#include <android/log.h>
 
-        auto srcPixels = reinterpret_cast<const uint16_t *>(rgbaData);
-        auto dstPixels = reinterpret_cast<uint16_t *>(rgbData);
+HWY_BEFORE_NAMESPACE();
+namespace coder {
+    namespace HWY_NAMESPACE {
 
-        for (x = 0; x < width; x += 4) {
-            // Load 4 RGBA pixels (16-bit per channel)
-            uint16x4x4_t rgba_pixels = vld4_u16(srcPixels);
+        using hwy::HWY_NAMESPACE::LoadInterleaved4;
+        using hwy::HWY_NAMESPACE::StoreInterleaved3;
+        using hwy::HWY_NAMESPACE::ScalableTag;
+        using hwy::HWY_NAMESPACE::Vec;
 
-            // Extract the RGB components (ignore Alpha)
-            uint16x4x3_t rgb_pixels;
-            rgb_pixels.val[0] = rgba_pixels.val[0]; // Red
-            rgb_pixels.val[1] = rgba_pixels.val[1]; // Green
-            rgb_pixels.val[2] = rgba_pixels.val[2]; // Blue
+        void
+        Rgba16bitToRGBC(const uint16_t *HWY_RESTRICT src, uint16_t *HWY_RESTRICT dst, int width) {
+            const ScalableTag<uint16_t> du16;
+            using V = Vec<decltype(du16)>;
+            int x = 0;
+            auto srcPixels = reinterpret_cast<const uint16_t *>(src);
+            auto dstPixels = reinterpret_cast<uint16_t *>(dst);
+            int pixels = du16.MaxLanes();
+            for (x = 0; x + pixels < width; x += pixels) {
+                V pixels1;
+                V pixels2;
+                V pixels3;
+                V pixels4;
+                LoadInterleaved4(du16, srcPixels, pixels1, pixels2, pixels3, pixels4);
+                StoreInterleaved3(pixels1, pixels2, pixels3, du16, dstPixels);
 
-            // Store the RGB pixels (16-bit per channel)
-            vst3_u16(dstPixels, rgb_pixels);
+                srcPixels += 4 * pixels;
+                dstPixels += 3 * pixels;
+            }
 
-            srcPixels += 4 * 4;
-            dstPixels += 4 * 3;
+            for (; x < width; ++x) {
+                dstPixels[0] = srcPixels[0];
+                dstPixels[1] = srcPixels[1];
+                dstPixels[2] = srcPixels[2];
+
+                srcPixels += 4;
+                dstPixels += 3;
+            }
         }
 
-        for (; x < width; ++x) {
-            dstPixels[0] = srcPixels[0];
-            dstPixels[1] = srcPixels[1];
-            dstPixels[2] = srcPixels[2];
+        void HRgba16bit2RGB(const uint16_t *HWY_RESTRICT src, int srcStride,
+                            uint16_t *HWY_RESTRICT dst, int dstStride, int height,
+                            int width) {
+            auto rgbaData = reinterpret_cast<const uint8_t *>(src);
+            auto rgbData = reinterpret_cast<uint8_t *>(dst);
 
-            srcPixels += 3;
-            dstPixels += 4;
+            int minimumTilingAreaSize = 850 * 850;
+            int currentAreaSize = width * height;
+
+            if (minimumTilingAreaSize > currentAreaSize) {
+                for (int y = 0; y < height; ++y) {
+                    Rgba16bitToRGBC(reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
+                                    reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
+                }
+            } else {
+                ThreadPool pool;
+                std::vector<std::future<void>> results;
+
+                for (int y = 0; y < height; ++y) {
+                    auto r = pool.enqueue(Rgba16bitToRGBC,
+                                          reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
+                                          reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
+                    results.push_back(std::move(r));
+                }
+
+                for (auto &result: results) {
+                    result.wait();
+                }
+            }
         }
 
-        rgbData += dstStride;
-        rgbaData += srcStride;
+    }
+}
+HWY_AFTER_NAMESPACE();
 
+#if HWY_ONCE
+
+namespace coder {
+    HWY_EXPORT(Rgba16bitToRGBC);
+    HWY_EXPORT(HRgba16bit2RGB);
+    HWY_DLLEXPORT void Rgba16bit2RGB(const uint16_t *HWY_RESTRICT src, int srcStride,
+                                     uint16_t *HWY_RESTRICT dst, int dstStride, int height,
+                                     int width) {
+        HWY_DYNAMIC_DISPATCH(HRgba16bit2RGB)(src, srcStride, dst, dstStride, height, width);
     }
 }
 
 #endif
-
-void
-rgb8bit2RGB(const uint8_t *src, int srcStride, uint8_t *dst, int dstStride, int height, int width) {
-    auto rgbData = dst;
-    auto rgbaData = src;
-    for (int y = 0; y < height; ++y) {
-
-        auto srcPixels = rgbaData;
-        auto dstPixels = rgbData;
-
-        for (int x = 0; x < width; ++x) {
-            rgbData[0] = rgbaData[0];
-            rgbData[1] = rgbaData[1];
-            rgbData[2] = rgbaData[2];
-
-            srcPixels += 4;
-            dstPixels += 4;
-        }
-
-        rgbData += dstStride;
-        rgbaData += srcStride;
-    }
-}
-
-void Rgba16bitToRGB_C(const uint16_t *src, uint16_t *dst, int width) {
-    auto srcPixels = reinterpret_cast<const uint16_t *>(src);
-    auto dstPixels = reinterpret_cast<uint16_t *>(dst);
-    for (int x = 0; x < width; ++x) {
-        dstPixels[0] = srcPixels[0];
-        dstPixels[1] = srcPixels[1];
-        dstPixels[2] = srcPixels[2];
-
-        srcPixels += 4;
-        dstPixels += 3;
-    }
-}
-
-void Rgba16bit2RGB(const uint16_t *src, int srcStride,
-                   uint16_t *dst, int dstStride, int height,
-                   int width) {
-    auto rgbData = reinterpret_cast<uint8_t *>(dst);
-    auto rgbaData = reinterpret_cast<const uint8_t *>(src);
-
-    ThreadPool pool;
-    std::vector<std::future<void>> results;
-
-    for (int y = 0; y < height; ++y) {
-        auto r = pool.enqueue(Rgba16bitToRGB_C,
-                     reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
-                     reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
-        results.push_back(std::move(r));
-    }
-
-    for (auto &result: results) {
-        result.wait();
-    }
-}

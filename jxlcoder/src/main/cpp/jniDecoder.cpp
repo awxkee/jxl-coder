@@ -56,15 +56,15 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
 
     bool useRGBA1010102 = false;
 
-    if (osVersion >= 33 && !preferF16HDR && useBitmapFloats) {
-        int dstStride;
-        F16ToRGBA1010102(rgbaPixels,
-                         (int) xsize * 4 * (int) sizeof(float ),
-                         &dstStride,
-                         (int) xsize, (int) ysize);
-        useBitmapFloats = false;
-        useRGBA1010102 = true;
-    }
+//    if (osVersion >= 33 && !preferF16HDR && useBitmapFloats) {
+//        int dstStride;
+//        coder::F16ToRGBA1010102(rgbaPixels,
+//                                (int) xsize * 4 * (int) sizeof(float),
+//                                &dstStride,
+//                                (int) xsize, (int) ysize);
+//        useBitmapFloats = false;
+//        useRGBA1010102 = true;
+//    }
 
     bool useSampler = scaledWidth > 0 && scaledHeight > 0;
 
@@ -72,8 +72,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     int finalHeight = useSampler ? (int) scaledHeight : (int) ysize;
 
     auto bitmapConfigStr = useRGBA1010102 ? "RGBA_1010102"
-                                       : (useBitmapFloats ? "RGBA_F16"
-                                                          : "ARGB_8888");
+                                          : (useBitmapFloats ? "RGBA_F16"
+                                                             : "ARGB_8888");
 
     jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");
     jfieldID rgba8888FieldID = env->GetStaticFieldID(bitmapConfig,
@@ -124,14 +124,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
         std::vector<uint8_t> newImageData(finalWidth * finalHeight * 4 * sizeof(uint16_t));
         auto startPixels = reinterpret_cast<float *>(rgbaPixels.data());
         auto dstPixels = reinterpret_cast<uint16_t *>(newImageData.data());
-#if HAVE_NEON
-        RgbaF32ToF16Neon(startPixels, (int) finalWidth * 4 * (int) sizeof(uint32_t),
-                         dstPixels, (int) finalWidth * 4 * (int) sizeof(uint16_t),
-                         finalWidth, finalHeight);
-#else
-        RgbaF32ToF16(startPixels, (int) finalWidth * 4 * (int) sizeof(uint32_t), dstPixels,
-                     (int) finalWidth * 4 * (int) sizeof(uint16_t), finalWidth, finalHeight);
-#endif
+        coder::RgbaF32ToF16(startPixels, (int) finalWidth * 4 * (int) sizeof(uint32_t), dstPixels,
+                            (int) finalWidth * 4 * (int) sizeof(uint16_t), finalWidth, finalHeight);
         rgbaPixels.clear();
         rgbaPixels = newImageData;
     }
@@ -149,10 +143,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     }
 
     if (useBitmapFloats) {
-        CopyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                   finalWidth * 4 * (int) sizeof(uint16_t),
-                   reinterpret_cast<uint16_t *>(addr), (int) info.stride, (int) info.width,
-                   (int) info.height);
+        coder::CopyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                          finalWidth * 4 * (int) sizeof(uint16_t),
+                          reinterpret_cast<uint16_t *>(addr), (int) info.stride, (int) info.width,
+                          (int) info.height);
     } else {
         libyuv::ARGBCopy(reinterpret_cast<uint8_t *>(rgbaPixels.data()),
                          (int) finalWidth * 4 * (int) sizeof(uint8_t),

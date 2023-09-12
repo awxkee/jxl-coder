@@ -39,14 +39,19 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     JxlEncoderInitBasicInfo(&basic_info);
     basic_info.xsize = xsize;
     basic_info.ysize = ysize;
-    // Assuming there are no change to have more than 12bit images on android
-    basic_info.bits_per_sample = useFloat16 ? 12 : 8;
+    basic_info.bits_per_sample = useFloat16 ? 16 : 8;
     basic_info.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
+    if (useFloat16) {
+        basic_info.exponent_bits_per_sample = 5;
+    }
     basic_info.num_color_channels = 3;
 
     if (colorspace == rgba) {
         basic_info.num_extra_channels = 1;
         basic_info.alpha_bits = useFloat16 ? 16 : 8;
+        if (useFloat16) {
+            basic_info.alpha_exponent_bits = 5;
+        }
     }
 
     if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basic_info)) {

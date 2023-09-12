@@ -10,7 +10,7 @@
 
 bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
-                         size_t *ysize, std::vector<uint8_t> *icc_profile,
+                         size_t *ysize, std::vector<uint8_t> *iccProfile,
                          bool *useFloats,
                          bool *alphaPremultiplied, bool allowedFloats) {
     // Multi-threaded parallel runner.
@@ -65,35 +65,34 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                     JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize));
         } else if (status == JXL_DEC_COLOR_ENCODING) {
             // Get the ICC color profile of the pixel data
-            size_t icc_size;
+            size_t iccSize;
             if (JXL_DEC_SUCCESS !=
                 JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
-                                            &icc_size)) {
+                                            &iccSize)) {
                 return false;
             }
-            icc_profile->resize(icc_size);
+            iccProfile->resize(iccSize);
             if (JXL_DEC_SUCCESS != JxlDecoderGetColorAsICCProfile(
                     dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
-                    icc_profile->data(), icc_profile->size())) {
+                    iccProfile->data(), iccProfile->size())) {
                 return false;
             }
         } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
-            size_t buffer_size;
+            size_t bufferSize;
             if (JXL_DEC_SUCCESS !=
-                JxlDecoderImageOutBufferSize(dec.get(), &format, &buffer_size)) {
+                JxlDecoderImageOutBufferSize(dec.get(), &format, &bufferSize)) {
                 return false;
             }
-            if (buffer_size !=
-                *xsize * *ysize * 4 * (useBitmapHalfFloats ? sizeof(uint32_t) : sizeof(uint8_t))) {
+            int stride = (int)*xsize * 4 * (int)(useBitmapHalfFloats ? sizeof(uint32_t) : sizeof(uint8_t));
+            if (bufferSize != stride * (*ysize)) {
                 return false;
             }
-            pixels->resize(*xsize * *ysize * 4 *
-                           (useBitmapHalfFloats ? sizeof(uint32_t) : sizeof(uint8_t)));
-            void *pixels_buffer = (void *) pixels->data();
-            size_t pixels_buffer_size = pixels->size() * sizeof(uint8_t);
+            pixels->resize(stride * (*ysize));
+            void *pixelsBuffer = (void *) pixels->data();
+            size_t pixelsBufferSize = pixels->size();
             if (JXL_DEC_SUCCESS != JxlDecoderSetImageOutBuffer(dec.get(), &format,
-                                                               pixels_buffer,
-                                                               pixels_buffer_size)) {
+                                                               pixelsBuffer,
+                                                               pixelsBufferSize)) {
                 return false;
             }
         } else if (status == JXL_DEC_FULL_IMAGE) {

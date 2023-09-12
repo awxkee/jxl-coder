@@ -7,9 +7,13 @@
 
 #include <cstdint>
 
-void rgb8bit2RGB(const uint8_t *src, int srcStride, uint8_t *dst, int dstStride, int height, int width);
-void Rgba16bit2RGB(const uint16_t *src, int srcStride, uint16_t *dst, int dstStride, int height,
-                   int width);
+namespace coder {
+    void rgb8bit2RGB(const uint8_t *src, int srcStride, uint8_t *dst, int dstStride, int height,
+                     int width);
+
+    void Rgba16bit2RGB(const uint16_t *src, int srcStride, uint16_t *dst, int dstStride, int height,
+                       int width);
+}
 
 #if HAVE_NEON
 void rgba8bit2RgbNEON(const uint8_t* src, uint8_t* dst, int numPixels);
