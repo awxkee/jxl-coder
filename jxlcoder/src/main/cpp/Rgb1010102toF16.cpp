@@ -10,79 +10,161 @@
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgb1010102toF16.cpp"
+
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
 
-// Conversion function from 1010102 to half floats
+HWY_BEFORE_NAMESPACE();
 
-void ConvertRGBA1010102toF16Row(const uint8_t *src, uint16_t *dst,
-                                int width, bool littleEndian) {
+namespace coder {
+    namespace HWY_NAMESPACE {
 
-    auto dstPointer = reinterpret_cast<uint8_t *>(dst);
-    auto srcPointer = reinterpret_cast<const uint8_t *>(src);
+        using hwy::HWY_NAMESPACE::FixedTag;
+        using hwy::HWY_NAMESPACE::Vec;
+        using hwy::HWY_NAMESPACE::Load;
+        using hwy::float16_t;
 
-    for (int x = 0; x < width; ++x) {
-        uint32_t rgba1010102 = reinterpret_cast<const uint32_t *>(srcPointer)[0];
+        void
+        ConvertRGBA1010102toF16HWYRow(const uint8_t *HWY_RESTRICT src, uint16_t *HWY_RESTRICT dst,
+                                      int width, bool littleEndian) {
 
-        const uint32_t mask = (1u << 10u) - 1u;
-        uint32_t b = (rgba1010102) & mask;
-        uint32_t g = (rgba1010102 >> 10) & mask;
-        uint32_t r = (rgba1010102 >> 20) & mask;
-        uint32_t a = (rgba1010102 >> 30) * 0x555;  // Replicate 2 bits to 8 bits.
+            const FixedTag<uint32_t, 4> du32;
+            const FixedTag<float, 4> df32;
+            const FixedTag<float16_t, 4> df16;
 
-        // Convert each channel to floating-point values
-        float rFloat = static_cast<float>(r) / 1023.0f;
-        float gFloat = static_cast<float>(g) / 1023.0f;
-        float bFloat = static_cast<float>(b) / 1023.0f;
-        float aFloat = static_cast<float>(a) / 1023.0f;
+            using VU32 = Vec<decltype(du32)>;
+            using VF16 = Vec<decltype(df16)>;
 
-        auto dstCast = reinterpret_cast<uint16_t *>(dstPointer);
-        if (littleEndian) {
-            dstCast[0] = float_to_half(bFloat);
-            dstCast[1] = float_to_half(gFloat);
-            dstCast[2] = float_to_half(rFloat);
-            dstCast[3] = float_to_half(aFloat);
-        } else {
-            dstCast[0] = float_to_half(rFloat);
-            dstCast[1] = float_to_half(gFloat);
-            dstCast[2] = float_to_half(bFloat);
-            dstCast[3] = float_to_half(aFloat);
+            auto dstPointer = reinterpret_cast<uint8_t *>(dst);
+            auto srcPointer = reinterpret_cast<const uint8_t *>(src);
+
+            int x = 0;
+
+            for (; x < width; ++x) {
+                uint32_t rgba1010102 = reinterpret_cast<const uint32_t *>(srcPointer)[0];
+
+                const uint32_t mask = (1u << 10u) - 1u;
+                uint32_t b = (rgba1010102) & mask;
+                uint32_t g = (rgba1010102 >> 10) & mask;
+                uint32_t r = (rgba1010102 >> 20) & mask;
+                uint32_t a = (rgba1010102 >> 30) * 0x555;  // Replicate 2 bits to 8 bits.
+
+                // Convert each channel to floating-point values
+                float rFloat = static_cast<float>(r) / 1023.0f;
+                float gFloat = static_cast<float>(g) / 1023.0f;
+                float bFloat = static_cast<float>(b) / 1023.0f;
+                float aFloat = static_cast<float>(a) / 1023.0f;
+
+                auto dstCast = reinterpret_cast<uint16_t *>(dstPointer);
+                if (littleEndian) {
+                    dstCast[0] = float_to_half(bFloat);
+                    dstCast[1] = float_to_half(gFloat);
+                    dstCast[2] = float_to_half(rFloat);
+                    dstCast[3] = float_to_half(aFloat);
+                } else {
+                    dstCast[0] = float_to_half(rFloat);
+                    dstCast[1] = float_to_half(gFloat);
+                    dstCast[2] = float_to_half(bFloat);
+                    dstCast[3] = float_to_half(aFloat);
+                }
+
+                srcPointer += 4;
+                dstPointer += 8;
+            }
         }
 
-        srcPointer += 4;
-        dstPointer += 8;
+        void
+        ConvertRGBA1010102toF16(const uint8_t *src, int srcStride, uint16_t *dst, int dstStride,
+                                int width, int height) {
+            auto mDstPointer = reinterpret_cast<uint8_t *>(dst);
+            auto mSrcPointer = reinterpret_cast<const uint8_t *>(src);
+
+            uint32_t testValue = 0x01020304;
+            auto testBytes = reinterpret_cast<uint8_t *>(&testValue);
+
+            bool littleEndian = false;
+            if (testBytes[0] == 0x04) {
+                littleEndian = true;
+            } else if (testBytes[0] == 0x01) {
+                littleEndian = false;
+            }
+
+            ThreadPool pool;
+            std::vector<std::future<void>> results;
+
+            for (int y = 0; y < height; ++y) {
+                auto r = pool.enqueue(ConvertRGBA1010102toF16HWYRow,
+                                      reinterpret_cast<const uint8_t *>(mSrcPointer),
+                                      reinterpret_cast<uint16_t *>(mDstPointer), width,
+                                      littleEndian);
+                results.push_back(std::move(r));
+
+                mSrcPointer += srcStride;
+                mDstPointer += dstStride;
+            }
+
+            for (auto &result: results) {
+                result.wait();
+            }
+        }
+
     }
 }
 
-void ConvertRGBA1010102toF16(const uint8_t *src, int srcStride, uint16_t *dst, int dstStride,
-                             int width, int height) {
-    auto mDstPointer = reinterpret_cast<uint8_t *>(dst);
-    auto mSrcPointer = reinterpret_cast<const uint8_t *>(src);
+HWY_AFTER_NAMESPACE();
 
-    uint32_t testValue = 0x01020304;
-    auto testBytes = reinterpret_cast<uint8_t *>(&testValue);
+// Conversion function from 1010102 to half floats
 
-    bool littleEndian = false;
-    if (testBytes[0] == 0x04) {
-        littleEndian = true;
-    } else if (testBytes[0] == 0x01) {
-        littleEndian = false;
-    }
+//void ConvertRGBA1010102toF16Row(const uint8_t *src, uint16_t *dst,
+//                                int width, bool littleEndian) {
+//
+//    auto dstPointer = reinterpret_cast<uint8_t *>(dst);
+//    auto srcPointer = reinterpret_cast<const uint8_t *>(src);
+//
+//    for (int x = 0; x < width; ++x) {
+//        uint32_t rgba1010102 = reinterpret_cast<const uint32_t *>(srcPointer)[0];
+//
+//        const uint32_t mask = (1u << 10u) - 1u;
+//        uint32_t b = (rgba1010102) & mask;
+//        uint32_t g = (rgba1010102 >> 10) & mask;
+//        uint32_t r = (rgba1010102 >> 20) & mask;
+//        uint32_t a = (rgba1010102 >> 30) * 0x555;  // Replicate 2 bits to 8 bits.
+//
+//        // Convert each channel to floating-point values
+//        float rFloat = static_cast<float>(r) / 1023.0f;
+//        float gFloat = static_cast<float>(g) / 1023.0f;
+//        float bFloat = static_cast<float>(b) / 1023.0f;
+//        float aFloat = static_cast<float>(a) / 1023.0f;
+//
+//        auto dstCast = reinterpret_cast<uint16_t *>(dstPointer);
+//        if (littleEndian) {
+//            dstCast[0] = float_to_half(bFloat);
+//            dstCast[1] = float_to_half(gFloat);
+//            dstCast[2] = float_to_half(rFloat);
+//            dstCast[3] = float_to_half(aFloat);
+//        } else {
+//            dstCast[0] = float_to_half(rFloat);
+//            dstCast[1] = float_to_half(gFloat);
+//            dstCast[2] = float_to_half(bFloat);
+//            dstCast[3] = float_to_half(aFloat);
+//        }
+//
+//        srcPointer += 4;
+//        dstPointer += 8;
+//    }
+//}
 
-    ThreadPool pool;
-    std::vector<std::future<void>> results;
+#if HWY_ONCE
 
-    for (int y = 0; y < height; ++y) {
-        auto r = pool.enqueue(ConvertRGBA1010102toF16Row,
-                              reinterpret_cast<const uint8_t *>(mSrcPointer),
-                              reinterpret_cast<uint16_t *>(mDstPointer), width, littleEndian);
-        results.push_back(std::move(r));
+namespace coder {
+    HWY_EXPORT(ConvertRGBA1010102toF16);
 
-        mSrcPointer += srcStride;
-        mDstPointer += dstStride;
-    }
-
-    for (auto &result: results) {
-        result.wait();
+    HWY_DLLEXPORT void
+    ConvertRGBA1010102toF16(const uint8_t *src, int srcStride, uint16_t *dst, int dstStride,
+                            int width, int height) {
+        HWY_DYNAMIC_DISPATCH(ConvertRGBA1010102toF16)(src, srcStride, dst, dstStride, width,
+                                                      height);
     }
 }
+
+#endif

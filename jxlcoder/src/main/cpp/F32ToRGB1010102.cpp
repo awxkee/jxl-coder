@@ -20,7 +20,7 @@ HWY_BEFORE_NAMESPACE();
 namespace coder {
     namespace HWY_NAMESPACE {
 
-        using hwy::HWY_NAMESPACE::CappedTag;
+        using hwy::HWY_NAMESPACE::FixedTag;
         using hwy::HWY_NAMESPACE::Rebind;
         using hwy::HWY_NAMESPACE::Vec;
         using hwy::HWY_NAMESPACE::Set;
@@ -37,9 +37,9 @@ namespace coder {
         F32ToRGBA1010102RowC(const float *HWY_RESTRICT data, uint8_t *HWY_RESTRICT dst, int width,
                              const int *permuteMap) {
             float range10 = powf(2, 10) - 1;
-            const CappedTag<float, 4> df;
-            const Rebind<int32_t, CappedTag<float, 4>> di32;
-            const CappedTag<uint32_t, 4> di;
+            const FixedTag<float, 4> df;
+            const Rebind<int32_t, FixedTag<float, 4>> di32;
+            const FixedTag<uint32_t, 4> di;
             using V = Vec<decltype(df)>;
             const auto vRange10 = Set(df, range10);
             const auto zeros = Zero(df);

@@ -7,7 +7,9 @@
 
 #include <cstdint>
 
-void ConvertRGBA1010102toF16(const uint8_t *src, int srcStride, uint16_t *dst, int dstStride,
-                             int width, int height);
+namespace coder {
+    void ConvertRGBA1010102toF16(const uint8_t *src, int srcStride, uint16_t *dst, int dstStride,
+                                 int width, int height);
+}
 
 #endif //JXLCODER_RGB1010102TOF16_H
