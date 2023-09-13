@@ -92,7 +92,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
             JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
 
     if (JxlEncoderFrameSettingsSetOption(frame_settings,
-                                         JXL_ENC_FRAME_SETTING_EFFORT,effort) != JXL_ENC_SUCCESS) {
+                                         JXL_ENC_FRAME_SETTING_EFFORT, effort) != JXL_ENC_SUCCESS) {
         return false;
     }
 

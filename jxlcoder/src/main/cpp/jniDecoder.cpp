@@ -92,16 +92,16 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     }
 
     bool useRGBA1010102 = false;
-//
-//    if (osVersion >= 33 && !preferF16HDR && useBitmapFloats) {
-//        int dstStride;
-//        coder::F32ToRGBA1010102(rgbaPixels,
-//                                (int) finalWidth * 4 * (int) sizeof(float),
-//                                &dstStride,
-//                                (int) finalWidth, (int) finalHeight);
-//        useBitmapFloats = false;
-//        useRGBA1010102 = true;
-//    }
+
+    if (osVersion >= 33 && !preferF16HDR && useBitmapFloats) {
+        int dstStride;
+        coder::F32ToRGBA1010102(rgbaPixels,
+                                (int) finalWidth * 4 * (int) sizeof(float),
+                                &dstStride,
+                                (int) finalWidth, (int) finalHeight);
+        useBitmapFloats = false;
+        useRGBA1010102 = true;
+    }
 
     auto bitmapConfigStr = useRGBA1010102 ? "RGBA_1010102"
                                           : (useBitmapFloats ? "RGBA_F16"
