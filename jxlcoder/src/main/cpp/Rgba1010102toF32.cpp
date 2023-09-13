@@ -82,10 +82,10 @@ namespace coder {
             for (; x < width; ++x) {
                 uint32_t rgba1010102 = reinterpret_cast<const uint32_t *>(srcPointer)[0];
 
-                const uint32_t mask = (1u << 10u) - 1u;
-                uint32_t b = (rgba1010102) & mask;
-                uint32_t g = (rgba1010102 >> 10) & mask;
-                uint32_t r = (rgba1010102 >> 20) & mask;
+                const uint32_t scalarMask = (1u << 10u) - 1u;
+                uint32_t b = (rgba1010102) & scalarMask;
+                uint32_t g = (rgba1010102 >> 10) & scalarMask;
+                uint32_t r = (rgba1010102 >> 20) & scalarMask;
                 uint32_t a = (rgba1010102 >> 30) * 3;  // Replicate 2 bits to 8 bits.
 
                 // Convert each channel to floating-point values
@@ -113,7 +113,8 @@ namespace coder {
         }
 
         void
-        ConvertRGBA1010102toF32(const uint8_t * HWY_RESTRICT src, int srcStride, float * HWY_RESTRICT dst, int dstStride,
+        ConvertRGBA1010102toF32(const uint8_t *HWY_RESTRICT src, int srcStride,
+                                float *HWY_RESTRICT dst, int dstStride,
                                 int width, int height) {
             auto mDstPointer = reinterpret_cast<uint8_t *>(dst);
             auto mSrcPointer = reinterpret_cast<const uint8_t *>(src);

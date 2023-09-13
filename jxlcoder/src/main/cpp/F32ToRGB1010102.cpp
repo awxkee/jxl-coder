@@ -68,7 +68,7 @@ namespace coder {
                 VU pixelsu3 = BitCast(du, ConvertTo(di32, pixels3));
                 VU pixelsu4 = BitCast(du, ConvertTo(di32, pixels4));
 
-                VU pixelsStore[4] = { pixelsu1, pixelsu2, pixelsu3, pixelsu4 };
+                VU pixelsStore[4] = {pixelsu1, pixelsu2, pixelsu3, pixelsu4};
                 VU AV = pixelsStore[permuteMap[0]];
                 VU RV = pixelsStore[permuteMap[1]];
                 VU GV = pixelsStore[permuteMap[2]];
@@ -106,7 +106,6 @@ namespace coder {
             *dstStride = newStride;
             std::vector<uint8_t> newData(newStride * height);
             int permuteMap[4] = {3, 2, 1, 0};
-//            int permuteMap[4] = {3, 1, 2, 0};
             int minimumTilingAreaSize = 850 * 850;
             int currentAreaSize = width * height;
             if (minimumTilingAreaSize > currentAreaSize) {

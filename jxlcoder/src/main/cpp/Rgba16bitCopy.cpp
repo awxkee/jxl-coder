@@ -20,7 +20,7 @@ namespace coder {
         using hwy::HWY_NAMESPACE::Load;
         using hwy::HWY_NAMESPACE::Store;
 
-        void CopyRGBA16RowHWY(const uint16_t *HWY_RESTRICT data, uint16_t *dst, int width) {
+        void CopyRGBA16RowHWY(const uint16_t *HWY_RESTRICT data, uint16_t * HWY_RESTRICT dst, int width) {
             const FixedTag<uint16_t, 8> du;
             using V = hn::Vec<decltype(du)>;
             int x = 0;
