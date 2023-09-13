@@ -40,10 +40,8 @@ class MainActivity : ComponentActivity() {
         assert(JxlCoder.isJXL(buffer4))
         val largeImageSize = JxlCoder().getSize(buffer4)
         assert(largeImageSize != null)
-        val image = JxlCoder().decodeSampled(
+        val image = JxlCoder().decode(
             buffer4,
-            largeImageSize!!.width / 4,
-            largeImageSize!!.height / 4
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -53,7 +51,7 @@ class MainActivity : ComponentActivity() {
                 image10Bit,
                 colorSpace = JxlColorSpace.RGB,
                 compressionOption = JxlCompressionOption.LOSSY,
-                effort = 2,
+                effort = 1,
             )
             val decompressedImage = JxlCoder().decode(compressedBuffer)
 

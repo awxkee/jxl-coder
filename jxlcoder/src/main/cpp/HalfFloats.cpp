@@ -10,6 +10,7 @@
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "HalfFloats.cpp"
+
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
 
@@ -108,24 +109,35 @@ HWY_BEFORE_NAMESPACE();
 namespace coder {
     namespace HWY_NAMESPACE {
 
-        using hwy::HWY_NAMESPACE::ScalableTag;
+        using hwy::HWY_NAMESPACE::FixedTag;
         using hwy::HWY_NAMESPACE::Vec;
-        using hwy::HWY_NAMESPACE::Load;
+        using hwy::HWY_NAMESPACE::LoadInterleaved4;
         using hwy::HWY_NAMESPACE::Rebind;
         using hwy::HWY_NAMESPACE::Store;
+        using hwy::HWY_NAMESPACE::BitCast;
+        using hwy::HWY_NAMESPACE::StoreInterleaved4;
 
         void RGBAF32ToF16RowHWY(const float *HWY_RESTRICT src, uint16_t *dst, int width) {
-            const ScalableTag<float> df32;
-            const ScalableTag<hwy::float16_t> df16;
+            const FixedTag<float, 4> df32;
+            const FixedTag<hwy::float16_t, 4> df16;
+            const FixedTag<uint16_t, 4> du16;
             using V32 = Vec<decltype(df32)>;
             using V16 = Vec<decltype(df16)>;
-            const Rebind<hwy::float16_t, ScalableTag<float>> dfc16;
-            int x;
-            int pixelsCount = df32.MaxLanes() / sizeof(float);
+            const Rebind<hwy::float16_t, FixedTag<float, 4>> dfc16;
+            int x = 0;
+            int pixelsCount = 4;
             for (x = 0; x + pixelsCount < width; x += pixelsCount) {
-                V32 colors = Load(df32, src);
-                auto color16 = hwy::HWY_NAMESPACE::DemoteTo(dfc16, colors);
-                Store(color16, dfc16, reinterpret_cast<hwy::float16_t *>(dst));
+                V32 pixels1;
+                V32 pixels2;
+                V32 pixels3;
+                V32 pixels4;
+                LoadInterleaved4(df32, src, pixels1, pixels2, pixels3, pixels4);
+                auto pixeld1 = BitCast(du16, DemoteTo(dfc16, pixels1));
+                auto pixeld2 = BitCast(du16, DemoteTo(dfc16, pixels2));
+                auto pixeld3 = BitCast(du16, DemoteTo(dfc16, pixels3));
+                auto pixeld4 = BitCast(du16, DemoteTo(dfc16, pixels4));
+                StoreInterleaved4(pixeld1, pixeld2, pixeld3, pixeld4, du16,
+                                  reinterpret_cast<uint16_t *>(dst));
                 src += 4 * pixelsCount;
                 dst += 4 * pixelsCount;
             }

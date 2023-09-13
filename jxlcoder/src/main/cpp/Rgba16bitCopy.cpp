@@ -16,15 +16,15 @@ HWY_BEFORE_NAMESPACE();
 namespace coder {
     namespace HWY_NAMESPACE {
         namespace hn = hwy::HWY_NAMESPACE;
-        using hwy::HWY_NAMESPACE::ScalableTag;
+        using hwy::HWY_NAMESPACE::FixedTag;
         using hwy::HWY_NAMESPACE::Load;
         using hwy::HWY_NAMESPACE::Store;
 
         void CopyRGBA16RowHWY(const uint16_t *HWY_RESTRICT data, uint16_t *dst, int width) {
-            const ScalableTag<uint16_t> du;
+            const FixedTag<uint16_t, 8> du;
             using V = hn::Vec<decltype(du)>;
-            int pixels = du.MaxLanes() / (sizeof(uint16_t) * 2);
-            int x;
+            int x = 0;
+            int pixels = 2;
             for (x = 0; x + pixels < width; x += pixels) {
                 V color = Load(du, data);
                 Store(color, du, dst);

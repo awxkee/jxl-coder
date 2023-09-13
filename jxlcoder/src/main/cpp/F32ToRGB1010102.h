@@ -9,7 +9,7 @@
 
 namespace coder {
     void
-    F16ToRGBA1010102(std::vector<uint8_t> &data, int srcStride, int *dstStride, int width,
+    F32ToRGBA1010102(std::vector<uint8_t> &data, int srcStride, int *dstStride, int width,
                      int height);
 }
 

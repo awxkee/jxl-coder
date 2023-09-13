@@ -24,7 +24,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         icc/cmsgmt.c icc/cmshalf.c icc/cmsintrp.c icc/cmsio0.c icc/cmsio1.c icc/cmslut.c icc/cmsmd5.c icc/cmsmtrx.c icc/cmsnamed.c
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
         icc/cmswtpnt.c icc/cmsxform.c colorspace.cpp stb_image_resize.h HalfFloats.cpp jniExceptions.cpp JxlEncoding.cpp
-        JxlDecoding.cpp jniDecoder.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp ThreadPool.hpp F32ToRGB1010102.cpp)
+        JxlDecoding.cpp jniDecoder.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp ThreadPool.hpp F32ToRGB1010102.cpp Rgba1010102toF32.cpp)
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
 

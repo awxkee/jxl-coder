@@ -75,14 +75,15 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
     int imageStride = (int) info.stride;
 
     if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
-        std::vector<uint8_t> halfFloatPixels(info.width * sizeof(uint16_t) * 4 * info.height);
+        imageStride = (int) info.width * 4 * (int) sizeof(uint16_t);
+
+        std::vector<uint8_t> halfFloatPixels(imageStride * info.height);
         coder::ConvertRGBA1010102toF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
                                        (int) info.stride,
                                        reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
-                                       (int) info.width * (int) sizeof(uint16_t) * 4,
+                                       (int) imageStride,
                                        (int) info.width,
                                        (int) info.height);
-        imageStride = (int) info.width * 4 * (int) sizeof(uint16_t);
         rgbaPixels = halfFloatPixels;
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
         int newStride = (int) info.width * 4 * (int) sizeof(uint8_t);

@@ -54,43 +54,14 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                     useBitmapFloats);
     }
 
-    bool useRGBA1010102 = false;
-
-//    if (osVersion >= 33 && !preferF16HDR && useBitmapFloats) {
-//        int dstStride;
-//        coder::F16ToRGBA1010102(rgbaPixels,
-//                                (int) xsize * 4 * (int) sizeof(float),
-//                                &dstStride,
-//                                (int) xsize, (int) ysize);
-//        useBitmapFloats = false;
-//        useRGBA1010102 = true;
-//    }
-
     bool useSampler = scaledWidth > 0 && scaledHeight > 0;
 
     int finalWidth = useSampler ? (int) scaledWidth : (int) xsize;
     int finalHeight = useSampler ? (int) scaledHeight : (int) ysize;
 
-    auto bitmapConfigStr = useRGBA1010102 ? "RGBA_1010102"
-                                          : (useBitmapFloats ? "RGBA_F16"
-                                                             : "ARGB_8888");
-
-    jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");
-    jfieldID rgba8888FieldID = env->GetStaticFieldID(bitmapConfig,
-                                                     bitmapConfigStr,
-                                                     "Landroid/graphics/Bitmap$Config;");
-    jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
-
-    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
-                                                            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
-                                                    static_cast<jint>(finalWidth),
-                                                    static_cast<jint>(finalHeight),
-                                                    rgba8888Obj);
     if (useSampler) {
         std::vector<uint8_t> newImageData(finalWidth * finalHeight * 4 *
-                                          (useBitmapFloats ? sizeof(uint32_t) : sizeof(uint8_t)));
+                                                                   (useBitmapFloats ? sizeof(uint32_t) : sizeof(uint8_t)));
 
         if (useBitmapFloats) {
             // We we'll use Mitchell because we want less artifacts in our HDR image
@@ -120,6 +91,35 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
         rgbaPixels = newImageData;
     }
 
+    bool useRGBA1010102 = false;
+//
+//    if (osVersion >= 33 && !preferF16HDR && useBitmapFloats) {
+//        int dstStride;
+//        coder::F32ToRGBA1010102(rgbaPixels,
+//                                (int) finalWidth * 4 * (int) sizeof(float),
+//                                &dstStride,
+//                                (int) finalWidth, (int) finalHeight);
+//        useBitmapFloats = false;
+//        useRGBA1010102 = true;
+//    }
+
+    auto bitmapConfigStr = useRGBA1010102 ? "RGBA_1010102"
+                                          : (useBitmapFloats ? "RGBA_F16"
+                                                             : "ARGB_8888");
+
+    jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");
+    jfieldID rgba8888FieldID = env->GetStaticFieldID(bitmapConfig,
+                                                     bitmapConfigStr,
+                                                     "Landroid/graphics/Bitmap$Config;");
+    jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
+
+    jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
+    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
+                                                            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+                                                    static_cast<jint>(finalWidth),
+                                                    static_cast<jint>(finalHeight),
+                                                    rgba8888Obj);
     if (useBitmapFloats) {
         std::vector<uint8_t> newImageData(finalWidth * finalHeight * 4 * sizeof(uint16_t));
         auto startPixels = reinterpret_cast<float *>(rgbaPixels.data());
