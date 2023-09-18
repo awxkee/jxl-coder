@@ -106,8 +106,7 @@ float half_to_float(
 
 HWY_BEFORE_NAMESPACE();
 
-namespace coder {
-    namespace HWY_NAMESPACE {
+namespace coder::HWY_NAMESPACE {
 
         using hwy::HWY_NAMESPACE::FixedTag;
         using hwy::HWY_NAMESPACE::Vec;
@@ -189,7 +188,6 @@ namespace coder {
             }
         }
     }
-}
 
 HWY_AFTER_NAMESPACE();
 

@@ -10,10 +10,11 @@
 
 jint throwInvalidJXLException(JNIEnv *env);
 jint throwPixelsException(JNIEnv *env);
-jint throwHardwareBitmapException(JNIEnv *env);
 jint throwException(JNIEnv *env, std::string& msg);
 jint throwCantCompressImage(JNIEnv *env);
 jint throwInvalidColorSpaceException(JNIEnv *env);
 jint throwInvalidCompressionOptionException(JNIEnv *env);
+
+int androidOSVersion();
 
 #endif //JXLCODER_JNIEXCEPTIONS_H

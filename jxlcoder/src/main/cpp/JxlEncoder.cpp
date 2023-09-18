@@ -5,7 +5,7 @@
 #include <libyuv.h>
 #include "android/bitmap.h"
 #include <android/log.h>
-#include "jniExceptions.h"
+#include "JniExceptions.h"
 #include "JxlEncoding.h"
 #include "Rgba2Rgb.h"
 #include "Rgb1010102toF16.h"
@@ -48,7 +48,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
     }
 
     if (info.flags & ANDROID_BITMAP_FLAGS_IS_HARDWARE) {
-        throwHardwareBitmapException(env);
+        std::string exc = "Hardware bitmap is not supported by JXL Coder";
+        throwException(env, exc);
         return static_cast<jbyteArray>(nullptr);
     }
 
@@ -70,7 +71,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
     std::vector<uint8_t> rgbaPixels(info.stride * info.height);
     memcpy(rgbaPixels.data(), addr, info.stride * info.height);
-    AndroidBitmap_unlockPixels(env, bitmap);
+
+    if (AndroidBitmap_unlockPixels(env, bitmap) != 0) {
+        std::string exc = "Unlocking pixels has failed";
+        throwException(env, exc);
+        return static_cast<jbyteArray>(nullptr);
+    }
 
     int imageStride = (int) info.stride;
 
@@ -108,7 +114,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                              (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t)));
             if (useFloat16) {
                 coder::Rgba16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                                     (int) info.stride,
+                                     (int) imageStride,
                                      reinterpret_cast<uint16_t *>(rgbPixels.data()),
                                      (int) info.width * (int) sizeof(uint16_t) * 3,
                                      (int) info.height, (int) info.width);

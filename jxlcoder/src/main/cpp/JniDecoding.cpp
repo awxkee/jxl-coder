@@ -5,24 +5,32 @@
 #include <jni.h>
 #include <vector>
 #include "JxlDecoding.h"
-#include "jniExceptions.h"
+#include "JniExceptions.h"
 #include "colorspace.h"
 #include "HalfFloats.h"
-#include "stb_image_resize.h"
 #include <libyuv.h>
 #include "android/bitmap.h"
 #include "Rgba16bitCopy.h"
 #include "F32ToRGB1010102.h"
-
-int androidOSVersion() {
-    return android_get_device_api_level();
-}
+#include "SizeScaler.h"
+#include "Support.h"
+#include "ReformatBitmap.h"
+#include "CopyUnaligned.h"
 
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     jbyteArray byte_array, jint scaledWidth,
-                                                    jint scaledHeight, jboolean preferF16HDR) {
+                                                    jint scaledHeight,
+                                                    jint javaPreferredColorConfig,
+                                                    jint javaScaleMode) {
+    ScaleMode scaleMode;
+    PreferredColorConfig preferredColorConfig;
+    if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
+                                  javaScaleMode, &scaleMode)) {
+        return nullptr;
+    }
+
     auto totalLength = env->GetArrayLength(byte_array);
     std::shared_ptr<void> srcBuffer(static_cast<char *>(malloc(totalLength)),
                                     [](void *b) { free(b); });
@@ -34,9 +42,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     bool useBitmapFloats = false;
     bool alphaPremultiplied = false;
     int osVersion = androidOSVersion();
+    int bitDepth = 8;
     if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
                              &xsize, &ysize,
-                             &iccProfile, &useBitmapFloats, &alphaPremultiplied,
+                             &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
                              osVersion >= 26)) {
         throwInvalidJXLException(env);
         return nullptr;
@@ -54,62 +63,41 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                     useBitmapFloats);
     }
 
-    bool useSampler = scaledWidth > 0 && scaledHeight > 0;
+    bool useSampler =
+            (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
 
-    int finalWidth = useSampler ? (int) scaledWidth : (int) xsize;
-    int finalHeight = useSampler ? (int) scaledHeight : (int) ysize;
+    int finalWidth = (int) xsize;
+    int finalHeight = (int) ysize;
+    int stride = finalWidth * 4 * (int) (useBitmapFloats ? sizeof(float) : sizeof(uint8_t));
 
     if (useSampler) {
-        std::vector<uint8_t> newImageData(finalWidth * finalHeight * 4 *
-                                                                   (useBitmapFloats ? sizeof(uint32_t) : sizeof(uint8_t)));
-
-        if (useBitmapFloats) {
-            // We we'll use Mitchell because we want less artifacts in our HDR image
-            int result = stbir_resize_float_generic(
-                    reinterpret_cast<const float *>(rgbaPixels.data()), (int) xsize,
-                    (int) ysize, 0,
-                    reinterpret_cast<float *>(newImageData.data()), scaledWidth,
-                    scaledHeight, 0,
-                    4, 3, alphaPremultiplied ? STBIR_FLAG_ALPHA_PREMULTIPLIED : 0,
-                    STBIR_EDGE_CLAMP, STBIR_FILTER_MITCHELL, STBIR_COLORSPACE_SRGB,
-                    nullptr
-            );
-            if (result != 1) {
-                std::string s("Failed to resample an image");
-                throwException(env, s);
-                return static_cast<jobject>(nullptr);
-            }
-        } else {
-            libyuv::ARGBScale(rgbaPixels.data(), static_cast<int>(xsize * 4),
-                              static_cast<int>(xsize),
-                              static_cast<int>(ysize),
-                              newImageData.data(), scaledWidth * 4, scaledWidth, scaledHeight,
-                              libyuv::kFilterBilinear);
+        auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useBitmapFloats,
+                                        reinterpret_cast<int *>(&finalWidth),
+                                        reinterpret_cast<int *>(&finalHeight),
+                                        scaledWidth, scaledHeight, alphaPremultiplied, scaleMode);
+        if (!scaleResult) {
+            return nullptr;
         }
-
-        rgbaPixels.clear();
-        rgbaPixels = newImageData;
     }
 
-    bool useRGBA1010102 = false;
+    std::string bitmapPixelConfig = useBitmapFloats ? "RGBA_F16" : "ARGB_8888";
+    jobject hwBuffer = nullptr;
+    ReformatColorConfig(env, rgbaPixels, bitmapPixelConfig, preferredColorConfig, bitDepth,
+                        finalWidth, finalHeight, &stride, &useBitmapFloats, &hwBuffer);     : "ARGB_8888");
 
-    if (osVersion >= 33 && !preferF16HDR && useBitmapFloats) {
-        int dstStride;
-        coder::F32ToRGBA1010102(rgbaPixels,
-                                (int) finalWidth * 4 * (int) sizeof(float),
-                                &dstStride,
-                                (int) finalWidth, (int) finalHeight);
-        useBitmapFloats = false;
-        useRGBA1010102 = true;
+    if (bitmapPixelConfig == "HARDWARE") {
+        jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
+        jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "wrapHardwareBuffer",
+                                                                "(Landroid/hardware/HardwareBuffer;Landroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;");
+        jobject emptyObject = nullptr;
+        jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+                                                        hwBuffer, emptyObject);
+        return bitmapObj;
     }
-
-    auto bitmapConfigStr = useRGBA1010102 ? "RGBA_1010102"
-                                          : (useBitmapFloats ? "RGBA_F16"
-                                                             : "ARGB_8888");
 
     jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");
     jfieldID rgba8888FieldID = env->GetStaticFieldID(bitmapConfig,
-                                                     bitmapConfigStr,
+                                                     bitmapPixelConfig.c_str(),
                                                      "Landroid/graphics/Bitmap$Config;");
     jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
 
@@ -120,15 +108,6 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     static_cast<jint>(finalWidth),
                                                     static_cast<jint>(finalHeight),
                                                     rgba8888Obj);
-    if (useBitmapFloats) {
-        std::vector<uint8_t> newImageData(finalWidth * finalHeight * 4 * sizeof(uint16_t));
-        auto startPixels = reinterpret_cast<float *>(rgbaPixels.data());
-        auto dstPixels = reinterpret_cast<uint16_t *>(newImageData.data());
-        coder::RgbaF32ToF16(startPixels, (int) finalWidth * 4 * (int) sizeof(uint32_t), dstPixels,
-                            (int) finalWidth * 4 * (int) sizeof(uint16_t), finalWidth, finalHeight);
-        rgbaPixels.clear();
-        rgbaPixels = newImageData;
-    }
 
     AndroidBitmapInfo info;
     if (AndroidBitmap_getInfo(env, bitmapObj, &info) < 0) {
@@ -142,17 +121,18 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
         return static_cast<jobject>(nullptr);
     }
 
-    if (useBitmapFloats) {
-        coder::CopyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                          finalWidth * 4 * (int) sizeof(uint16_t),
-                          reinterpret_cast<uint16_t *>(addr), (int) info.stride, (int) info.width,
-                          (int) info.height);
+    if (bitmapPixelConfig == "RGB_565") {
+        coder::CopyUnalignedRGB565(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+                                   reinterpret_cast<uint8_t *>(addr), (int) info.stride,
+                                   (int) info.width,
+                                   (int) info.height);
     } else {
-        libyuv::ARGBCopy(reinterpret_cast<uint8_t *>(rgbaPixels.data()),
-                         (int) finalWidth * 4 * (int) sizeof(uint8_t),
-                         reinterpret_cast<uint8_t *>(addr), (int) info.stride, (int) info.width,
-                         (int) info.height);
+        coder::CopyUnalignedRGBA(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+                                 reinterpret_cast<uint8_t *>(addr), (int) info.stride,
+                                 (int) info.width,
+                                 (int) info.height, useBitmapFloats ? 2 : 1);
     }
+
 
     if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {
         throwPixelsException(env);

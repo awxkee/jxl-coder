@@ -2,7 +2,7 @@
 // Created by Radzivon Bartoshyk on 04/09/2023.
 //
 
-#include "jniExceptions.h"
+#include "JniExceptions.h"
 #include <string>
 
 jint throwInvalidJXLException(JNIEnv *env) {
@@ -14,12 +14,6 @@ jint throwInvalidJXLException(JNIEnv *env) {
 jint throwPixelsException(JNIEnv *env) {
     jclass exClass;
     exClass = env->FindClass("com/awxkee/jxlcoder/LockPixelsException");
-    return env->ThrowNew(exClass, "");
-}
-
-jint throwHardwareBitmapException(JNIEnv *env) {
-    jclass exClass;
-    exClass = env->FindClass("com/awxkee/jxlcoder/HardwareBitmapException");
     return env->ThrowNew(exClass, "");
 }
 
@@ -45,4 +39,8 @@ jint throwInvalidCompressionOptionException(JNIEnv *env) {
     jclass exClass;
     exClass = env->FindClass("com/awxkee/jxlcoder/InvalidCompressionOptionException");
     return env->ThrowNew(exClass, "");
+}
+
+int androidOSVersion() {
+    return android_get_device_api_level();
 }

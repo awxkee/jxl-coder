@@ -20,11 +20,13 @@ add_library(libyuv STATIC IMPORTED)
 add_library(libhwy STATIC IMPORTED)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
-        jxlcoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
+        JxlEncoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
         icc/cmsgmt.c icc/cmshalf.c icc/cmsintrp.c icc/cmsio0.c icc/cmsio1.c icc/cmslut.c icc/cmsmd5.c icc/cmsmtrx.c icc/cmsnamed.c
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
-        icc/cmswtpnt.c icc/cmsxform.c colorspace.cpp stb_image_resize.h HalfFloats.cpp jniExceptions.cpp JxlEncoding.cpp
-        JxlDecoding.cpp jniDecoder.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp ThreadPool.hpp F32ToRGB1010102.cpp Rgba1010102toF32.cpp)
+        icc/cmswtpnt.c icc/cmsxform.c colorspace.cpp stb_image_resize.h HalfFloats.cpp JniExceptions.cpp JxlEncoding.cpp
+        JxlDecoding.cpp JniDecoding.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp
+        ThreadPool.hpp F32ToRGB1010102.cpp Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
+        Support.cpp ReformatBitmap.cpp Rgb565.cpp Rgb1010102.cpp F32toU8.cpp Rgba8ToF16.cpp CopyUnaligned.cpp)
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
 
@@ -45,10 +47,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CheckCXXCompilerFlag)
-#if (ANDROID_ABI STREQUAL arm64-v8a)
-#    set_target_properties(jxlcoder PROPERTIES COMPILE_FLAGS -mfpu=neon)
-#    add_definitions(-DHAVE_NEON=1)
-#endif ()
 
 if (ANDROID_ABI STREQUAL x86)
     target_compile_options(jxlcoder PRIVATE "-msse2")
@@ -74,7 +72,7 @@ endif ()
 add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION -DCMS_NO_REGISTER_KEYWORD -DHWY_COMPILE_ONLY_STATIC)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -ffast-math")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math")
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

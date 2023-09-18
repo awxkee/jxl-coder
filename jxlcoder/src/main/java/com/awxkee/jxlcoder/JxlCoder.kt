@@ -11,25 +11,32 @@ class JxlCoder {
 
     /**
      * @author Radzivon Bartoshyk
-     * @param preferHDRF16 Should it prefer float16 points for OS 33+ when image in HDR? Since most
-     * of phones won't display HDR and float16 requires twice more memory that RGBA1010102
      */
-    fun decode(byteArray: ByteArray, preferHDRF16: Boolean = false): Bitmap {
-        return decodeSampledImpl(byteArray, -1, -1, preferHDRF16)
+    fun decode(
+        byteArray: ByteArray,
+        preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
+        scaleMode: ScaleMode = ScaleMode.FIT
+    ): Bitmap {
+        return decodeSampledImpl(byteArray, -1, -1, preferredColorConfig.value, scaleMode.value)
     }
 
     /**
      * @author Radzivon Bartoshyk
-     * @param preferHDRF16 Should it prefer float16 points for OS 33+ when image in HDR? Since most
-     * of phones won't display HDR and float16 requires twice more memory that RGBA1010102
      */
     fun decodeSampled(
         byteArray: ByteArray,
         width: Int,
         height: Int,
-        preferHDRF16: Boolean = false
+        preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
+        scaleMode: ScaleMode = ScaleMode.FIT
     ): Bitmap {
-        return decodeSampledImpl(byteArray, width, height, preferHDRF16)
+        return decodeSampledImpl(
+            byteArray,
+            width,
+            height,
+            preferredColorConfig.value,
+            scaleMode.value
+        )
     }
 
     /**
@@ -82,7 +89,8 @@ class JxlCoder {
         byteArray: ByteArray,
         width: Int,
         height: Int,
-        preferF16HDR: Boolean
+        preferredColorConfig: Int,
+        scaleMode: Int,
     ): Bitmap
 
     private external fun encodeImpl(

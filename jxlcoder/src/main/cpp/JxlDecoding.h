@@ -10,7 +10,7 @@
 bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
                          size_t *ysize, std::vector<uint8_t> *iccProfile,
-                         bool *useFloats,
+                         bool *useFloats, int* bitDepth,
                          bool *alphaPremultiplied, bool allowedFloats);
 bool DecodeBasicInfo(const uint8_t *jxl, size_t size,
                      std::vector<uint8_t> *pixels, size_t *xsize,

@@ -17,8 +17,7 @@
 
 HWY_BEFORE_NAMESPACE();
 
-namespace coder {
-    namespace HWY_NAMESPACE {
+namespace coder::HWY_NAMESPACE {
 
         using hwy::HWY_NAMESPACE::FixedTag;
         using hwy::HWY_NAMESPACE::Vec;
@@ -35,6 +34,7 @@ namespace coder {
         using hwy::HWY_NAMESPACE::StoreInterleaved4;
         using hwy::HWY_NAMESPACE::Div;
         using hwy::HWY_NAMESPACE::BitCast;
+        using hwy::float16_t;
 
         void
         ConvertRGBA1010102toF16HWYRow(const uint8_t *HWY_RESTRICT src, uint16_t *HWY_RESTRICT dst,
@@ -46,7 +46,6 @@ namespace coder {
             const FixedTag<uint16_t , 4> du16;
 
             using VU32 = Vec<decltype(du32)>;
-            using VF16 = Vec<decltype(df16)>;
 
             auto dstPointer = reinterpret_cast<uint16_t *>(dst);
             auto srcPointer = reinterpret_cast<const uint32_t *>(src);
@@ -55,7 +54,7 @@ namespace coder {
 
             int x = 0;
 
-            const Rebind<hwy::float16_t, decltype(df32)> dfc16;
+            const Rebind<float16_t, decltype(df32)> dfc16;
             const RebindToFloat<decltype(du32)> dfcf16;
 
             auto maxColors = (float) (powf(2.0f, 10.0f) - 1.0f);
@@ -72,9 +71,9 @@ namespace coder {
                 auto BF16 = DemoteTo(dfc16, Div(BF, maxColorsF32));
                 auto AU = ConvertTo(dfcf16, And(ShiftRight<30>(color1010102), mask));
                 auto AF16 = DemoteTo(dfc16, Div(AU, maxColorsAF32));
-                StoreInterleaved4(BitCast(du16, RF16),
+                StoreInterleaved4(BitCast(du16, BF16),
                                   BitCast(du16, GF16),
-                                  BitCast(du16, BF16),
+                                  BitCast(du16, RF16),
                                   BitCast(du16, AF16),
                                   du16,
                                   reinterpret_cast<uint16_t *>(dstPointer));
@@ -152,7 +151,6 @@ namespace coder {
         }
 
     }
-}
 
 HWY_AFTER_NAMESPACE();
 
