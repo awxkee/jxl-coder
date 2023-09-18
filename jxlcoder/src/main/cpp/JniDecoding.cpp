@@ -83,14 +83,16 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     std::string bitmapPixelConfig = useBitmapFloats ? "RGBA_F16" : "ARGB_8888";
     jobject hwBuffer = nullptr;
     ReformatColorConfig(env, rgbaPixels, bitmapPixelConfig, preferredColorConfig, bitDepth,
-                        finalWidth, finalHeight, &stride, &useBitmapFloats, &hwBuffer);     : "ARGB_8888");
+                        finalWidth, finalHeight, &stride, &useBitmapFloats,
+                        &hwBuffer);
 
     if (bitmapPixelConfig == "HARDWARE") {
         jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
         jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "wrapHardwareBuffer",
                                                                 "(Landroid/hardware/HardwareBuffer;Landroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;");
         jobject emptyObject = nullptr;
-        jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+        jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass,
+                                                        createBitmapMethodID,
                                                         hwBuffer, emptyObject);
         return bitmapObj;
     }
