@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Size
 import androidx.annotation.IntRange
 import androidx.annotation.Keep
+import java.nio.ByteBuffer
 
 @Keep
 class JxlCoder {
@@ -31,6 +32,25 @@ class JxlCoder {
         scaleMode: ScaleMode = ScaleMode.FIT
     ): Bitmap {
         return decodeSampledImpl(
+            byteArray,
+            width,
+            height,
+            preferredColorConfig.value,
+            scaleMode.value
+        )
+    }
+
+    /**
+     * @author Radzivon Bartoshyk
+     */
+    fun decodeSampled(
+        byteArray: ByteBuffer,
+        width: Int,
+        height: Int,
+        preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
+        scaleMode: ScaleMode = ScaleMode.FIT
+    ): Bitmap {
+        return decodeByteBufferSampledImpl(
             byteArray,
             width,
             height,
@@ -87,6 +107,14 @@ class JxlCoder {
 
     private external fun decodeSampledImpl(
         byteArray: ByteArray,
+        width: Int,
+        height: Int,
+        preferredColorConfig: Int,
+        scaleMode: Int,
+    ): Bitmap
+
+    private external fun decodeByteBufferSampledImpl(
+        byteArray: ByteBuffer,
         width: Int,
         height: Int,
         preferredColorConfig: Int,

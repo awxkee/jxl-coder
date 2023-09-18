@@ -17,24 +17,16 @@
 #include "ReformatBitmap.h"
 #include "CopyUnaligned.h"
 
-extern "C"
-JNIEXPORT jobject JNICALL
-Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
-                                                    jbyteArray byte_array, jint scaledWidth,
-                                                    jint scaledHeight,
-                                                    jint javaPreferredColorConfig,
-                                                    jint javaScaleMode) {
+jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
+                               jint scaledHeight,
+                               jint javaPreferredColorConfig,
+                               jint javaScaleMode) {
     ScaleMode scaleMode;
     PreferredColorConfig preferredColorConfig;
     if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
                                   javaScaleMode, &scaleMode)) {
         return nullptr;
     }
-
-    auto totalLength = env->GetArrayLength(byte_array);
-    std::shared_ptr<void> srcBuffer(static_cast<char *>(malloc(totalLength)),
-                                    [](void *b) { free(b); });
-    env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
 
     std::vector<uint8_t> rgbaPixels;
     std::vector<uint8_t> iccProfile;
@@ -43,13 +35,16 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     bool alphaPremultiplied = false;
     int osVersion = androidOSVersion();
     int bitDepth = 8;
-    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
+    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
+                             &rgbaPixels,
                              &xsize, &ysize,
                              &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
                              osVersion >= 26)) {
         throwInvalidJXLException(env);
         return nullptr;
     }
+
+    imageData.clear();
 
     if (!iccProfile.empty()) {
         int stride = (int) xsize * 4 *
@@ -144,6 +139,41 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     rgbaPixels.clear();
 
     return bitmapObj;
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
+                                                    jbyteArray byte_array, jint scaledWidth,
+                                                    jint scaledHeight,
+                                                    jint javaPreferredColorConfig,
+                                                    jint javaScaleMode) {
+    auto totalLength = env->GetArrayLength(byte_array);
+    std::vector<uint8_t> srcBuffer(totalLength);
+    env->GetByteArrayRegion(byte_array, 0, totalLength,
+                            reinterpret_cast<jbyte *>(srcBuffer.data()));
+    return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
+                                  javaPreferredColorConfig, javaScaleMode);
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobject thiz,
+                                                              jobject byteBuffer, jint scaledWidth,
+                                                              jint scaledHeight,
+                                                              jint preferredColorConfig,
+                                                              jint scaleMode) {
+    auto bufferAddress = reinterpret_cast<uint8_t *>(env->GetDirectBufferAddress(byteBuffer));
+    int length = (int) env->GetDirectBufferCapacity(byteBuffer);
+    if (!bufferAddress || length <= 0) {
+        std::string errorString = "Only direct byte buffers are supported";
+        throwException(env, errorString);
+        return nullptr;
+    }
+    std::vector<uint8_t> srcBuffer(length);
+    std::copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
+    return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
+                                  preferredColorConfig, scaleMode);
 }
 
 extern "C"
