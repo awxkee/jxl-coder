@@ -8,8 +8,10 @@ ICC profiles supported.
 
 ```kotlin
 // May decode JXL images, supported RGBA_8888, RGBA_F16, RGBA_1010102, RGB_565
-val bitmap: Bitmap = JxlCoder().decode(buffer) // Decode JXL (JPEG XL) from ByteArray
-val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JXL (JPEG XL)
+val bitmap: Bitmap = JxlCoder().decode(buffer) // Decode JPEG XL from ByteArray
+// If you need a sample
+val bitmap: Bitmap = JxlCoder().decodeSampled(buffer, width, height) // Decode JPEG XL from ByteArray with given size
+val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JPEG XL
 ```
 
 # Add Jitpack repository
