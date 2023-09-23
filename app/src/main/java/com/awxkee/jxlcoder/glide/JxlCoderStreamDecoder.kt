@@ -16,6 +16,7 @@ class JxlCoderStreamDecoder(private val bitmapPool: BitmapPool) :
     override fun handles(source: InputStream, options: Options): Boolean {
         val bb = ByteBufferUtil.fromStream(source)
         source.reset()
+        bb.rewind()
         return byteBufferDecoder.handles(bb, options)
     }
 
@@ -27,6 +28,7 @@ class JxlCoderStreamDecoder(private val bitmapPool: BitmapPool) :
     ): Resource<Bitmap>? {
         val bb = ByteBufferUtil.fromStream(source)
         source.reset()
+        bb.rewind()
         return byteBufferDecoder.decode(bb, width, height, options)
     }
 }

@@ -19,10 +19,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.bumptech.glide.integration.compose.GlideImage
 import okio.buffer
 import okio.source
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalGlideComposeApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -36,28 +39,28 @@ class MainActivity : ComponentActivity() {
 //        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val buffer4 = this.assets.open("large_jxl.jxl").source().buffer().readByteArray()
-            assert(JxlCoder.isJXL(buffer4))
-            val largeImageSize = JxlCoder().getSize(buffer4)
-            assert(largeImageSize != null)
-            val image = JxlCoder().decodeSampled(
-                buffer4,
-                300,
-                300,
-                preferredColorConfig = PreferredColorConfig.RGBA_1010102,
-                ScaleMode.FIT
-            )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            val buffer4 = this.assets.open("hdr_cosmos.jxl").source().buffer().readByteArray()
+//            assert(JxlCoder.isJXL(buffer4))
+//            val largeImageSize = JxlCoder().getSize(buffer4)
+//            assert(largeImageSize != null)
+//            val image = JxlCoder().decodeSampled(
+//                buffer4,
+//                largeImageSize!!.width / 2,
+//                largeImageSize!!.height / 2,
+//                preferredColorConfig = PreferredColorConfig.RGBA_F16,
+//                ScaleMode.FIT
+//            )
 
-            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
-//            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
-            val compressedBuffer = JxlCoder().encode(
-                image10Bit,
-                colorSpace = JxlColorSpace.RGB,
-                compressionOption = JxlCompressionOption.LOSSY,
-                effort = 1,
-            )
-            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_1010102)
+//            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
+////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
+//            val compressedBuffer = JxlCoder().encode(
+//                image10Bit,
+//                colorSpace = JxlColorSpace.RGB,
+//                compressionOption = JxlCompressionOption.LOSSY,
+//                effort = 1,
+//            )
+//            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_1010102)
 
             setContent {
                 JXLCoderTheme {
@@ -75,9 +78,14 @@ class MainActivity : ComponentActivity() {
 //                                }
 //                                .build()
 //                        )
-                        Image(
-                            bitmap = decompressedImage.asImageBitmap(),
-                            contentDescription = "ok"
+//                        Image(
+//                            bitmap = image.asImageBitmap(),
+//                            contentDescription = "ok"
+//                        )
+
+                        GlideImage(
+                            model = "https://wh.aimuse.online/preset/hdr_cosmos.jxl",
+                            contentDescription = ""
                         )
                     }
                 }

@@ -13,6 +13,7 @@ import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapResource
 import com.bumptech.glide.load.resource.bitmap.Downsampler
 import com.bumptech.glide.request.target.Target
+import com.bumptech.glide.util.ByteBufferUtil
 import java.nio.ByteBuffer
 
 class JxlCoderByteBufferDecoder(private val bitmapPool: BitmapPool) :
@@ -21,7 +22,8 @@ class JxlCoderByteBufferDecoder(private val bitmapPool: BitmapPool) :
     private val coder = JxlCoder()
 
     override fun handles(source: ByteBuffer, options: Options): Boolean {
-        return JxlCoder.isJXL(source.array())
+        val bytes = ByteBufferUtil.toBytes(source)
+        return JxlCoder.isJXL(bytes)
     }
 
     override fun decode(

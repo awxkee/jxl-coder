@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.awxkee.jxlcoder"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.awxkee.jxlcoder"
         minSdk = 24
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -75,4 +75,5 @@ dependencies {
 
     implementation("com.github.bumptech.glide:glide:4.16.0")
     ksp("com.github.bumptech.glide:ksp:4.16.0")
+    implementation("com.github.bumptech.glide:compose:1.0.0-alpha.5")
 }
