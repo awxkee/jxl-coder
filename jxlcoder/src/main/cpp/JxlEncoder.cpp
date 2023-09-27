@@ -52,7 +52,7 @@ JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap,
                                              jint javaColorSpace, jint javaCompressionOption,
                                              jint effort, jstring bitmapColorProfile,
-                                             jint dataSpace) {
+                                             jint dataSpace, jint jQuality) {
     auto colorspace = static_cast<jxl_colorspace>(javaColorSpace);
     if (!colorspace) {
         throwInvalidColorSpaceException(env);
@@ -66,6 +66,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
     if (effort < 0 || effort > 10) {
         throwInvalidCompressionOptionException(env);
+        return static_cast<jbyteArray>(nullptr);
+    }
+
+    if (jQuality < 0 || jQuality > 100) {
+        std::string exc = "Quality must be in 0...100";
+        throwException(env, exc);
         return static_cast<jbyteArray>(nullptr);
     }
 
@@ -205,7 +211,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
     if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
                           &compressedVector, colorspace,
-                          compressionOption, useFloat16, iccProfile, effort)) {
+                          compressionOption, useFloat16, iccProfile, effort, (int)jQuality)) {
         throwCantCompressImage(env);
         return static_cast<jbyteArray>(nullptr);
     }

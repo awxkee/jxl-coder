@@ -33,10 +33,18 @@
 #include "thread_parallel_runner_cxx.h"
 #include <vector>
 
+static inline float JXLGetDistance(int quality) {
+    if (quality == 0)
+        return (1.0f);
+    if (quality >= 30)
+        return std::clamp((0.1f + (float) (100 - std::min(100.0f, (float)quality)) * 0.09f), 0.0f, 15.0f);
+    return std::clamp((6.24f + (float) pow(2.5f, (30.0 - (float) quality) / 5.0) / 6.25f), 0.0f, 15.0f);
+}
+
 bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       const uint32_t ysize, std::vector<uint8_t> *compressed,
                       jxl_colorspace colorspace, jxl_compression_option compression_option,
-                      bool useFloat16, std::vector<uint8_t> iccProfile, int effort) {
+                      bool useFloat16, std::vector<uint8_t> iccProfile, int effort, int quality) {
     auto enc = JxlEncoderMake(/*memory_manager=*/nullptr);
     auto runner = JxlThreadParallelRunnerMake(
             /*memory_manager=*/nullptr,
@@ -112,21 +120,32 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
         }
     }
 
-    JxlEncoderFrameSettings *frame_settings =
+    JxlEncoderFrameSettings *frameSettings =
             JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
 
-    if (JxlEncoderFrameSettingsSetOption(frame_settings,
+    float distance = JXLGetDistance(quality);
+
+    if (compression_option == loseless &&
+        JXL_ENC_SUCCESS != JxlEncoderSetFrameDistance(frameSettings, JXL_TRUE)) {
+        return false;
+    } else if (compression_option == loosy &&
+               JXL_ENC_SUCCESS !=
+               JxlEncoderSetFrameDistance(frameSettings, distance)) {
+        return false;
+    }
+
+    if (JxlEncoderFrameSettingsSetOption(frameSettings,
                                          JXL_ENC_FRAME_SETTING_EFFORT, effort) != JXL_ENC_SUCCESS) {
         return false;
     }
 
     if (compression_option == loseless &&
-        JXL_ENC_SUCCESS != JxlEncoderSetFrameLossless(frame_settings, JXL_TRUE)) {
+        JXL_ENC_SUCCESS != JxlEncoderSetFrameLossless(frameSettings, JXL_TRUE)) {
         return false;
     }
 
     if (JXL_ENC_SUCCESS !=
-        JxlEncoderAddImageFrame(frame_settings, &pixel_format,
+        JxlEncoderAddImageFrame(frameSettings, &pixel_format,
                                 (void *) pixels.data(),
                                 sizeof(uint8_t) * pixels.size())) {
         return false;

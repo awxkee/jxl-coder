@@ -59,13 +59,22 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     bool alphaPremultiplied = false;
     int osVersion = androidOSVersion();
     int bitDepth = 8;
+    JxlOrientation jxlOrientation = JXL_ORIENT_IDENTITY;
     if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
                              &rgbaPixels,
                              &xsize, &ysize,
                              &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
-                             osVersion >= 26)) {
+                             osVersion >= 26,
+                             &jxlOrientation)) {
         throwInvalidJXLException(env);
         return nullptr;
+    }
+
+    if (jxlOrientation == JXL_ORIENT_ROTATE_90_CW || jxlOrientation == JXL_ORIENT_ROTATE_90_CCW ||
+        jxlOrientation == JXL_ORIENT_ANTI_TRANSPOSE || jxlOrientation == JXL_ORIENT_TRANSPOSE) {
+        size_t xz = xsize;
+        xsize = ysize;
+        ysize = xz;
     }
 
     imageData.clear();
@@ -208,11 +217,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_getSizeImpl(JNIEnv *env, jobject thiz, jbyteAr
                                     [](void *b) { free(b); });
     env->GetByteArrayRegion(byte_array, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.get()));
 
-    std::vector<uint8_t> rgbaPixels;
     std::vector<uint8_t> icc_profile;
     size_t xsize = 0, ysize = 0;
-    if (!DecodeBasicInfo(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &rgbaPixels,
-                         &xsize, &ysize)) {
+    if (!DecodeBasicInfo(reinterpret_cast<uint8_t *>(srcBuffer.get()), totalLength, &xsize,
+                         &ysize)) {
         return nullptr;
     }
 

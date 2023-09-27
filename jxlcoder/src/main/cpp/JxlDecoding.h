@@ -30,14 +30,15 @@
 #define JXLCODER_JXLDECODING_H
 
 #include <vector>
+#include "codestream_header.h"
 
 bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
                          size_t *ysize, std::vector<uint8_t> *iccProfile,
                          bool *useFloats, int* bitDepth,
-                         bool *alphaPremultiplied, bool allowedFloats);
-bool DecodeBasicInfo(const uint8_t *jxl, size_t size,
-                     std::vector<uint8_t> *pixels, size_t *xsize,
-                     size_t *ysize);
+                         bool *alphaPremultiplied, bool allowedFloats,
+                         JxlOrientation* jxlOrientation);
+
+bool DecodeBasicInfo(const uint8_t *jxl, size_t size, size_t *xsize, size_t *ysize);
 
 #endif //JXLCODER_JXLDECODING_H
