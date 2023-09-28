@@ -33,6 +33,9 @@
 #include <vector>
 #include <algorithm>
 
+#include "half.hpp"
+using namespace half_float;
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgb1010102toF16.cpp"
 
@@ -123,15 +126,15 @@ namespace coder::HWY_NAMESPACE {
 
                 auto dstCast = reinterpret_cast<uint16_t *>(dstPointer);
                 if (littleEndian) {
-                    dstCast[0] = float_to_half(bFloat);
-                    dstCast[1] = float_to_half(gFloat);
-                    dstCast[2] = float_to_half(rFloat);
-                    dstCast[3] = float_to_half(aFloat);
+                    dstCast[0] = half(bFloat).data_;
+                    dstCast[1] = half(gFloat).data_;
+                    dstCast[2] = half(rFloat).data_;
+                    dstCast[3] = half(aFloat).data_;
                 } else {
-                    dstCast[0] = float_to_half(rFloat);
-                    dstCast[1] = float_to_half(gFloat);
-                    dstCast[2] = float_to_half(bFloat);
-                    dstCast[3] = float_to_half(aFloat);
+                    dstCast[0] = half(rFloat).data_;
+                    dstCast[1] = half(gFloat).data_;
+                    dstCast[2] = half(bFloat).data_;
+                    dstCast[3] = half(aFloat).data_;
                 }
 
                 srcPointer += 1;

@@ -31,12 +31,15 @@
 #include <__threading_support>
 #include "ThreadPool.hpp"
 #include <vector>
+#include "half.hpp"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "HalfFloats.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
+
+using namespace half_float;
 
 uint as_uint(const float x) {
     return *(uint *) &x;
@@ -60,172 +63,105 @@ uint16_t float_to_half(
 
 float half_to_float(
         const uint16_t x) { // IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
-    const uint e = (x & 0x7C00) >> 10; // exponent
-    const uint m = (x & 0x03FF) << 13; // mantissa
-    const uint v = as_uint((float) m)
-            >> 23; // evil log2 bit hack to count leading zeros in denormalized format
-    return as_float((x & 0x8000) << 16 | (e != 0) * ((e + 112) << 23 | m) | ((e == 0) & (m != 0)) *
-                                                                            ((v - 37) << 23 |
-                                                                             ((m << (150 - v)) &
-                                                                              0x007FE000))); // sign : normalized : denormalized
+//    const uint e = (x & 0x7C00) >> 10; // exponent
+//    const uint m = (x & 0x03FF) << 13; // mantissa
+//    const uint v = as_uint((float) m)
+//            >> 23; // evil log2 bit hack to count leading zeros in denormalized format
+//    return as_float((x & 0x8000) << 16 | (e != 0) * ((e + 112) << 23 | m) | ((e == 0) & (m != 0)) *
+//                                                                            ((v - 37) << 23 |
+//                                                                             ((m << (150 - v)) &
+//                                                                              0x007FE000))); // sign : normalized : denormalized
+    half f;
+    f.data_ = x;
+    return f;
 }
-//
-//#if HAVE_NEON
-//
-//#include <arm_neon.h>
-//
-//void RGBAfloat32ToF16ROWNEON(const float *src, uint16_t *dst, int width) {
-//    auto srcPixels = reinterpret_cast<const float *>(src);
-//    auto dstPixels = reinterpret_cast<uint16_t *>(dst);
-//
-//    int x;
-//    for (x = 0; x + 2 < width; x += 2) {
-//        float32x4_t in0 = vld1q_f32(reinterpret_cast<const float *>(srcPixels));
-//        float32x4_t in1 = vld1q_f32(srcPixels + 4);
-//
-//        float16x4_t out0 = vcvt_f16_f32(in0);
-//        float16x4_t out1 = vcvt_f16_f32(in1);
-//
-//        vst1_u16(dstPixels, vreinterpret_u16_f16(out0));
-//        vst1_u16(dstPixels + 4, vreinterpret_u16_f16(out1));
-//
-//        srcPixels += 8;
-//        dstPixels += 8;
-//    }
-//
-//    for (; x < width; ++x) {
-//        dstPixels[0] = float_to_half(srcPixels[0]);
-//        dstPixels[1] = float_to_half(srcPixels[1]);
-//        dstPixels[2] = float_to_half(srcPixels[2]);
-//        dstPixels[3] = float_to_half(srcPixels[3]);
-//
-//        dstPixels += 4;
-//        srcPixels += 4;
-//    }
-//}
-//
-//void RgbaF32ToF16Neon(const float *src, int srcStride, uint16_t *dst, int dstStride,
-//                      int width, int height) {
-//
-//    auto dstData = reinterpret_cast<uint8_t *>(dst);
-//    auto srcData = reinterpret_cast<const uint8_t *>(src);
-//
-//    ThreadPool pool;
-//    std::vector<std::future<void>> results;
-//
-//    for (int y = 0; y < height; ++y) {
-//        auto r = pool.enqueue(RGBAfloat32ToF16ROWNEON, reinterpret_cast<const float *>(srcData),
-//                              reinterpret_cast<uint16_t *>(dstData), width);
-//        results.push_back(std::move(r));
-//        dstData += dstStride;
-//        srcData += srcStride;
-//    }
-//
-//    for (auto &result: results) {
-//        result.wait();
-//    }
-//}
-//
-//#endif
 
 HWY_BEFORE_NAMESPACE();
 
 namespace coder::HWY_NAMESPACE {
 
-        using hwy::HWY_NAMESPACE::FixedTag;
-        using hwy::HWY_NAMESPACE::Vec;
-        using hwy::HWY_NAMESPACE::LoadInterleaved4;
-        using hwy::HWY_NAMESPACE::Rebind;
-        using hwy::HWY_NAMESPACE::Store;
-        using hwy::HWY_NAMESPACE::BitCast;
-        using hwy::HWY_NAMESPACE::StoreInterleaved4;
+    using hwy::HWY_NAMESPACE::FixedTag;
+    using hwy::HWY_NAMESPACE::Vec;
+    using hwy::HWY_NAMESPACE::LoadInterleaved4;
+    using hwy::HWY_NAMESPACE::Rebind;
+    using hwy::HWY_NAMESPACE::Store;
+    using hwy::HWY_NAMESPACE::BitCast;
+    using hwy::HWY_NAMESPACE::StoreInterleaved4;
 
-        void RGBAF32ToF16RowHWY(const float *HWY_RESTRICT src, uint16_t *dst, int width) {
-            const FixedTag<float, 4> df32;
-            const FixedTag<hwy::float16_t, 4> df16;
-            const FixedTag<uint16_t, 4> du16;
-            using V32 = Vec<decltype(df32)>;
-            using V16 = Vec<decltype(df16)>;
-            const Rebind<hwy::float16_t, FixedTag<float, 4>> dfc16;
-            int x = 0;
-            int pixelsCount = 4;
-            for (x = 0; x + pixelsCount < width; x += pixelsCount) {
-                V32 pixels1;
-                V32 pixels2;
-                V32 pixels3;
-                V32 pixels4;
-                LoadInterleaved4(df32, src, pixels1, pixels2, pixels3, pixels4);
-                auto pixeld1 = BitCast(du16, DemoteTo(dfc16, pixels1));
-                auto pixeld2 = BitCast(du16, DemoteTo(dfc16, pixels2));
-                auto pixeld3 = BitCast(du16, DemoteTo(dfc16, pixels3));
-                auto pixeld4 = BitCast(du16, DemoteTo(dfc16, pixels4));
-                StoreInterleaved4(pixeld1, pixeld2, pixeld3, pixeld4, du16,
-                                  reinterpret_cast<uint16_t *>(dst));
-                src += 4 * pixelsCount;
-                dst += 4 * pixelsCount;
-            }
-
-            for (; x < width; ++x) {
-                dst[0] = float_to_half(src[0]);
-                dst[1] = float_to_half(src[1]);
-                dst[2] = float_to_half(src[2]);
-                dst[3] = float_to_half(src[3]);
-
-                src += 4;
-                dst += 4;
-            }
+    void RGBAF32ToF16RowHWY(const float *HWY_RESTRICT src, uint16_t *dst, int width) {
+        const FixedTag<float, 4> df32;
+        const FixedTag<hwy::float16_t, 4> df16;
+        const FixedTag<uint16_t, 4> du16;
+        using V32 = Vec<decltype(df32)>;
+        using V16 = Vec<decltype(df16)>;
+        const Rebind<hwy::float16_t, FixedTag<float, 4>> dfc16;
+        int x = 0;
+        int pixelsCount = 4;
+        for (x = 0; x + pixelsCount < width; x += pixelsCount) {
+            V32 pixels1;
+            V32 pixels2;
+            V32 pixels3;
+            V32 pixels4;
+            LoadInterleaved4(df32, src, pixels1, pixels2, pixels3, pixels4);
+            auto pixeld1 = BitCast(du16, DemoteTo(dfc16, pixels1));
+            auto pixeld2 = BitCast(du16, DemoteTo(dfc16, pixels2));
+            auto pixeld3 = BitCast(du16, DemoteTo(dfc16, pixels3));
+            auto pixeld4 = BitCast(du16, DemoteTo(dfc16, pixels4));
+            StoreInterleaved4(pixeld1, pixeld2, pixeld3, pixeld4, du16,
+                              reinterpret_cast<uint16_t *>(dst));
+            src += 4 * pixelsCount;
+            dst += 4 * pixelsCount;
         }
 
-        void
-        RgbaF32ToF16H(const float *HWY_RESTRICT src, int srcStride, uint16_t *HWY_RESTRICT dst,
-                      int dstStride, int width,
-                      int height) {
-            auto srcPixels = reinterpret_cast<const uint8_t *>(src);
-            auto dstPixels = reinterpret_cast<uint8_t *>(dst);
+        for (; x < width; ++x) {
+            dst[0] = half(src[0]).data_;
+            dst[1] = half(src[1]).data_;
+            dst[2] = half(src[2]).data_;
+            dst[3] = half(src[3]).data_;
 
-            int minimumTilingAreaSize = 850 * 850;
-            int currentAreaSize = width * height;
-
-            if (minimumTilingAreaSize > currentAreaSize) {
-                for (int y = 0; y < height; ++y) {
-                    RGBAF32ToF16RowHWY(reinterpret_cast<const float *>(srcPixels),
-                                       reinterpret_cast<uint16_t *>(dstPixels), width);
-                    srcPixels += srcStride;
-                    dstPixels += dstStride;
-                }
-            } else {
-                ThreadPool pool;
-                std::vector<std::future<void>> results;
-
-                for (int y = 0; y < height; ++y) {
-                    auto r = pool.enqueue(RGBAF32ToF16RowHWY,
-                                          reinterpret_cast<const float *>(srcPixels),
-                                          reinterpret_cast<uint16_t *>(dstPixels), width);
-                    results.push_back(std::move(r));
-                    srcPixels += srcStride;
-                    dstPixels += dstStride;
-                }
-
-                for (auto &result: results) {
-                    result.wait();
-                }
-            }
+            src += 4;
+            dst += 4;
         }
     }
 
-HWY_AFTER_NAMESPACE();
+    void
+    RgbaF32ToF16H(const float *HWY_RESTRICT src, int srcStride, uint16_t *HWY_RESTRICT dst,
+                  int dstStride, int width,
+                  int height) {
+        auto srcPixels = reinterpret_cast<const uint8_t *>(src);
+        auto dstPixels = reinterpret_cast<uint8_t *>(dst);
 
-void RGBAF32ToF16ROWC(const float *src, uint16_t *dst, int width) {
-    for (int i = 0; i < width; i++) {
-        dst[0] = float_to_half(src[0]);
-        dst[1] = float_to_half(src[1]);
-        dst[2] = float_to_half(src[2]);
-        dst[3] = float_to_half(src[3]);
+        int minimumTilingAreaSize = 850 * 850;
+        int currentAreaSize = width * height;
 
-        src += 4;
-        dst += 4;
+        if (minimumTilingAreaSize > currentAreaSize) {
+            for (int y = 0; y < height; ++y) {
+                RGBAF32ToF16RowHWY(reinterpret_cast<const float *>(srcPixels),
+                                   reinterpret_cast<uint16_t *>(dstPixels), width);
+                srcPixels += srcStride;
+                dstPixels += dstStride;
+            }
+        } else {
+            ThreadPool pool;
+            std::vector<std::future<void>> results;
+
+            for (int y = 0; y < height; ++y) {
+                auto r = pool.enqueue(RGBAF32ToF16RowHWY,
+                                      reinterpret_cast<const float *>(srcPixels),
+                                      reinterpret_cast<uint16_t *>(dstPixels), width);
+                results.push_back(std::move(r));
+                srcPixels += srcStride;
+                dstPixels += dstStride;
+            }
+
+            for (auto &result: results) {
+                result.wait();
+            }
+        }
     }
 }
+
+HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
 

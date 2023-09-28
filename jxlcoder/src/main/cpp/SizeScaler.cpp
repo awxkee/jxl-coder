@@ -33,6 +33,7 @@
 #include "JniExceptions.h"
 #include "stb_image_resize.h"
 #include "libyuv.h"
+#include "XScaler.h"
 
 bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   JNIEnv *env,
@@ -83,30 +84,28 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
             }
         }
 
-        int imdStride = scaledWidth * 4 * (int) (useFloats ? sizeof(float) : sizeof(uint8_t));
+        int imdStride = scaledWidth * 4 * (int) (useFloats ? sizeof(uint16_t) : sizeof(uint8_t));
         std::vector<uint8_t> newImageData(imdStride * scaledHeight);
 
         if (useFloats) {
-            int result = stbir_resize_float_generic(
-                    reinterpret_cast<const float *>(rgbaData.data()), (int) imageWidth,
-                    (int) imageHeight, 0,
-                    reinterpret_cast<float *>(newImageData.data()), scaledWidth,
-                    scaledHeight, 0,
-                    4, 3, alphaPremultiplied ? STBIR_FLAG_ALPHA_PREMULTIPLIED : 0,
-                    STBIR_EDGE_CLAMP, STBIR_FILTER_CUBICBSPLINE, STBIR_COLORSPACE_SRGB,
-                    nullptr
+            scaleImageFloat16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
+                              imageWidth * 4 * (int)sizeof(uint16_t),
+                              imageWidth, imageHeight,
+                              reinterpret_cast<uint16_t *>(newImageData.data()),
+                              scaledWidth * 4 * (int)sizeof(uint16_t),
+                              scaledWidth, scaledHeight,
+                              4,
+                              bilinear
             );
-            if (result != 1) {
-                std::string s("Failed to resample an image");
-                throwException(env, s);
-                return static_cast<jobject>(nullptr);
-            }
         } else {
-            libyuv::ARGBScale(rgbaData.data(), static_cast<int>(imageWidth * 4),
-                              static_cast<int>(imageWidth),
-                              static_cast<int>(imageHeight),
-                              newImageData.data(), scaledWidth * 4, scaledWidth, scaledHeight,
-                              libyuv::kFilterBilinear);
+            scaleImageU8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
+                         (int) imageWidth * 4 * (int) sizeof(uint8_t),
+                         imageWidth, imageHeight,
+                         reinterpret_cast<uint8_t *>(newImageData.data()),
+                         (int) scaledWidth * 4 * (int) sizeof(uint8_t),
+                         scaledWidth, scaledHeight,
+                         4, 8,
+                         bilinear);
         }
 
         imageWidth = scaledWidth;
@@ -122,7 +121,7 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
             int croppedWidth = right - left;
             int croppedHeight = bottom - top;
             int newStride =
-                    croppedWidth * 4 * (int) (useFloats ? sizeof(float ) : sizeof(uint8_t));
+                    croppedWidth * 4 * (int) (useFloats ? sizeof(uint16_t) : sizeof(uint8_t));
             int srcStride = imdStride;
 
             std::vector<uint8_t> croppedImage(newStride * croppedHeight);
@@ -137,8 +136,9 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                 auto dstRow = reinterpret_cast<uint8_t *>(dstData + newStride * yc);
                 for (x = left, xc = 0; x < right; ++x, ++xc) {
                     if (useFloats) {
-                        auto dst = reinterpret_cast<float *>(dstRow + xc * 4 * sizeof(float ));
-                        auto src = reinterpret_cast<const float *>(srcRow + x * 4 * sizeof(float ));
+                        auto dst = reinterpret_cast<uint16_t *>(dstRow + xc * 4 * sizeof(uint16_t));
+                        auto src = reinterpret_cast<const uint16_t *>(srcRow +
+                                                                      x * 4 * sizeof(uint16_t));
                         dst[0] = src[0];
                         dst[1] = src[1];
                         dst[2] = src[2];

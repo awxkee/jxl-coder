@@ -81,7 +81,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
 
     if (!iccProfile.empty()) {
         int stride = (int) xsize * 4 *
-                     (int) (useBitmapFloats ? sizeof(uint32_t)
+                     (int) (useBitmapFloats ? sizeof(uint16_t)
                                             : sizeof(uint8_t));
         convertUseDefinedColorSpace(rgbaPixels,
                                     stride,
@@ -96,7 +96,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
 
     int finalWidth = (int) xsize;
     int finalHeight = (int) ysize;
-    int stride = finalWidth * 4 * (int) (useBitmapFloats ? sizeof(float) : sizeof(uint8_t));
+    int stride = finalWidth * 4 * (int) (useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
 
     if (useSampler) {
         auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useBitmapFloats,

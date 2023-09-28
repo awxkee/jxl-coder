@@ -55,9 +55,9 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
         cmsCloseProfile(reinterpret_cast<cmsHPROFILE>(profile));
     });
     cmsHTRANSFORM transform = cmsCreateTransform(ptrSrcProfile.get(),
-                                                 image16Bits ? TYPE_RGBA_FLT : TYPE_RGBA_8,
+                                                 image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
                                                  ptrDstProfile.get(),
-                                                 image16Bits ? TYPE_RGBA_FLT : TYPE_RGBA_8,
+                                                 image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
                                                  INTENT_PERCEPTUAL,
                                                  cmsFLAGS_BLACKPOINTCOMPENSATION |
                                                  cmsFLAGS_NOWHITEONWHITEFIXUP |

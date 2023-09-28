@@ -30,6 +30,9 @@
 #include "ThreadPool.hpp"
 #include "HalfFloats.h"
 
+#include "half.hpp"
+using namespace half_float;
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgba8ToF16.cpp"
 
@@ -110,10 +113,10 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            auto tmpR = (uint16_t) float_to_half((float) src[0] * scale);
-            auto tmpG = (uint16_t) float_to_half((float) src[1] * scale);
-            auto tmpB = (uint16_t) float_to_half((float) src[2] * scale);
-            auto tmpA = (uint16_t) float_to_half((float) src[3] * scale);
+            auto tmpR = (uint16_t) half((float) src[0] * scale).data_;
+            auto tmpG = (uint16_t) half((float) src[1] * scale).data_;
+            auto tmpB = (uint16_t) half((float) src[2] * scale).data_;
+            auto tmpA = (uint16_t) half((float) src[3] * scale).data_;
 
             dst[0] = tmpR;
             dst[1] = tmpG;

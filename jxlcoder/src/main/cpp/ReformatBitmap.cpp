@@ -35,7 +35,7 @@
 #include <HardwareBuffersCompat.h>
 #include <mutex>
 #include "Rgb1010102.h"
-#include "F32toU8.h"
+#include "RgbaF16bitNBitU8.h"
 #include "Rgba8ToF16.h"
 #include "CopyUnaligned.h"
 #include "JniExceptions.h"
@@ -63,9 +63,9 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
             if (*useFloats) {
                 int dstStride = imageWidth * 4 * (int) sizeof(uint8_t);
                 std::vector<uint8_t> rgba8888Data(dstStride * imageHeight);
-                coder::F32toU8(reinterpret_cast<const float *>(imageData.data()),
-                               *stride, rgba8888Data.data(), dstStride, imageWidth,
-                               imageHeight, 8);
+                coder::RGBAF16BitToNBitU8(reinterpret_cast<const uint16_t *>(imageData.data()),
+                                          *stride, rgba8888Data.data(), dstStride, imageWidth,
+                                          imageHeight, 8);
                 *stride = dstStride;
                 *useFloats = false;
                 imageConfig = "ARGB_8888";
@@ -75,16 +75,9 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
         case Rgba_F16:
             if (*useFloats) {
                 int dstStride = imageWidth * 4 * (int) sizeof(uint16_t);
-                std::vector<uint8_t> rgbaF16Data(dstStride * imageHeight);
-                coder::RgbaF32ToF16(reinterpret_cast<const float *>(imageData.data()),
-                                    (int) *stride,
-                                    reinterpret_cast<uint16_t *>(rgbaF16Data.data()),
-                                    dstStride, imageWidth, imageHeight);
-
                 *stride = dstStride;
                 *useFloats = true;
                 imageConfig = "RGBA_F16";
-                imageData = rgbaF16Data;
                 break;
             } else {
                 int dstStride = imageWidth * 4 * (int) sizeof(uint16_t);
@@ -102,7 +95,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
             if (*useFloats) {
                 int dstStride = imageWidth * (int) sizeof(uint16_t);
                 std::vector<uint8_t> rgb565Data(dstStride * imageHeight);
-                coder::RGBAF32To565(reinterpret_cast<const float *>(imageData.data()), *stride,
+                coder::RGBAF16To565(reinterpret_cast<const uint16_t *>(imageData.data()), *stride,
                                     reinterpret_cast<uint16_t *>(rgb565Data.data()), dstStride,
                                     imageWidth, imageHeight);
                 *stride = dstStride;
@@ -126,7 +119,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
             if (*useFloats) {
                 int dstStride = imageWidth * 4 * (int) sizeof(uint8_t);
                 std::vector<uint8_t> rgba1010102Data(dstStride * imageHeight);
-                coder::F32ToRGBA1010102(reinterpret_cast<const float *>(imageData.data()),
+                coder::F16ToRGBA1010102(reinterpret_cast<const uint16_t *>(imageData.data()),
                                         *stride,
                                         reinterpret_cast<uint8_t *>(rgba1010102Data.data()),
                                         dstStride,
@@ -187,12 +180,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
 
             if (*useFloats) {
                 int dstStride = imageWidth * 4 * (int) sizeof(uint16_t);
-                std::vector<uint8_t> rgbaF16Data(dstStride * imageHeight);
-                coder::RgbaF32ToF16(reinterpret_cast<const float *>(imageData.data()),
-                                    (int) *stride,
-                                    reinterpret_cast<uint16_t *>(rgbaF16Data.data()),
-                                    dstStride, imageWidth, imageHeight);
-                coder::CopyUnalignedRGBA(rgbaF16Data.data(), dstStride, buffer,
+                coder::CopyUnalignedRGBA(imageData.data(), dstStride, buffer,
                                          (int) bufferDesc.stride * 4 * pixelSize,
                                          (int) bufferDesc.width,
                                          (int) bufferDesc.height,

@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("jxl_icc_12.bit.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("summer_nature.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
@@ -48,12 +48,12 @@ class MainActivity : ComponentActivity() {
                 buffer4,
                 largeImageSize!!.width / 2,
                 largeImageSize!!.height / 2,
-                preferredColorConfig = PreferredColorConfig.RGBA_F16,
+                preferredColorConfig = PreferredColorConfig.RGBA_8888,
                 ScaleMode.FIT
             )
 
-//            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
-////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
+            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
+//            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
             val compressedBuffer = JxlCoder().encode(
                 image,
                 colorSpace = JxlColorSpace.RGB,
@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
                 effort = 8,
                 quality = 100,
             )
-            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_F16)
+            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_8888)
 
             setContent {
                 JXLCoderTheme {

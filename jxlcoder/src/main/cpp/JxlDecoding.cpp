@@ -84,7 +84,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
             if (info.bits_per_sample > 8 && allowedFloats) {
                 *useFloats = true;
                 useBitmapHalfFloats = true;
-                format = {4, JXL_TYPE_FLOAT, JXL_LITTLE_ENDIAN, 0};
+                format = {4, JXL_TYPE_FLOAT16, JXL_LITTLE_ENDIAN, 0};
             } else {
                 *useFloats = false;
                 useBitmapHalfFloats = false;
@@ -112,7 +112,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                 JxlDecoderImageOutBufferSize(dec.get(), &format, &bufferSize)) {
                 return false;
             }
-            int stride = (int)*xsize * 4 * (int)(useBitmapHalfFloats ? sizeof(float ) : sizeof(uint8_t));
+            int stride = (int)*xsize * 4 * (int)(useBitmapHalfFloats ? sizeof(uint16_t) : sizeof(uint8_t));
             if (bufferSize != stride * (*ysize)) {
                 return false;
             }

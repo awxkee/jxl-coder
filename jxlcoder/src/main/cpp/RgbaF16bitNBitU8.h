@@ -2,9 +2,9 @@
  * MIT License
  *
  * Copyright (c) 2023 Radzivon Bartoshyk
- * jxl-coder [https://github.com/awxkee/jxl-coder]
+ * avif-coder [https://github.com/awxkee/avif-coder]
  *
- * Created by Radzivon Bartoshyk on 04/09/2023
+ * Created by Radzivon Bartoshyk on 05/09/2023
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,24 +26,15 @@
  *
  */
 
-#ifndef JXLCODER_HALFFLOATS_H
-#define JXLCODER_HALFFLOATS_H
+#ifndef AVIF_RGBAF16BITNBITU8_H
+#define AVIF_RGBAF16BITNBITU8_H
 
-#include <cstdint>
-#include "half.hpp"
-
-#if HAVE_NEON
-void RgbaF32ToF16Neon(const float *src, int srcStride, uint16_t *dst, int dstStride,
-                      int width, int height) ;
-#endif
+#include <vector>
 
 namespace coder {
-    void RgbaF32ToF16(const float *src, int srcStride, uint16_t *dst, int dstStride, int width,
-                      int height);
+    void RGBAF16BitToNBitU8(const uint16_t *sourceData, int srcStride,
+                            uint8_t *dst, int dstStride, int width,
+                            int height, int bitDepth);
 }
 
-float half_to_float(const uint16_t x);
-
-uint16_t float_to_half(const float x);
-
-#endif //JXLCODER_HALFFLOATS_H
+#endif //AVIF_RGBAF16BITNBITU8_H
