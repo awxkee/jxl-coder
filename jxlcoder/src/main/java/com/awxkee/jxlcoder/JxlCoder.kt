@@ -87,20 +87,12 @@ class JxlCoder {
         )
     }
 
-    /**
-     * @param loosyLevel Sets the distance level for lossy compression: target max butteraugli
-     *  * distance, lower = higher quality. Range: 0 .. 15.
-     *  * 0.0 = mathematically lossless (however, use JxlEncoderSetFrameLossless
-     *  * instead to use true lossless, as setting distance to 0 alone is not the only
-     *  * requirement). 1.0 = visually lossless. Recommended range: 0.5 .. 3.0. Default
-     *  * value: 1.0.
-     */
     fun encode(
         bitmap: Bitmap,
         colorSpace: JxlColorSpace = JxlColorSpace.RGB,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         @IntRange(from = 1L, to = 9L) effort: Int = 7,
-        @IntRange(from = 0, to = 100) quality: Int = 100,
+        @IntRange(from = 0, to = 100) quality: Int = 0,
     ): ByteArray {
         if (effort < 1 || effort > 9) {
             throw Exception("Effort must be on 1..<10")

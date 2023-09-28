@@ -181,12 +181,18 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     jint scaledHeight,
                                                     jint javaPreferredColorConfig,
                                                     jint javaScaleMode) {
-    auto totalLength = env->GetArrayLength(byte_array);
-    std::vector<uint8_t> srcBuffer(totalLength);
-    env->GetByteArrayRegion(byte_array, 0, totalLength,
-                            reinterpret_cast<jbyte *>(srcBuffer.data()));
-    return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
-                                  javaPreferredColorConfig, javaScaleMode);
+    try {
+        auto totalLength = env->GetArrayLength(byte_array);
+        std::vector<uint8_t> srcBuffer(totalLength);
+        env->GetByteArrayRegion(byte_array, 0, totalLength,
+                                reinterpret_cast<jbyte *>(srcBuffer.data()));
+        return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
+                                      javaPreferredColorConfig, javaScaleMode);
+    } catch (std::bad_alloc& err) {
+        std::string errorString = "Not enough memory to decode this image";
+        throwException(env, errorString);
+        return nullptr;
+    }
 }
 
 extern "C"
@@ -196,17 +202,23 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
                                                               jint scaledHeight,
                                                               jint preferredColorConfig,
                                                               jint scaleMode) {
-    auto bufferAddress = reinterpret_cast<uint8_t *>(env->GetDirectBufferAddress(byteBuffer));
-    int length = (int) env->GetDirectBufferCapacity(byteBuffer);
-    if (!bufferAddress || length <= 0) {
-        std::string errorString = "Only direct byte buffers are supported";
+    try {
+        auto bufferAddress = reinterpret_cast<uint8_t *>(env->GetDirectBufferAddress(byteBuffer));
+        int length = (int) env->GetDirectBufferCapacity(byteBuffer);
+        if (!bufferAddress || length <= 0) {
+            std::string errorString = "Only direct byte buffers are supported";
+            throwException(env, errorString);
+            return nullptr;
+        }
+        std::vector<uint8_t> srcBuffer(length);
+        std::copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
+        return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
+                                      preferredColorConfig, scaleMode);
+    } catch (std::bad_alloc& err) {
+        std::string errorString = "Not enough memory to decode this image";
         throwException(env, errorString);
         return nullptr;
     }
-    std::vector<uint8_t> srcBuffer(length);
-    std::copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
-    return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
-                                  preferredColorConfig, scaleMode);
 }
 
 extern "C"
