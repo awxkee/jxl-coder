@@ -187,7 +187,7 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
                                                                                             inputHeight -
                                                                                             1) *
                                                                                       srcStride)[
-                                                    clamp(x, 0, inputWidth - 1) * components + c]);
+                                                    clamp(xi, 0, inputWidth - 1) * components + c]);
                         half clr = clrf * weight;
                         rgb[c] += clr;
                     }
