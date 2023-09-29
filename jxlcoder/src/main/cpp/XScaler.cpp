@@ -290,7 +290,7 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
                                                                                             1) *
                                                                                       srcStride)[
                                                     clamp(xi, 0, inputWidth - 1) * components + c]);
-                        float clr = float(clrf * weight);
+                        auto clr = (float)clrf * weight;
                         rgb[c] += clr;
                     }
                 }
