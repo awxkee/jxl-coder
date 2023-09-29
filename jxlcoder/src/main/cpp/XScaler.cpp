@@ -45,20 +45,20 @@ inline half_float::half PromoteToHalf(T t, float maxColors) {
     return result;
 }
 
-template <typename T, typename D>
+template<typename D, typename T>
 inline D PromoteTo(T t, float maxColors) {
-    D result = static_cast<D>((float)t / maxColors);
+    D result = static_cast<D>((float) t / maxColors);
     return result;
 }
 
-template <typename T>
+template<typename T>
 inline T DemoteHalfTo(half t, float maxColors) {
-    return (T)clamp(((float)t * (float)maxColors), 0.0f, (float)maxColors);
+    return (T) clamp(((float) t * (float) maxColors), 0.0f, (float) maxColors);
 }
 
-template <typename T, typename D>
+template<typename D, typename T>
 inline D DemoteTo(T t, float maxColors) {
-    return (D)clamp(((float)t * (float)maxColors), 0.0f, (float)maxColors);
+    return (D) clamp(((float) t * (float) maxColors), 0.0f, (float) maxColors);
 }
 
 template<typename T>
@@ -95,7 +95,7 @@ inline T sinc(T x) {
 }
 
 template<typename T>
-inline T lanczosWindow(T x, T a) {
+inline T lanczosWindow(T x, const T a) {
     if (abs(x) < a) {
         return sinc(T(M_PI) * x) * sinc(T(M_PI) * x / a);
     }
@@ -110,7 +110,7 @@ inline T lanczosWindow(T x, T a) {
 }
 
 template<typename T>
-inline T CatmullRom1D(T x) {
+inline T CatmullRom(T x) {
     x = (T) abs(x);
 
     if (x < 1.0f)
@@ -151,77 +151,77 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
             int x2 = min(x1 + 1, inputWidth - 1);
             int y2 = min(y1 + 1, inputHeight - 1);
 
-            half dx((float) x2 - (float) x1);
-            half dy((float) y2 - (float) y1);
+            float dx((float) x2 - (float) x1);
+            float dy((float) y2 - (float) y1);
 
-            half invertDx = half(1.0f) - dx;
-            half invertDy = half(1.0f) - dy;
+            float invertDx = float(1.0f) - dx;
+            float invertDy = float(1.0f) - dy;
+
+            auto row1 = reinterpret_cast<const uint16_t *>(src8 + y1 * srcStride);
+            auto row2 = reinterpret_cast<const uint16_t *>(src8 + y2 * srcStride);
 
             for (int c = 0; c < components; ++c) {
-                half c1 = castU16(reinterpret_cast<const uint16_t *>(src8 + y1 * srcStride)[
-                                          x1 * components + c]) * invertDx * invertDy;
-                half c2 = castU16(reinterpret_cast<const uint16_t *>(src8 + y1 * srcStride)[
-                                          x2 * components + c]) * dx * invertDy;
-                half c3 = castU16(reinterpret_cast<const uint16_t *>(src8 + y2 * srcStride)[
-                                          x1 * components + c]) * invertDx * dy;
-                half c4 = castU16(reinterpret_cast<const uint16_t *>(src8 + y2 * srcStride)[
-                                          x2 * components + c]) * dx * dy;
+                float c1 = castU16(row1[x1 * components + c]) * invertDx * invertDy;
+                float c2 = castU16(row1[x2 * components + c]) * dx * invertDy;
+                float c3 = castU16(row2[x1 * components + c]) * invertDx * dy;
+                float c4 = castU16(row2[x2 * components + c]) * dx * dy;
 
-                half result = c1 + c2 + c3 + c4;
-                dst16[x * components + c] = result.data_;
+                float result = c1 + c2 + c3 + c4;
+                dst16[x * components + c] = half(result).data_;
             }
         } else if (option == cubic) {
-
-            half rgb[components];
+            float rgb[components];
+            fill(rgb, rgb + components, 0.0f);
 
             for (int j = -1; j <= 2; j++) {
                 for (int i = -1; i <= 2; i++) {
                     int xi = x1 + i;
                     int yj = y1 + j;
 
-                    half weight = CubicBSpline(half(srcX - (float) xi)) *
-                                  CubicBSpline(half(srcY - (float) yj));
+                    float weight =
+                            CubicBSpline(srcX - (float) xi) * CubicBSpline(srcY - (float) yj);
+
+                    auto row = reinterpret_cast<const uint16_t *>(src8 +
+                                                                  clamp(yj, 0, inputHeight - 1) *
+                                                                  srcStride);
 
                     for (int c = 0; c < components; ++c) {
-                        half clrf = castU16(reinterpret_cast<const uint16_t *>(src8 + clamp(yj, 0,
-                                                                                            inputHeight -
-                                                                                            1) *
-                                                                                      srcStride)[
-                                                    clamp(xi, 0, inputWidth - 1) * components + c]);
-                        half clr = clrf * weight;
+                        float clrf = castU16(row[clamp(xi, 0, inputWidth - 1) * components + c]);
+                        float clr = clrf * weight;
                         rgb[c] += clr;
                     }
                 }
             }
 
             for (int c = 0; c < components; ++c) {
-                dst16[x * components + c] = rgb[c].data_;
+                dst16[x * components + c] = half(rgb[c]).data_;
             }
         } else if (option == mitchell) {
-            half rgb[components];
+            float rgb[components];
+            fill(rgb, rgb + components, 0.0f);
 
             for (int j = -1; j <= 2; j++) {
                 for (int i = -1; i <= 2; i++) {
                     int xi = x1 + i;
                     int yj = y1 + j;
 
-                    half weight = FilterMitchell(half(srcX - (float) xi)) *
-                                  FilterMitchell(half(srcY - (float) yj));
+                    float weight =
+                            FilterMitchell(srcX - (float) xi) * FilterMitchell(srcY - (float) yj);
+
+                    auto row = reinterpret_cast<const uint16_t *>(src8 +
+                                                                  clamp(yj, 0, inputHeight - 1) *
+                                                                  srcStride);
 
                     for (int c = 0; c < components; ++c) {
-                        half clrf = castU16(reinterpret_cast<const uint16_t *>(src8 + clamp(yj, 0,
-                                                                                            inputHeight -
-                                                                                            1) *
-                                                                                      srcStride)[
-                                                    clamp(xi, 0, inputWidth - 1) * components + c]);
-                        half clr = clrf * weight;
+                        float clrf = castU16(row[clamp(xi, 0, inputWidth - 1) * components + c]);
+                        float clr = clrf * weight;
                         rgb[c] += clr;
                     }
                 }
             }
 
             for (int c = 0; c < components; ++c) {
-                dst16[x * components + c] = rgb[c].data_;
+                dst16[x * components + c] = half(rgb[c]).data_;
             }
         } else if (option == catmullRom) {
             float kx1 = floor(srcX);
@@ -230,45 +230,33 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
             int xi = (int) kx1;
             int yj = (int) ky1;
 
+            auto row = reinterpret_cast<const uint16_t *>(src8 + clamp(yj, 0, inputHeight - 1) *
+                                                                 srcStride);
+            auto rowy1 = reinterpret_cast<const uint16_t *>(src8 +
+                                                            clamp(yj + 1, 0, inputHeight - 1) *
+                                                            srcStride);
+
             for (int c = 0; c < components; ++c) {
-                half weight = CatmullRom(half(srcX - (float) xi),
-                                         castU16(reinterpret_cast<const uint16_t *>(src8 +
-                                                                                    clamp(yj, 0,
-                                                                                          inputHeight -
-                                                                                          1) *
-                                                                                    srcStride)[
-                                                         clamp(xi, 0, inputWidth - 1) * components +
-                                                         c]),
-                                         castU16(reinterpret_cast<const uint16_t *>(src8 +
-                                                                                    clamp(yj + 1, 0,
-                                                                                          inputHeight -
-                                                                                          1) *
-                                                                                    srcStride)[
-                                                         clamp(xi + 1, 0, inputWidth - 1) *
-                                                         components + c]),
-                                         castU16(reinterpret_cast<const uint16_t *>(src8 +
-                                                                                    clamp(yj, 0,
-                                                                                          inputHeight -
-                                                                                          1) *
-                                                                                    srcStride)[
-                                                         clamp(xi + 1, 0, inputWidth - 1) *
-                                                         components + c]),
-                                         castU16(reinterpret_cast<const uint16_t *>(src8 +
-                                                                                    clamp(yj + 1, 0,
-                                                                                          inputHeight -
-                                                                                          1) *
-                                                                                    srcStride)[
-                                                         clamp(xi + 1, 0, inputWidth - 1) *
-                                                         components + c]));
-                half clr = weight;
-                dst16[x * components + c] += clr.data_;
+                float clr = CatmullRom(srcX - (float) xi,
+                                       (float) castU16(
+                                               row[clamp(xi, 0, inputWidth - 1) * components + c]),
+                                       (float) castU16(
+                                               rowy1[clamp(xi + 1, 0, inputWidth - 1) * components +
+                                                     c]),
+                                       (float) castU16(
+                                               row[clamp(xi + 1, 0, inputWidth - 1) * components +
+                                                   c]),
+                                       (float) castU16(
+                                               rowy1[clamp(xi + 1, 0, inputWidth - 1) * components +
+                                                     c]));
+                dst16[x * components + c] = half(clr).data_;
             }
         } else if (option == lanczos) {
             float rgb[components];
-            memset(&rgb[0], 0.0f, sizeof(rgb));
+            fill(rgb, rgb + components, 0.0f);
 
             int a = 3;
-            float lanczosFA = float(3.0f);
+            constexpr auto lanczosFA = float(3.0f);
 
             float kx1 = floor(srcX);
             float ky1 = floor(srcY);
@@ -279,18 +267,18 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
                 for (int i = -a + 1; i <= a; i++) {
                     int xi = (int) kx1 + i;
                     int yj = (int) ky1 + j;
-                    float dx = float(srcX) - (float(kx1) + float((float) i));
-                    float dy = float(srcY) - (float(ky1) + float((float) j));
-                    float weight = lanczosWindow(dx, lanczosFA) *
-                                  lanczosWindow(dy, lanczosFA);
+                    float dx = float(srcX) - (float(kx1) + (float) i);
+                    float dy = float(srcY) - (float(ky1) + (float) j);
+                    float weight = lanczosWindow(dx, lanczosFA) * lanczosWindow(dy, lanczosFA);
                     weightSum += weight;
+
+                    auto row = reinterpret_cast<const uint16_t *>(src8 +
+                                                                  clamp(yj, 0, inputHeight - 1) *
+                                                                  srcStride);
+
                     for (int c = 0; c < components; ++c) {
-                        half clrf = castU16(reinterpret_cast<const uint16_t *>(src8 + clamp(yj, 0,
-                                                                                            inputHeight -
-                                                                                            1) *
-                                                                                      srcStride)[
-                                                    clamp(xi, 0, inputWidth - 1) * components + c]);
-                        auto clr = (float)clrf * weight;
+                        half clrf = castU16(row[clamp(xi, 0, inputWidth - 1) * components + c]);
+                        float clr = (float) clrf * weight;
                         rgb[c] += clr;
                     }
                 }
@@ -304,10 +292,9 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
                 }
             }
         } else {
+            auto row = reinterpret_cast<const uint16_t *>(src8 + y1 * srcStride);
             for (int c = 0; c < components; ++c) {
-                dst16[x * components + c] = reinterpret_cast<const uint16_t *>(src8 +
-                                                                               y1 * srcStride)[
-                        x1 * components + c];
+                dst16[x * components + c] = row[x1 * components + c];
             }
         }
     }
@@ -365,57 +352,56 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
         int y1 = static_cast<int>(srcY);
 
         if (option == bilinear) {
-            int x2 = std::min(x1 + 1, inputWidth - 1);
-            int y2 = std::min(y1 + 1, inputHeight - 1);
+            int x2 = min(x1 + 1, inputWidth - 1);
+            int y2 = min(y1 + 1, inputHeight - 1);
 
-            half dx((float) x2 - (float) x1);
-            half dy((float) y2 - (float) y1);
+            float dx = (float) x2 - (float) x1;
+            float dy = (float) y2 - (float) y1;
 
-            half invertDx = half(1.0f) - dx;
-            half invertDy = half(1.0f) - dy;
+            auto row1 = reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride);
+            auto row2 = reinterpret_cast<const uint8_t *>(src8 + y2 * srcStride);
+
+            float invertDx = float(1.0f) - dx;
+            float invertDy = float(1.0f) - dy;
 
             for (int c = 0; c < components; ++c) {
-                half c1 = PromoteToHalf(
-                        reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride)[x1 * components +
-                                                                                 c], maxColors) *
-                          invertDx * invertDy;
-                half c2 = PromoteToHalf(
-                        reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride)[x2 * components +
-                                                                                 c], maxColors) *
-                          dx * invertDy;
-                half c3 = PromoteToHalf(
-                        reinterpret_cast<const uint8_t *>(src8 + y2 * srcStride)[x1 * components +
-                                                                                 c], maxColors) *
-                          invertDx * dy;
-                half c4 = PromoteToHalf(
-                        reinterpret_cast<const uint8_t *>(src8 + y2 * srcStride)[x2 * components +
-                                                                                 c], maxColors) *
-                          dx * dy;
+                float c1 =
+                        PromoteTo<float, uint8_t>(row1[x1 * components + c], maxColors) * invertDx *
+                        invertDy;
+                float c2 = PromoteTo<float, uint8_t>(row1[x2 * components + c], maxColors) * dx *
+                           invertDy;
+                float c3 =
+                        PromoteTo<float, uint8_t>(row2[x1 * components + c], maxColors) * invertDx *
+                        dy;
+                float c4 =
+                        PromoteTo<float, uint8_t>(row2[x2 * components + c], maxColors) * dx * dy;
 
-                half result = (c1 + c2 + c3 + c4);
+                float result = (c1 + c2 + c3 + c4);
                 float f = result * maxColors;
                 f = clamp(f, 0.0f, maxColors);
                 dst[x * components + c] = static_cast<uint8_t>(f);
 
             }
         } else if (option == cubic) {
-            half rgb[components];
+            float rgb[components];
+            fill(rgb, rgb + components, 0.0f);
 
             for (int j = -1; j <= 2; j++) {
                 for (int i = -1; i <= 2; i++) {
                     int xi = x1 + i;
                     int yj = y1 + j;
 
-                    half weight = CubicBSpline(half(srcX - (float) xi)) *
-                                  CubicBSpline(half(srcY - (float) yj));
+                    float weight =
+                            CubicBSpline(srcX - (float) xi) * CubicBSpline(srcY - (float) yj);
+
+                    auto row = reinterpret_cast<const uint8_t *>(src8 +
+                                                                 clamp(yj, 0, inputHeight - 1) *
+                                                                 srcStride);
 
                     for (int c = 0; c < components; ++c) {
-                        uint8_t p = reinterpret_cast<const uint8_t *>(src8 + clamp(yj, 0,
-                                                                                   inputHeight -
-                                                                                   1) * srcStride)[
-                                clamp(xi, 0, inputWidth - 1) * components + c];
-                        half clrf((float) p / maxColors);
-                        half clr = clrf * weight;
+                        uint8_t p = row[clamp(xi, 0, inputWidth - 1) * components + c];
+                        float clrf((float) p / maxColors);
+                        float clr = clrf * weight;
                         rgb[c] += clr;
                     }
                 }
@@ -424,27 +410,29 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
             for (int c = 0; c < components; ++c) {
                 float cc = rgb[c];
                 float f = cc * maxColors;
-                f = std::clamp(f, 0.0f, maxColors);
-                dst[x * components + c] = static_cast<uint16_t>(f);
+                f = clamp(f, 0.0f, maxColors);
+                dst[x * components + c] = static_cast<uint8_t>(f);
             }
         } else if (option == mitchell) {
-            half rgb[components];
+            float rgb[components];
+            fill(rgb, rgb + components, 0.0f);
 
             for (int j = -1; j <= 2; j++) {
                 for (int i = -1; i <= 2; i++) {
                     int xi = x1 + i;
                     int yj = y1 + j;
 
-                    half weight = FilterMitchell(half(srcX - (float) xi)) *
-                                  FilterMitchell(half(srcY - (float) yj));
+                    float weight =
+                            FilterMitchell(srcX - (float) xi) * FilterMitchell(srcY - (float) yj);
+
+                    auto row = reinterpret_cast<const uint8_t *>(src8 +
+                                                                 clamp(yj, 0, inputHeight - 1) *
+                                                                 srcStride);
 
                     for (int c = 0; c < components; ++c) {
-                        uint8_t p = reinterpret_cast<const uint8_t *>(src8 + clamp(yj, 0,
-                                                                                   inputHeight -
-                                                                                   1) * srcStride)[
-                                clamp(xi, 0, inputWidth - 1) * components + c];
-                        half clrf((float) p / maxColors);
-                        half clr = clrf * weight;
+                        uint8_t p = row[clamp(xi, 0, inputWidth - 1) * components + c];
+                        float clrf((float) p / maxColors);
+                        float clr = clrf * weight;
                         rgb[c] += clr;
                     }
                 }
@@ -453,59 +441,44 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
             for (int c = 0; c < components; ++c) {
                 float cc = rgb[c];
                 float f = cc * maxColors;
-                f = std::clamp(f, 0.0f, maxColors);
-                dst[x * components + c] = static_cast<uint16_t>(f);
+                f = clamp(f, 0.0f, maxColors);
+                dst[x * components + c] = static_cast<uint8_t>(f);
             }
         } else if (option == catmullRom) {
-
             float kx1 = floor(srcX);
             float ky1 = floor(srcY);
 
             int xi = (int) kx1;
             int yj = (int) ky1;
 
+            auto row = reinterpret_cast<const uint8_t *>(src8 +
+                                                         clamp(yj, 0, inputHeight - 1) * srcStride);
+            auto rowy1 = reinterpret_cast<const uint8_t *>(src8 +
+                                                           clamp(yj + 1, 0, inputHeight - 1) *
+                                                           srcStride);
+
             for (int c = 0; c < components; ++c) {
-                half weight = CatmullRom(half(srcX - (float) xi),
-                                         PromoteToHalf(reinterpret_cast<const uint8_t *>(src8 +
-                                                                                         clamp(yj,
-                                                                                               0,
-                                                                                               inputHeight -
-                                                                                               1) *
-                                                                                         srcStride)[
-                                                               clamp(xi, 0, inputWidth - 1) *
-                                                               components + c], maxColors),
-                                         PromoteToHalf(reinterpret_cast<const uint8_t *>(src8 +
-                                                                                         clamp(yj +
-                                                                                               1, 0,
-                                                                                               inputHeight -
-                                                                                               1) *
-                                                                                         srcStride)[
-                                                               clamp(xi + 1, 0, inputWidth - 1) *
-                                                               components + c], maxColors),
-                                         PromoteToHalf(reinterpret_cast<const uint8_t *>(src8 +
-                                                                                         clamp(yj,
-                                                                                               0,
-                                                                                               inputHeight -
-                                                                                               1) *
-                                                                                         srcStride)[
-                                                               clamp(xi + 1, 0, inputWidth - 1) *
-                                                               components + c], maxColors),
-                                         PromoteToHalf(reinterpret_cast<const uint8_t *>(src8 +
-                                                                                         clamp(yj +
-                                                                                               1, 0,
-                                                                                               inputHeight -
-                                                                                               1) *
-                                                                                         srcStride)[
-                                                               clamp(xi + 1, 0, inputWidth - 1) *
-                                                               components + c], maxColors));
-                auto clr = DemoteHalfTo<uint8_t>(weight, maxColors);
-                dst[x * components + c] += clr;
+                float weight = CatmullRom(srcX - (float) xi,
+                                          PromoteTo<float, uint8_t>(
+                                                  row[clamp(xi, 0, inputWidth - 1) * components +
+                                                      c], maxColors),
+                                          PromoteTo<float, uint8_t>(
+                                                  rowy1[clamp(xi + 1, 0, inputWidth - 1) *
+                                                        components + c], maxColors),
+                                          PromoteTo<float, uint8_t>(
+                                                  row[clamp(xi + 1, 0, inputWidth - 1) *
+                                                      components + c], maxColors),
+                                          PromoteTo<float, uint8_t>(
+                                                  rowy1[clamp(xi + 1, 0, inputWidth - 1) *
+                                                        components + c], maxColors));
+                auto clr = DemoteTo<uint8_t, float>(weight, maxColors);
+                dst[x * components + c] = clr;
             }
         } else if (option == lanczos) {
             float rgb[components];
-            memset(&rgb[0], 0.0f, sizeof(float) * components);
+            fill(rgb, rgb + components, 0.0f);
 
-            auto lanczosFA = float(3.0f);
+            constexpr auto lanczosFA = float(3.0f);
 
             int a = 3;
 
@@ -516,14 +489,21 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
 
             for (int j = -a + 1; j <= a; j++) {
                 for (int i = -a + 1; i <= a; i++) {
-                    int xi = (int)kx1 + i;
-                    int yj = (int)ky1 + j;
-                    float dx = float(srcX) - (float(kx1) + (float)i);
-                    float dy = float(srcY) - (float(ky1) + (float)j);
-                    float weight = lanczosWindow(dx, (float)lanczosFA) * lanczosWindow(dy, (float)lanczosFA);
+                    int xi = (int) kx1 + i;
+                    int yj = (int) ky1 + j;
+                    float dx = float(srcX) - (float(kx1) + (float) i);
+                    float dy = float(srcY) - (float(ky1) + (float) j);
+                    float weight = lanczosWindow(dx, (float) lanczosFA) *
+                                   lanczosWindow(dy, (float) lanczosFA);
                     weightSum += weight;
+
+                    auto row = reinterpret_cast<const uint8_t *>(src8 +
+                                                                 clamp(yj, 0, inputHeight - 1) *
+                                                                 srcStride);
+
                     for (int c = 0; c < components; ++c) {
-                        float clrf = PromoteTo<uint8_t, float>(reinterpret_cast<const uint8_t*>(src8 + clamp(yj, 0, inputHeight - 1) * srcStride)[clamp(xi, 0, inputWidth - 1)*components + c], maxColors);
+                        auto clrf = PromoteTo<float, uint8_t>(
+                                row[clamp(xi, 0, inputWidth - 1) * components + c], maxColors);
                         float clr = clrf * weight;
                         rgb[c] += clr;
                     }
@@ -532,15 +512,16 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
 
             for (int c = 0; c < components; ++c) {
                 if (weightSum == 0) {
-                    dst[x*components + c] = DemoteTo<float, uint8_t>(rgb[c], maxColors);
+                    dst[x * components + c] = DemoteTo<uint8_t, float>(rgb[c], maxColors);
                 } else {
-                    dst[x*components + c] = DemoteTo<float, uint8_t>(rgb[c] / weightSum, maxColors);
+                    dst[x * components + c] = DemoteTo<uint8_t, float>(rgb[c] / weightSum,
+                                                                       maxColors);
                 }
             }
         } else {
+            auto row = reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride);
             for (int c = 0; c < components; ++c) {
-                dst[x * components + c] = reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride)[
-                        x1 * components + c];
+                dst[x * components + c] = row[x1 * components + c];
             }
         }
     }

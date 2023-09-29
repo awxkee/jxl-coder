@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("summer_nature.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("large_jxl.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
                 largeImageSize!!.height / 2,
                 preferredColorConfig = PreferredColorConfig.RGBA_8888,
                 ScaleMode.FIT,
-                JxlResizeFilter.MITCHELL_NETRAVALI
+                JxlResizeFilter.CUBIC
             )
 //
 //            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
