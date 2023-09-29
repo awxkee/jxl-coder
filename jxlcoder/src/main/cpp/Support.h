@@ -31,6 +31,7 @@
 
 #include <jni.h>
 #include "SizeScaler.h"
+#include "XScaler.h"
 
 enum PreferredColorConfig {
     Default = 1,
@@ -42,6 +43,7 @@ enum PreferredColorConfig {
 };
 
 bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorConfig *config,
-                              jint javaScaleMode, ScaleMode *scaleMode);
+                              jint javaScaleMode, ScaleMode *scaleMode, jint javaSampler,
+                              XSampler *sampler);
 
 #endif //AVIF_SUPPORT_H

@@ -31,6 +31,7 @@
 
 #include <vector>
 #include <jni.h>
+#include "XScaler.h"
 
 enum ScaleMode {
     Fit = 1,
@@ -45,7 +46,7 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   int *imageWidthPtr, int *imageHeightPtr,
                   int scaledWidth, int scaledHeight,
                   bool alphaPremultiplied,
-                  ScaleMode scaleMode);
+                  ScaleMode scaleMode, XSampler sampler);
 
 std::pair<int, int>
 ResizeAspectFit(std::pair<int, int> sourceSize, std::pair<int, int> dstSize, float *scale);

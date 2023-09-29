@@ -49,19 +49,20 @@ class MainActivity : ComponentActivity() {
                 largeImageSize!!.width / 2,
                 largeImageSize!!.height / 2,
                 preferredColorConfig = PreferredColorConfig.RGBA_8888,
-                ScaleMode.FIT
+                ScaleMode.FIT,
+                JxlResizeFilter.CATMULL_ROM
             )
-
-            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
-//            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
-            val compressedBuffer = JxlCoder().encode(
-                image,
-                colorSpace = JxlColorSpace.RGB,
-                compressionOption = JxlCompressionOption.LOSSY,
-                effort = 8,
-                quality = 100,
-            )
-            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_8888)
+//
+//            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
+////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
+//            val compressedBuffer = JxlCoder().encode(
+//                image,
+//                colorSpace = JxlColorSpace.RGB,
+//                compressionOption = JxlCompressionOption.LOSSY,
+//                effort = 8,
+//                quality = 100,
+//            )
+//            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_8888)
 
             setContent {
                 JXLCoderTheme {
@@ -80,7 +81,7 @@ class MainActivity : ComponentActivity() {
 //                                .build()
 //                        )
                         Image(
-                            bitmap = decompressedImage.asImageBitmap(),
+                            bitmap = image.asImageBitmap(),
                             contentDescription = "ok"
                         )
 

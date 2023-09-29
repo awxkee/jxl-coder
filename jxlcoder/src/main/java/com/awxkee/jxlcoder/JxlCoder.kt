@@ -44,9 +44,16 @@ class JxlCoder {
     fun decode(
         byteArray: ByteArray,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
-        scaleMode: ScaleMode = ScaleMode.FIT
+        scaleMode: ScaleMode = ScaleMode.FIT,
     ): Bitmap {
-        return decodeSampledImpl(byteArray, -1, -1, preferredColorConfig.value, scaleMode.value)
+        return decodeSampledImpl(
+            byteArray,
+            -1,
+            -1,
+            preferredColorConfig.value,
+            scaleMode.value,
+            JxlResizeFilter.CATMULL_ROM.value
+        )
     }
 
     /**
@@ -57,14 +64,16 @@ class JxlCoder {
         width: Int,
         height: Int,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
-        scaleMode: ScaleMode = ScaleMode.FIT
+        scaleMode: ScaleMode = ScaleMode.FIT,
+        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
             width,
             height,
             preferredColorConfig.value,
-            scaleMode.value
+            scaleMode.value,
+            jxlResizeFilter.value,
         )
     }
 
@@ -76,14 +85,16 @@ class JxlCoder {
         width: Int,
         height: Int,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
-        scaleMode: ScaleMode = ScaleMode.FIT
+        scaleMode: ScaleMode = ScaleMode.FIT,
+        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
     ): Bitmap {
         return decodeByteBufferSampledImpl(
             byteArray,
             width,
             height,
             preferredColorConfig.value,
-            scaleMode.value
+            scaleMode.value,
+            jxlResizeFilter.value,
         )
     }
 
@@ -133,6 +144,7 @@ class JxlCoder {
         height: Int,
         preferredColorConfig: Int,
         scaleMode: Int,
+        jxlResizeSampler: Int,
     ): Bitmap
 
     private external fun decodeByteBufferSampledImpl(
@@ -141,6 +153,7 @@ class JxlCoder {
         height: Int,
         preferredColorConfig: Int,
         scaleMode: Int,
+        jxlResizeSampler: Int,
     ): Bitmap
 
     private external fun encodeImpl(

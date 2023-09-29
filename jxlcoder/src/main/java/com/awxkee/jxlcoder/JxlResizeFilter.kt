@@ -4,7 +4,7 @@
  * Copyright (c) 2023 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
- * Created by Radzivon Bartoshyk on 29/09/2023
+ * Created by Radzivon Bartoshyk on 29/9/2023
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,37 +26,13 @@
  *
  */
 
-#ifndef JXLCODER_XSCALER_H
-#define JXLCODER_XSCALER_H
+package com.awxkee.jxlcoder
 
-#include <cstdint>
-
-enum XSampler {
-    bilinear = 1,
-    nearest = 2,
-    cubic = 3,
-    mitchell = 4,
-    lanczos = 5,
-    catmullRom = 6,
-};
-
-void scaleImageFloat16(const uint16_t* input,
-                       int srcStride,
-                       int inputWidth, int inputHeight,
-                       uint16_t* output,
-                       int dstStride,
-                       int outputWidth, int outputHeight,
-                       int components,
-                       XSampler option);
-
-void scaleImageU8(const uint8_t *input,
-                  int srcStride,
-                  int inputWidth, int inputHeight,
-                  uint8_t *output,
-                  int dstStride,
-                  int outputWidth, int outputHeight,
-                  int components,
-                  int depth,
-                  XSampler option);
-
-#endif //JXLCODER_XSCALER_H
+enum class JxlResizeFilter(internal val value: Int) {
+    BILINEAR(1),
+    NEAREST(2),
+    CUBIC(3),
+    MITCHELL_NETRAVALI(4),
+    LANCZOS(5),
+    CATMULL_ROM(6),
+}

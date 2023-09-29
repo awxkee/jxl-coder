@@ -40,15 +40,17 @@
 #include "Support.h"
 #include "ReformatBitmap.h"
 #include "CopyUnaligned.h"
+#include "XScaler.h"
 
 jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
                                jint scaledHeight,
                                jint javaPreferredColorConfig,
-                               jint javaScaleMode) {
+                               jint javaScaleMode, jint javaResizeFilter) {
     ScaleMode scaleMode;
     PreferredColorConfig preferredColorConfig;
+    XSampler sampler;
     if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                  javaScaleMode, &scaleMode)) {
+                                  javaScaleMode, &scaleMode, javaResizeFilter, &sampler)) {
         return nullptr;
     }
 
@@ -102,7 +104,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
         auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useBitmapFloats,
                                         reinterpret_cast<int *>(&finalWidth),
                                         reinterpret_cast<int *>(&finalHeight),
-                                        scaledWidth, scaledHeight, alphaPremultiplied, scaleMode);
+                                        scaledWidth, scaledHeight, alphaPremultiplied, scaleMode,
+                                        sampler);
         if (!scaleResult) {
             return nullptr;
         }
@@ -180,15 +183,16 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     jbyteArray byte_array, jint scaledWidth,
                                                     jint scaledHeight,
                                                     jint javaPreferredColorConfig,
-                                                    jint javaScaleMode) {
+                                                    jint javaScaleMode,
+                                                    jint resizeSampler) {
     try {
         auto totalLength = env->GetArrayLength(byte_array);
         std::vector<uint8_t> srcBuffer(totalLength);
         env->GetByteArrayRegion(byte_array, 0, totalLength,
                                 reinterpret_cast<jbyte *>(srcBuffer.data()));
         return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
-                                      javaPreferredColorConfig, javaScaleMode);
-    } catch (std::bad_alloc& err) {
+                                      javaPreferredColorConfig, javaScaleMode, resizeSampler);
+    } catch (std::bad_alloc &err) {
         std::string errorString = "Not enough memory to decode this image";
         throwException(env, errorString);
         return nullptr;
@@ -201,7 +205,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
                                                               jobject byteBuffer, jint scaledWidth,
                                                               jint scaledHeight,
                                                               jint preferredColorConfig,
-                                                              jint scaleMode) {
+                                                              jint scaleMode,
+                                                              jint resizeSampler) {
     try {
         auto bufferAddress = reinterpret_cast<uint8_t *>(env->GetDirectBufferAddress(byteBuffer));
         int length = (int) env->GetDirectBufferCapacity(byteBuffer);
@@ -213,8 +218,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
         std::vector<uint8_t> srcBuffer(length);
         std::copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
         return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
-                                      preferredColorConfig, scaleMode);
-    } catch (std::bad_alloc& err) {
+                                      preferredColorConfig, scaleMode, resizeSampler);
+    } catch (std::bad_alloc &err) {
         std::string errorString = "Not enough memory to decode this image";
         throwException(env, errorString);
         return nullptr;

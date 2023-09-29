@@ -42,7 +42,8 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   int *imageWidthPtr, int *imageHeightPtr,
                   int scaledWidth, int scaledHeight,
                   bool alphaPremultiplied,
-                  ScaleMode scaleMode) {
+                  ScaleMode scaleMode,
+                  XSampler sampler) {
     int imageWidth = *imageWidthPtr;
     int imageHeight = *imageHeightPtr;
     if ((scaledHeight != 0 || scaledWidth != 0) && (scaledWidth != 0 && scaledHeight != 0)) {
@@ -95,7 +96,7 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                               scaledWidth * 4 * (int)sizeof(uint16_t),
                               scaledWidth, scaledHeight,
                               4,
-                              bilinear
+                              sampler
             );
         } else {
             scaleImageU8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
@@ -105,7 +106,7 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                          (int) scaledWidth * 4 * (int) sizeof(uint8_t),
                          scaledWidth, scaledHeight,
                          4, 8,
-                         bilinear);
+                         sampler);
         }
 
         imageWidth = scaledWidth;
