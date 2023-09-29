@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
                 largeImageSize!!.height / 2,
                 preferredColorConfig = PreferredColorConfig.RGBA_8888,
                 ScaleMode.FIT,
-                JxlResizeFilter.CATMULL_ROM
+                JxlResizeFilter.LANCZOS
             )
 //
 //            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)

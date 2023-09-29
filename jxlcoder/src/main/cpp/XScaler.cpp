@@ -45,9 +45,20 @@ inline half_float::half PromoteToHalf(T t, float maxColors) {
     return result;
 }
 
-template<typename T>
+template <typename T, typename D>
+inline D PromoteTo(T t, float maxColors) {
+    D result = static_cast<D>((float)t / maxColors);
+    return result;
+}
+
+template <typename T>
 inline T DemoteHalfTo(half t, float maxColors) {
-    return (T) clamp(((float) t * (float) maxColors), 0.0f, (float) maxColors);
+    return (T)clamp(((float)t * (float)maxColors), 0.0f, (float)maxColors);
+}
+
+template <typename T, typename D>
+inline D DemoteTo(T t, float maxColors) {
+    return (D)clamp(((float)t * (float)maxColors), 0.0f, (float)maxColors);
 }
 
 template<typename T>
@@ -253,23 +264,24 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
                 dst16[x * components + c] += clr.data_;
             }
         } else if (option == lanczos) {
-            half rgb[components];
+            float rgb[components];
+            memset(&rgb[0], 0.0f, sizeof(rgb));
 
             int a = 3;
-            half lanczosFA = half(3.0f);
+            float lanczosFA = float(3.0f);
 
             float kx1 = floor(srcX);
             float ky1 = floor(srcY);
 
-            half weightSum(0.0f);
+            float weightSum(0.0f);
 
             for (int j = -a + 1; j <= a; j++) {
                 for (int i = -a + 1; i <= a; i++) {
                     int xi = (int) kx1 + i;
                     int yj = (int) ky1 + j;
-                    half dx = half(srcX) - (half(kx1) + half((float) i));
-                    half dy = half(srcY) - (half(ky1) + half((float) j));
-                    half weight = lanczosWindow(dx, lanczosFA) *
+                    float dx = float(srcX) - (float(kx1) + float((float) i));
+                    float dy = float(srcY) - (float(ky1) + float((float) j));
+                    float weight = lanczosWindow(dx, lanczosFA) *
                                   lanczosWindow(dy, lanczosFA);
                     weightSum += weight;
                     for (int c = 0; c < components; ++c) {
@@ -278,7 +290,7 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
                                                                                             1) *
                                                                                       srcStride)[
                                                     clamp(xi, 0, inputWidth - 1) * components + c]);
-                        half clr = half(clrf * weight);
+                        float clr = float(clrf * weight);
                         rgb[c] += clr;
                     }
                 }
@@ -286,9 +298,9 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
 
             for (int c = 0; c < components; ++c) {
                 if (weightSum == 0) {
-                    dst16[x * components + c] = rgb[c].data_;
+                    dst16[x * components + c] = half(rgb[c]).data_;
                 } else {
-                    dst16[x * components + c] = (rgb[c] / weightSum).data_;
+                    dst16[x * components + c] = half(rgb[c] / weightSum).data_;
                 }
             }
         } else {
@@ -490,35 +502,29 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
                 dst[x * components + c] += clr;
             }
         } else if (option == lanczos) {
-            half rgb[components];
+            float rgb[components];
+            memset(&rgb[0], 0.0f, sizeof(float) * components);
 
-            half lanczosFA = half(3.0f);
+            auto lanczosFA = float(3.0f);
 
             int a = 3;
 
             float kx1 = floor(srcX);
             float ky1 = floor(srcY);
 
-            half weightSum(0.0f);
+            float weightSum(0.0f);
 
             for (int j = -a + 1; j <= a; j++) {
                 for (int i = -a + 1; i <= a; i++) {
-                    int xi = (int) kx1 + i;
-                    int yj = (int) ky1 + j;
-                    half dx = half(srcX) - (half(kx1) + half((float) i));
-                    half dy = half(srcY) - (half(ky1) + half((float) j));
-                    half weight = lanczosWindow(dx, (half) lanczosFA) *
-                                  lanczosWindow(dy, (half) lanczosFA);
+                    int xi = (int)kx1 + i;
+                    int yj = (int)ky1 + j;
+                    float dx = float(srcX) - (float(kx1) + (float)i);
+                    float dy = float(srcY) - (float(ky1) + (float)j);
+                    float weight = lanczosWindow(dx, (float)lanczosFA) * lanczosWindow(dy, (float)lanczosFA);
                     weightSum += weight;
                     for (int c = 0; c < components; ++c) {
-                        half clrf = PromoteToHalf(reinterpret_cast<const uint8_t *>(src8 +
-                                                                                    clamp(yj, 0,
-                                                                                          inputHeight -
-                                                                                          1) *
-                                                                                    srcStride)[
-                                                          clamp(xi, 0, inputWidth - 1) *
-                                                          components + c], maxColors);
-                        half clr = half(clrf * weight);
+                        float clrf = PromoteTo<uint8_t, float>(reinterpret_cast<const uint8_t*>(src8 + clamp(yj, 0, inputHeight - 1) * srcStride)[clamp(xi, 0, inputWidth - 1)*components + c], maxColors);
+                        float clr = clrf * weight;
                         rgb[c] += clr;
                     }
                 }
@@ -526,9 +532,9 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
 
             for (int c = 0; c < components; ++c) {
                 if (weightSum == 0) {
-                    dst[x * components + c] = DemoteHalfTo<uint8_t>(rgb[c], maxColors);
+                    dst[x*components + c] = DemoteTo<float, uint8_t>(rgb[c], maxColors);
                 } else {
-                    dst[x * components + c] = DemoteHalfTo<uint8_t>(rgb[c] / weightSum, maxColors);
+                    dst[x*components + c] = DemoteTo<float, uint8_t>(rgb[c] / weightSum, maxColors);
                 }
             }
         } else {
