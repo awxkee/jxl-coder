@@ -38,6 +38,9 @@ enum XSampler {
     mitchell = 4,
     lanczos = 5,
     catmullRom = 6,
+    hermite = 7,
+    bSpline = 8,
+    hann = 9
 };
 
 void scaleImageFloat16(const uint16_t* input,

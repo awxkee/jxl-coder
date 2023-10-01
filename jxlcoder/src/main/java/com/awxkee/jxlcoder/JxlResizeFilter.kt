@@ -35,4 +35,7 @@ enum class JxlResizeFilter(internal val value: Int) {
     MITCHELL_NETRAVALI(4),
     LANCZOS(5),
     CATMULL_ROM(6),
+    HERMITE(7),
+    BSPLITE(8),
+    HANN(9)
 }

@@ -86,7 +86,7 @@ class JxlCoder {
         height: Int,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
+        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
     ): Bitmap {
         return decodeByteBufferSampledImpl(
             byteArray,
