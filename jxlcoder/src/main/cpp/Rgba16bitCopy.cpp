@@ -28,10 +28,12 @@
 
 #include "Rgba16bitCopy.h"
 #include <cstdint>
-#include "ThreadPool.hpp"
+#include <thread>
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgba16bitCopy.cpp"
+
+using namespace std;
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
@@ -71,33 +73,29 @@ namespace coder::HWY_NAMESPACE {
                     int width, int height) {
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
-        int minimumTilingAreaSize = 850 * 850;
-        int currentAreaSize = width * height;
 
-        if (minimumTilingAreaSize > currentAreaSize) {
-            for (int y = 0; y < height; ++y) {
-                CopyRGBA16RowHWY(reinterpret_cast<const uint16_t *HWY_RESTRICT>(src),
-                                 reinterpret_cast<uint16_t *HWY_RESTRICT>(dst), width);
-                src += srcStride;
-                dst += dstStride;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
             }
+            workers.emplace_back([start, end, src, srcStride, dstStride, width, dst]() {
+                for (int y = start; y < end; ++y) {
+                    CopyRGBA16RowHWY(reinterpret_cast<const uint16_t *>(src + srcStride * y),
+                                     reinterpret_cast<uint16_t *>(dst + dstStride * y), width);
+                }
+            });
+        }
 
-        } else {
-            ThreadPool pool;
-            std::vector<std::future<void>> results;
-
-            for (int y = 0; y < height; ++y) {
-                auto r = pool.enqueue(CopyRGBA16RowHWY,
-                                      reinterpret_cast<const uint16_t *HWY_RESTRICT>(src),
-                                      reinterpret_cast<uint16_t *HWY_RESTRICT>(dst), width);
-                results.push_back(std::move(r));
-                src += srcStride;
-                dst += dstStride;
-            }
-
-            for (auto &result: results) {
-                result.wait();
-            }
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 

@@ -29,9 +29,11 @@
 #include "HalfFloats.h"
 #include <cstdint>
 #include <__threading_support>
-#include "ThreadPool.hpp"
 #include <vector>
+#include <thread>
 #include "half.hpp"
+
+using namespace std;
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "HalfFloats.cpp"
@@ -131,32 +133,31 @@ namespace coder::HWY_NAMESPACE {
         auto srcPixels = reinterpret_cast<const uint8_t *>(src);
         auto dstPixels = reinterpret_cast<uint8_t *>(dst);
 
-        int minimumTilingAreaSize = 850 * 850;
-        int currentAreaSize = width * height;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
 
-        if (minimumTilingAreaSize > currentAreaSize) {
-            for (int y = 0; y < height; ++y) {
-                RGBAF32ToF16RowHWY(reinterpret_cast<const float *>(srcPixels),
-                                   reinterpret_cast<uint16_t *>(dstPixels), width);
-                srcPixels += srcStride;
-                dstPixels += dstStride;
-            }
-        } else {
-            ThreadPool pool;
-            std::vector<std::future<void>> results;
+        int segmentHeight = height / threadCount;
 
-            for (int y = 0; y < height; ++y) {
-                auto r = pool.enqueue(RGBAF32ToF16RowHWY,
-                                      reinterpret_cast<const float *>(srcPixels),
-                                      reinterpret_cast<uint16_t *>(dstPixels), width);
-                results.push_back(std::move(r));
-                srcPixels += srcStride;
-                dstPixels += dstStride;
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
             }
+            workers.emplace_back(
+                    [start, end, srcPixels, dstPixels, srcStride, dstStride, width]() {
+                        for (int y = start; y < end; ++y) {
+                            RGBAF32ToF16RowHWY(
+                                    reinterpret_cast<const float *>(srcPixels + srcStride * y),
+                                    reinterpret_cast<uint16_t *>(dstPixels + dstStride * y),
+                                    width);
+                        }
+                    });
+        }
 
-            for (auto &result: results) {
-                result.wait();
-            }
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 }

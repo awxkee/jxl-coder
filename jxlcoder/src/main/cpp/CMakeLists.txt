@@ -25,7 +25,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
         icc/cmswtpnt.c icc/cmsxform.c colorspace.cpp stb_image_resize.h HalfFloats.cpp JniExceptions.cpp JxlEncoding.cpp
         JxlDecoding.cpp JniDecoding.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp
-        ThreadPool.hpp F32ToRGB1010102.cpp Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
+        F32ToRGB1010102.cpp Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
         Support.cpp ReformatBitmap.cpp Rgb565.cpp Rgb1010102.cpp F32toU8.cpp Rgba8ToF16.cpp CopyUnaligned.cpp
         XScaler.cpp RgbaF16bitNBitU8.cpp)
 

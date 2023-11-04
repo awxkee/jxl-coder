@@ -27,10 +27,12 @@
  */
 
 #include "Rgba8ToF16.h"
-#include "ThreadPool.hpp"
 #include "HalfFloats.h"
-
+#include <thread>
 #include "half.hpp"
+#include <thread>
+
+using namespace std;
 using namespace half_float;
 
 #undef HWY_TARGET_INCLUDE
@@ -132,26 +134,34 @@ namespace coder::HWY_NAMESPACE {
     void Rgba8ToF16HWY(const uint8_t *sourceData, int srcStride,
                        uint16_t *dst, int dstStride, int width,
                        int height, int bitDepth) {
-
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
-
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-        for (int y = 0; y < height; ++y) {
-            auto r = pool.enqueue(Rgba8ToF16HWYRow,
-                                  reinterpret_cast<const uint8_t *>(mSrc),
-                                  reinterpret_cast<uint16_t *>(mDst), width, scale);
-            results.push_back(std::move(r));
-            mSrc += srcStride;
-            mDst += dstStride;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back([start, end, mSrc, srcStride, dstStride, width, mDst, scale]() {
+                for (int y = start; y < end; ++y) {
+                    Rgba8ToF16HWYRow(reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
+                                     reinterpret_cast<uint16_t *>(mDst + dstStride * y), width,
+                                     scale);
+                }
+            });
         }
 
-        for (auto &result: results) {
-            result.wait();
+        for (std::thread &thread: workers) {
+            thread.join();
         }
 
     }

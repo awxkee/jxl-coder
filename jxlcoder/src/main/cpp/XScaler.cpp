@@ -28,7 +28,12 @@
 
 #include "XScaler.h"
 #include "half.hpp"
-#include "ThreadPool.hpp"
+#include <thread>
+#include <vector>
+
+#if defined(__clang__)
+#pragma clang fp contract(fast) exceptions(ignore) reassociate(on)
+#endif
 
 using namespace half_float;
 using namespace std;
@@ -204,14 +209,34 @@ inline T LanczosWindow(T x, const T a) {
     return T(0.0);
 }
 
+template <typename T>
+inline T fastCos(T x) {
+    constexpr T C0 = 0.99940307;
+    constexpr T C1 = -0.49558072;
+    constexpr T C2 = 0.03679168;
+    constexpr T C3 = -0.00434102;
+
+    // Map x to the range [-pi, pi]
+    while (x < -2*M_PI) {
+        x += 2.0 * M_PI;
+    }
+    while (x > 2*M_PI) {
+        x -= 2.0 * M_PI;
+    }
+
+    // Calculate cos(x) using Chebyshev polynomial approximation
+    T x2 = x * x;
+    T result = C0 + x2 * (C1 + x2 * (C2 + x2 * C3));
+    return result;
+}
+
 template<typename T>
 inline T HannWindow(T x, const T length) {
-    if (abs(x) <= length / 2) {
-        T cx = cos(T(M_PI) * x / length);
-        return (1 / length) * cx * cx;
-    } else {
-        return T(0);
+    const float size = length * 2 - 1;
+    if (abs(x) <= size) {
+        return 0.5f * (1 - fastCos(T(2)*T(M_PI) * size / length));
     }
+    return T(0);
 }
 
 template<typename T>
@@ -334,18 +359,19 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
             }
         } else if (option == lanczos || option == hann) {
             KernelWindow2Func sampler;
+            auto lanczosFA = float(3.0f);
+            int a = 3;
             switch (option) {
                 case hann:
                     sampler = HannWindow<float>;
+                    a = 3;
+                    lanczosFA = 3;
                     break;
                 default:
                     sampler = LanczosWindow<float>;
             }
             float rgb[components];
             fill(rgb, rgb + components, 0.0f);
-
-            int a = 3;
-            constexpr auto lanczosFA = float(3.0f);
 
             float kx1 = floor(srcX);
             float ky1 = floor(srcY);
@@ -402,26 +428,31 @@ void scaleImageFloat16(const uint16_t *input,
 
     auto src8 = reinterpret_cast<const uint8_t *>(input);
 
-    if (inputHeight * inputWidth > 800 * 800) {
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
+    int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                outputHeight * outputWidth / (256 * 256)), 1, 12);
+    std::vector<std::thread> workers;
 
-        for (int y = 0; y < outputHeight; y++) {
-            auto r = pool.enqueue(scaleRowF16, src8, srcStride, dstStride, inputWidth, inputHeight,
-                                  output, outputWidth,
-                                  xScale, option, yScale, y, components);
-            results.push_back(std::move(r));
-        }
+    int segmentHeight = outputHeight / threadCount;
 
-        for (auto &result: results) {
-            result.wait();
+    for (int i = 0; i < threadCount; i++) {
+        int start = i * segmentHeight;
+        int end = (i + 1) * segmentHeight;
+        if (i == threadCount - 1) {
+            end = outputHeight;
         }
-    } else {
-        for (int y = 0; y < outputHeight; y++) {
-            scaleRowF16(src8, srcStride, dstStride, inputWidth, inputHeight,
-                        output, outputWidth,
-                        xScale, option, yScale, y, components);
-        }
+        workers.emplace_back([start, end, src8, srcStride, dstStride, inputWidth, inputHeight,
+                                     output, outputWidth,
+                                     xScale, option, yScale, components]() {
+            for (int y = start; y < end; ++y) {
+                scaleRowF16(src8, srcStride, dstStride, inputWidth, inputHeight,
+                            output, outputWidth,
+                            xScale, option, yScale, y, components);
+            }
+        });
+    }
+
+    for (std::thread& thread : workers) {
+        thread.join();
     }
 }
 
@@ -524,19 +555,19 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
             }
         } else if (option == lanczos || option == hann) {
             KernelWindow2Func sampler;
+            auto lanczosFA = float(3.0f);
+            int a = 3;
             switch (option) {
                 case hann:
                     sampler = HannWindow<float>;
+                    a = 3;
+                    lanczosFA = 3;
                     break;
                 default:
                     sampler = LanczosWindow<float>;
             }
             float rgb[components];
             fill(rgb, rgb + components, 0.0f);
-
-            constexpr auto lanczosFA = float(3.0f);
-
-            int a = 3;
 
             float kx1 = floor(srcX);
             float ky1 = floor(srcY);
@@ -599,27 +630,32 @@ void scaleImageU8(const uint8_t *input,
 
     float maxColors = std::pow(2.0f, (float) depth) - 1.0f;
 
-    if (inputWidth * inputHeight > 800 * 800) {
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
+    int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                outputHeight * outputWidth / (256 * 256)), 1, 12);
+    std::vector<std::thread> workers;
 
-        for (int y = 0; y < outputHeight; y++) {
-            auto r = pool.enqueue(ScaleRowU8, src8, srcStride, inputWidth, inputHeight, output,
-                                  dstStride, outputWidth, components,
-                                  option,
-                                  xScale, yScale, maxColors, y);
-            results.push_back(std::move(r));
+    int segmentHeight = outputHeight / threadCount;
 
+    for (int i = 0; i < threadCount; i++) {
+        int start = i * segmentHeight;
+        int end = (i + 1) * segmentHeight;
+        if (i == threadCount - 1) {
+            end = outputHeight;
         }
-        for (auto &result: results) {
-            result.wait();
-        }
-    } else {
-        for (int y = 0; y < outputHeight; y++) {
-            ScaleRowU8(src8, srcStride, inputWidth, inputHeight, output,
-                       dstStride, outputWidth, components,
-                       option,
-                       xScale, yScale, maxColors, y);
-        }
+        workers.emplace_back([start, end, src8, srcStride, inputWidth, inputHeight, output,
+                                     dstStride, outputWidth, components,
+                                     option,
+                                     xScale, yScale, maxColors]() {
+            for (int y = start; y < end; ++y) {
+                ScaleRowU8(src8, srcStride, inputWidth, inputHeight, output,
+                           dstStride, outputWidth, components,
+                           option,
+                           xScale, yScale, maxColors, y);
+            }
+        });
+    }
+
+    for (std::thread& thread : workers) {
+        thread.join();
     }
 }

@@ -31,7 +31,8 @@
 #include "icc/lcms2.h"
 #include <android/log.h>
 #include <thread>
-#include "ThreadPool.hpp"
+
+using namespace std;
 
 void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int width, int height,
                                  const unsigned char *colorSpace, size_t colorSpaceSize,
@@ -71,20 +72,38 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
         cmsDeleteTransform(reinterpret_cast<cmsHTRANSFORM>(transform));
     });
 
-    ThreadPool pool;
-    std::vector<std::future<void>> results;
 
-    std::vector<char> iccARGB;
+    std::vector<uint8_t> iccARGB;
     iccARGB.resize(stride * height);
-    for (int y = 0; y < height; ++y) {
-        auto r = pool.enqueue(cmsDoTransformLineStride, ptrTransform.get(),
-                           vector.data() + stride * y, iccARGB.data() + stride * y, width, 1,
-                           stride, stride, 0, 0);
-        results.push_back(std::move(r));
+    int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                width * height / (256 * 256)), 1, 12);
+    std::vector<std::thread> workers;
+
+    int segmentHeight = height / threadCount;
+    auto mSrcInput = vector.data();
+    auto mDstARGB = iccARGB.data();
+
+    for (int i = 0; i < threadCount; i++) {
+        int start = i * segmentHeight;
+        int end = (i + 1) * segmentHeight;
+        if (i == threadCount - 1) {
+            end = height;
+        }
+        workers.emplace_back(
+                [start, end, ptrTransform, mSrcInput, stride, mDstARGB, width]() {
+                    for (int y = start; y < end; ++y) {
+                        cmsDoTransformLineStride(
+                                reinterpret_cast<void *>(ptrTransform.get()),
+                                reinterpret_cast<const void *>(mSrcInput + stride * y),
+                                reinterpret_cast<void *>(mDstARGB + stride * y),
+                                width, 1,
+                                stride, stride, 0, 0);
+                    }
+                });
     }
 
-    for (auto &result: results) {
-        result.wait();
+    for (std::thread &thread: workers) {
+        thread.join();
     }
-    std::copy(iccARGB.begin(), iccARGB.end(), vector.begin());
+    vector = iccARGB;
 }

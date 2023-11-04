@@ -29,13 +29,15 @@
 #include "RgbaF16bitNBitU8.h"
 #include "HalfFloats.h"
 #include <algorithm>
-#include "ThreadPool.hpp"
+#include <thread>
 #include "half.hpp"
 
+using namespace std;
 using namespace half_float;
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "imagebits/RgbaF16bitNBitU8.cpp"
+
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
 
@@ -75,7 +77,7 @@ namespace coder::HWY_NAMESPACE {
         using VU8 = Vec<decltype(du8)>;
 
         auto minColors = Zero(rf32);
-        auto vMaxColors = Set(rf32, (float ) maxColors);
+        auto vMaxColors = Set(rf32, (float) maxColors);
 
         auto lower = DemoteTo(ru8, ConvertTo(ri32,
                                              Max(Min(Mul(
@@ -121,8 +123,8 @@ namespace coder::HWY_NAMESPACE {
 
             StoreInterleaved4(r16Row, g16Row, b16Row, a16Row, du8, dst);
 
-            src += 4*pixels;
-            dst += 4*pixels;
+            src += 4 * pixels;
+            dst += 4 * pixels;
         }
 
         for (; x < width; ++x) {
@@ -145,9 +147,6 @@ namespace coder::HWY_NAMESPACE {
     void RGBAF16BitToNBitU8(const uint16_t *sourceData, int srcStride,
                             uint8_t *dst, int dstStride, int width,
                             int height, int bitDepth) {
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
-
         float maxColors = powf(2, (float) bitDepth) - 1;
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
@@ -155,18 +154,32 @@ namespace coder::HWY_NAMESPACE {
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-        for (int y = 0; y < height; ++y) {
-            auto r = pool.enqueue(RGBAF16BitToNBitRowU8,
-                                  reinterpret_cast<const uint16_t *>(mSrc),
-                                  reinterpret_cast<uint8_t *>(mDst), width, scale,
-                                  maxColors);
-            results.push_back(std::move(r));
-            mSrc += srcStride;
-            mDst += dstStride;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back([start, end, mSrc, srcStride, mDst, width, scale,
+                                         maxColors, dstStride]() {
+                for (int y = start; y < end; ++y) {
+                    auto src = mSrc + y + srcStride;
+                    auto dst = mDst + y * dstStride;
+                    RGBAF16BitToNBitRowU8(reinterpret_cast<const uint16_t *>(src),
+                                          reinterpret_cast<uint8_t *>(dst), width, scale,
+                                          maxColors);
+                }
+            });
         }
 
-        for (auto &result: results) {
-            result.wait();
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 }

@@ -28,9 +28,11 @@
 
 #include "Rgb1010102.h"
 #include <vector>
-#include "ThreadPool.hpp"
 #include <algorithm>
 #include "HalfFloats.h"
+#include <thread>
+
+using namespace std;
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgb1010102.cpp"
@@ -133,10 +135,10 @@ namespace coder::HWY_NAMESPACE {
             auto R16 = (float) half_to_float(data[permuteMap[1]]);
             auto G16 = (float) half_to_float(data[permuteMap[2]]);
             auto B16 = (float) half_to_float(data[permuteMap[3]]);
-            auto R10 = (uint32_t) (std::clamp(R16 * range10, 0.0f, (float) range10));
-            auto G10 = (uint32_t) (std::clamp(G16 * range10, 0.0f, (float) range10));
-            auto B10 = (uint32_t) (std::clamp(B16 * range10, 0.0f, (float) range10));
-            auto A10 = (uint32_t) std::clamp(roundf(A16 * 3.f), 0.0f, 3.0f);
+            auto R10 = (uint32_t) (clamp(R16 * range10, 0.0f, (float) range10));
+            auto G10 = (uint32_t) (clamp(G16 * range10, 0.0f, (float) range10));
+            auto B10 = (uint32_t) (clamp(B16 * range10, 0.0f, (float) range10));
+            auto A10 = (uint32_t) clamp(roundf(A16 * 3.f), 0.0f, 3.0f);
 
             dst32[0] = (A10 << 30) | (R10 << 20) | (G10 << 10) | B10;
 
@@ -279,33 +281,34 @@ namespace coder::HWY_NAMESPACE {
                           int width,
                           int height) {
         int permuteMap[4] = {3, 2, 1, 0};
-        int minimumTilingAreaSize = 850 * 850;
+
         auto src = reinterpret_cast<const uint8_t *>(source);
-        int currentAreaSize = width * height;
-        if (minimumTilingAreaSize > currentAreaSize) {
-            for (int y = 0; y < height; ++y) {
-                Rgba8ToRGBA1010102HWYRow(
-                        reinterpret_cast<const uint8_t *>(src + srcStride * y),
-                        reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                        width, &permuteMap[0]);
-            }
-        } else {
-            ThreadPool pool;
-            std::vector<std::future<void>> results;
 
-            for (int y = 0; y < height; ++y) {
-                auto r = pool.enqueue(Rgba8ToRGBA1010102HWYRow,
-                                      reinterpret_cast<const uint8_t *>(src +
-                                                                        srcStride * y),
-                                      reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                                      width, &permuteMap[0]);
-                results.push_back(std::move(r));
-            }
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
 
-            for (auto &result: results) {
-                result.wait();
-            }
+        int segmentHeight = height / threadCount;
 
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, src, destination, srcStride, dstStride, width, permuteMap]() {
+                        for (int y = start; y < end; ++y) {
+                            Rgba8ToRGBA1010102HWYRow(
+                                    reinterpret_cast<const uint8_t *>(src + srcStride * y),
+                                    reinterpret_cast<uint32_t *>(destination + dstStride * y),
+                                    width, &permuteMap[0]);
+                        }
+                    });
+        }
+
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 
@@ -317,33 +320,33 @@ namespace coder::HWY_NAMESPACE {
                         int width,
                         int height) {
         int permuteMap[4] = {3, 2, 1, 0};
-        int minimumTilingAreaSize = 850 * 850;
         auto src = reinterpret_cast<const uint8_t *>(source);
-        int currentAreaSize = width * height;
-        if (minimumTilingAreaSize > currentAreaSize) {
-            for (int y = 0; y < height; ++y) {
-                F16ToRGBA1010102HWYRow(
-                        reinterpret_cast<const uint16_t *>(src + srcStride * y),
-                        reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                        width, &permuteMap[0]);
-            }
-        } else {
-            ThreadPool pool;
-            std::vector<std::future<void>> results;
 
-            for (int y = 0; y < height; ++y) {
-                auto r = pool.enqueue(F16ToRGBA1010102HWYRow,
-                                      reinterpret_cast<const uint16_t *>(src +
-                                                                         srcStride * y),
-                                      reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                                      width, &permuteMap[0]);
-                results.push_back(std::move(r));
-            }
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
 
-            for (auto &result: results) {
-                result.wait();
-            }
+        int segmentHeight = height / threadCount;
 
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, src, destination, srcStride, dstStride, width, permuteMap]() {
+                        for (int y = start; y < end; ++y) {
+                            F16ToRGBA1010102HWYRow(
+                                    reinterpret_cast<const uint16_t *>(src + srcStride * y),
+                                    reinterpret_cast<uint32_t *>(destination + dstStride * y),
+                                    width, &permuteMap[0]);
+                        }
+                    });
+        }
+
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 
@@ -355,33 +358,34 @@ namespace coder::HWY_NAMESPACE {
                         int width,
                         int height) {
         int permuteMap[4] = {3, 2, 1, 0};
-        int minimumTilingAreaSize = 850 * 850;
         auto src = reinterpret_cast<const uint8_t *>(source);
-        int currentAreaSize = width * height;
-        if (minimumTilingAreaSize > currentAreaSize) {
-            for (int y = 0; y < height; ++y) {
-                F32ToRGBA1010102HWYRow(
-                        reinterpret_cast<const float *>(src + srcStride * y),
-                        reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                        width, &permuteMap[0]);
-            }
-        } else {
-            ThreadPool pool;
-            std::vector<std::future<void>> results;
+        auto dst = reinterpret_cast<uint8_t *>(destination);
 
-            for (int y = 0; y < height; ++y) {
-                auto r = pool.enqueue(F32ToRGBA1010102HWYRow,
-                                      reinterpret_cast<const float *>(src +
-                                                                      srcStride * y),
-                                      reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                                      width, &permuteMap[0]);
-                results.push_back(std::move(r));
-            }
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
 
-            for (auto &result: results) {
-                result.wait();
-            }
+        int segmentHeight = height / threadCount;
 
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, src, dst, srcStride, dstStride, width, permuteMap]() {
+                        for (int y = start; y < end; ++y) {
+                            F32ToRGBA1010102HWYRow(
+                                    reinterpret_cast<const float *>(src + srcStride * y),
+                                    reinterpret_cast<uint32_t *>(dst + dstStride * y),
+                                    width, &permuteMap[0]);
+                        }
+                    });
+        }
+
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 

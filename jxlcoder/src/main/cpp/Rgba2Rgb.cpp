@@ -29,7 +29,9 @@
 #include "Rgba2Rgb.h"
 #include <cstdint>
 #include <vector>
-#include "ThreadPool.hpp"
+#include <thread>
+
+using namespace std;
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgba2Rgb.cpp"
@@ -85,28 +87,28 @@ namespace coder::HWY_NAMESPACE {
         auto rgbaData = reinterpret_cast<const uint8_t *>(src);
         auto rgbData = reinterpret_cast<uint8_t *>(dst);
 
-        int minimumTilingAreaSize = 850 * 850;
-        int currentAreaSize = width * height;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
 
-        if (minimumTilingAreaSize > currentAreaSize) {
-            for (int y = 0; y < height; ++y) {
-                Rgba16bitToRGBC(reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
-                                reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
-            }
-        } else {
-            ThreadPool pool;
-            std::vector<std::future<void>> results;
+        int segmentHeight = height / threadCount;
 
-            for (int y = 0; y < height; ++y) {
-                auto r = pool.enqueue(Rgba16bitToRGBC,
-                                      reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
-                                      reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
-                results.push_back(std::move(r));
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
             }
+            workers.emplace_back([start, end, rgbaData, srcStride, dstStride, width, rgbData]() {
+                for (int y = start; y < end; ++y) {
+                    Rgba16bitToRGBC(reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
+                                    reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
+                }
+            });
+        }
 
-            for (auto &result: results) {
-                result.wait();
-            }
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 

@@ -27,8 +27,10 @@
  */
 
 #include "CopyUnaligned.h"
-#include "ThreadPool.hpp"
 #include <cstdint>
+#include <thread>
+
+using namespace std;
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "CopyUnalignedRGBA.cpp"
@@ -114,42 +116,52 @@ namespace coder::HWY_NAMESPACE {
                       int dstStride, int width,
                       int height,
                       int pixelSize) {
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
 
-        for (int y = 0; y < height; y++) {
-            if (pixelSize == 1) {
-                const ScalableTag<uint8_t> du8;
-                auto fn = CopyUnalignedRGBARow<decltype(du8)>;
-                auto r = pool.enqueue(fn,
-                                      du8,
-                                      reinterpret_cast<const uint8_t *>(src + (y * srcStride)),
-                                      reinterpret_cast<uint8_t *>(dst + (y * dstStride)),
-                                      width);
-                results.push_back(std::move(r));
-            } else if (pixelSize == 2) {
-                const ScalableTag<uint16_t> du16;
-                auto fn = CopyUnalignedRGBARow<decltype(du16)>;
-                auto r = pool.enqueue(fn,
-                                      du16,
-                                      reinterpret_cast<const uint16_t *>(src + (y * srcStride)),
-                                      reinterpret_cast<uint16_t *>(dst + (y * dstStride)),
-                                      width);
-                results.push_back(std::move(r));
-            } else if (pixelSize == 4) {
-                const ScalableTag<float> df32;
-                auto fn = CopyUnalignedRGBARow<decltype(df32)>;
-                auto r = pool.enqueue(fn,
-                                      df32,
-                                      reinterpret_cast<const float *>(src + (y * srcStride)),
-                                      reinterpret_cast<float *>(dst + (y * dstStride)),
-                                      width);
-                results.push_back(std::move(r));
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
             }
+            workers.emplace_back([start, end, src, dst, srcStride, dstStride, width, pixelSize]() {
+                for (int y = start; y < end; ++y) {
+                    if (pixelSize == 1) {
+                        const ScalableTag<uint8_t> du8;
+                        auto fn = CopyUnalignedRGBARow<decltype(du8)>;
+                        fn(
+                                du8,
+                                reinterpret_cast<const uint8_t *>(src + (y * srcStride)),
+                                reinterpret_cast<uint8_t *>(dst + (y * dstStride)),
+                                width);
+                    } else if (pixelSize == 2) {
+                        const ScalableTag<uint16_t> du16;
+                        auto fn = CopyUnalignedRGBARow<decltype(du16)>;
+                        fn(du16,
+                           reinterpret_cast<const uint16_t *>(src +
+                                                              (y * srcStride)),
+                           reinterpret_cast<uint16_t *>(dst + (y * dstStride)),
+                           width);
+                    } else if (pixelSize == 4) {
+                        const ScalableTag<float> df32;
+                        auto fn = CopyUnalignedRGBARow<decltype(df32)>;
+                        fn(df32,
+                           reinterpret_cast<const float *>(src +
+                                                           (y * srcStride)),
+                           reinterpret_cast<float *>(dst + (y * dstStride)),
+                           width);
+                    }
+                }
+            });
         }
 
-        for (auto &result: results) {
-            result.wait();
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 

@@ -27,17 +27,19 @@
  */
 
 #include "Rgb1010102toF16.h"
-#include "ThreadPool.hpp"
 #include <cstdint>
 #include <HalfFloats.h>
 #include <vector>
 #include <algorithm>
+#include <thread>
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgba1010102toF32.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
+
+using namespace std;
 
 HWY_BEFORE_NAMESPACE();
 
@@ -152,22 +154,31 @@ namespace coder::HWY_NAMESPACE {
                 littleEndian = false;
             }
 
-            ThreadPool pool;
-            std::vector<std::future<void>> results;
+            int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                        width * height / (256 * 256)), 1, 12);
+            std::vector<std::thread> workers;
 
-            for (int y = 0; y < height; ++y) {
-                auto r = pool.enqueue(ConvertRGBA1010102toF32HWYRow,
-                                      reinterpret_cast<const uint8_t *>(mSrcPointer),
-                                      reinterpret_cast<float *>(mDstPointer), width,
-                                      littleEndian);
-                results.push_back(std::move(r));
+            int segmentHeight = height / threadCount;
 
-                mSrcPointer += srcStride;
-                mDstPointer += dstStride;
+            for (int i = 0; i < threadCount; i++) {
+                int start = i * segmentHeight;
+                int end = (i + 1) * segmentHeight;
+                if (i == threadCount - 1) {
+                    end = height;
+                }
+                workers.emplace_back(
+                        [start, end, mSrcPointer, mDstPointer, srcStride, dstStride, width, littleEndian]() {
+                            for (int y = start; y < end; ++y) {
+                                ConvertRGBA1010102toF32HWYRow(
+                                        reinterpret_cast<const uint8_t *>(mSrcPointer + srcStride * y),
+                                        reinterpret_cast<float *>(mDstPointer + dstStride * y),
+                                        width, littleEndian);
+                            }
+                        });
             }
 
-            for (auto &result: results) {
-                result.wait();
+            for (std::thread &thread: workers) {
+                thread.join();
             }
         }
 

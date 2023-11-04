@@ -27,14 +27,16 @@
  */
 
 #include "Rgb565.h"
-#include "ThreadPool.hpp"
 #include "HalfFloats.h"
+#include <thread>
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgb565.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
+
+using namespace std;
 
 HWY_BEFORE_NAMESPACE();
 
@@ -113,25 +115,35 @@ namespace coder::HWY_NAMESPACE {
                        uint16_t *dst, int dstStride, int width,
                        int height, int bitDepth) {
 
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
-
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-        for (int y = 0; y < height; ++y) {
-            auto r = pool.enqueue(Rgba8To565HWYRow,
-                                  reinterpret_cast<const uint8_t *>(mSrc),
-                                  reinterpret_cast<uint16_t *>(mDst), width);
-            results.push_back(std::move(r));
-            mSrc += srcStride;
-            mDst += dstStride;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, mSrc, mDst, srcStride, dstStride, width]() {
+                        for (int y = start; y < end; ++y) {
+                            Rgba8To565HWYRow(
+                                    reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
+                                    reinterpret_cast<uint16_t *>(mDst + dstStride * y),
+                                    width);
+                        }
+                    });
         }
 
-        for (auto &result: results) {
-            result.wait();
+        for (std::thread &thread: workers) {
+            thread.join();
         }
-
     }
 
     inline Vec<FixedTag<uint8_t, 8>>
@@ -203,9 +215,9 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            uint16_t red565 = ((uint16_t )roundf(half_to_float(src[0]) * maxColors) >> 3) << 11;
-            uint16_t green565 = ((uint16_t )roundf(half_to_float(src[1]) * maxColors) >> 2) << 5;
-            uint16_t blue565 = (uint16_t )roundf(half_to_float(src[2]) * maxColors) >> 3;
+            uint16_t red565 = ((uint16_t) roundf(half_to_float(src[0]) * maxColors) >> 3) << 11;
+            uint16_t green565 = ((uint16_t) roundf(half_to_float(src[1]) * maxColors) >> 2) << 5;
+            uint16_t blue565 = (uint16_t) roundf(half_to_float(src[2]) * maxColors) >> 3;
 
             auto result = static_cast<uint16_t>(red565 | green565 | blue565);
             dst[0] = result;
@@ -287,52 +299,72 @@ namespace coder::HWY_NAMESPACE {
     void RGBAF16To565HWY(const uint16_t *sourceData, int srcStride,
                          uint16_t *dst, int dstStride, int width,
                          int height) {
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
-
         float maxColors = powf(2, (float) 8) - 1;
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-        for (int y = 0; y < height; ++y) {
-            auto r = pool.enqueue(RGBAF16To565RowHWY,
-                                  reinterpret_cast<const uint16_t *>(mSrc),
-                                  reinterpret_cast<uint16_t *>(mDst), width,
-                                  maxColors);
-            results.push_back(std::move(r));
-            mSrc += srcStride;
-            mDst += dstStride;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, mSrc, mDst, srcStride, dstStride, width, maxColors]() {
+                        for (int y = start; y < end; ++y) {
+                            RGBAF16To565RowHWY(
+                                    reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
+                                    reinterpret_cast<uint16_t *>(mDst + dstStride * y),
+                                    width, maxColors);
+                        }
+                    });
         }
 
-        for (auto &result: results) {
-            result.wait();
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 
     void RGBAF32To565HWY(const float *sourceData, int srcStride,
                          uint16_t *dst, int dstStride, int width,
                          int height) {
-        ThreadPool pool;
-        std::vector<std::future<void>> results;
-
         float maxColors = powf(2, (float) 8) - 1;
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-        for (int y = 0; y < height; ++y) {
-            auto r = pool.enqueue(RGBAF32To565RowHWY,
-                                  reinterpret_cast<const float *>(mSrc),
-                                  reinterpret_cast<uint16_t *>(mDst), width,
-                                  maxColors);
-            results.push_back(std::move(r));
-            mSrc += srcStride;
-            mDst += dstStride;
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (256 * 256)), 1, 12);
+        std::vector<std::thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, mSrc, mDst, srcStride, dstStride, width, maxColors]() {
+                        for (int y = start; y < end; ++y) {
+                            RGBAF32To565RowHWY(
+                                    reinterpret_cast<const float *>(mSrc + srcStride * y),
+                                    reinterpret_cast<uint16_t *>(mDst + dstStride * y),
+                                    width, maxColors);
+                        }
+                    });
         }
 
-        for (auto &result: results) {
-            result.wait();
+        for (std::thread &thread: workers) {
+            thread.join();
         }
     }
 }
