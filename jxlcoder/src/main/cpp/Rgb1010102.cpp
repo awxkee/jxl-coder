@@ -209,10 +209,10 @@ namespace coder::HWY_NAMESPACE {
             auto R16 = (float) data[permuteMap[1]];
             auto G16 = (float) data[permuteMap[2]];
             auto B16 = (float) data[permuteMap[3]];
-            auto R10 = (uint32_t) (std::clamp(R16 * range10, 0.0f, (float) range10));
-            auto G10 = (uint32_t) (std::clamp(G16 * range10, 0.0f, (float) range10));
-            auto B10 = (uint32_t) (std::clamp(B16 * range10, 0.0f, (float) range10));
-            auto A10 = (uint32_t) std::clamp(roundf(A16 * 3.f), 0.0f, 3.0f);
+            auto R10 = (uint32_t) (clamp(R16 * range10, 0.0f, (float) range10));
+            auto G10 = (uint32_t) (clamp(G16 * range10, 0.0f, (float) range10));
+            auto B10 = (uint32_t) (clamp(B16 * range10, 0.0f, (float) range10));
+            auto A10 = (uint32_t) clamp(roundf(A16 * 3.f), 0.0f, 3.0f);
 
             dst32[0] = (A10 << 30) | (R10 << 20) | (G10 << 10) | B10;
 

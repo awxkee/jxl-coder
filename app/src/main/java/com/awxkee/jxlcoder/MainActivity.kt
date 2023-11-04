@@ -40,17 +40,17 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("wide_gamut.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("jxl_icc_12.bit.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
             val image = JxlCoder().decodeSampled(
                 buffer4,
-                largeImageSize!!.width * 2,
-                largeImageSize!!.height * 2,
+                largeImageSize!!.width,
+                largeImageSize!!.height,
                 preferredColorConfig = PreferredColorConfig.RGBA_F16,
                 ScaleMode.FIT,
-                JxlResizeFilter.CATMULL_ROM
+                JxlResizeFilter.HANN
             )
 //
 //            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)

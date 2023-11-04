@@ -31,7 +31,6 @@
 #include <string>
 #include <jni.h>
 #include "JniExceptions.h"
-#include "stb_image_resize.h"
 #include "libyuv.h"
 #include "XScaler.h"
 

@@ -628,11 +628,11 @@ void scaleImageU8(const uint8_t *input,
 
     auto src8 = reinterpret_cast<const uint8_t *>(input);
 
-    float maxColors = std::pow(2.0f, (float) depth) - 1.0f;
+    float maxColors = pow(2.0f, (float) depth) - 1.0f;
 
     int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
                                 outputHeight * outputWidth / (256 * 256)), 1, 12);
-    std::vector<std::thread> workers;
+    vector<std::thread> workers;
 
     int segmentHeight = outputHeight / threadCount;
 
