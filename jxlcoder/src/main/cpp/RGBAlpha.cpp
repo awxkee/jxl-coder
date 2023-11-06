@@ -35,7 +35,7 @@ namespace coder::HWY_NAMESPACE {
         const FixedTag<uint16_t, 8> du16x8;
         const FixedTag<uint16_t, 4> du16x4;
         const FixedTag<uint32_t, 4> du32x4;
-        const FixedTag<float32_t, 4> df32x4;
+        const FixedTag<float, 4> df32x4;
         Rebind<int32_t, decltype(df32x4)> ru32;
         using VU32x4 = Vec<decltype(df32x4)>;
         const VU32x4 mult255 = Set(df32x4, 255);
