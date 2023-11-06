@@ -39,12 +39,13 @@
 #include "Rgba8ToF16.h"
 #include "CopyUnaligned.h"
 #include "JniExceptions.h"
+#include "RGBAlpha.h"
 
 void
 ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &imageConfig,
                     PreferredColorConfig preferredColorConfig, int depth,
                     int imageWidth, int imageHeight, int *stride, bool *useFloats,
-                    jobject *hwBuffer) {
+                    jobject *hwBuffer, bool alphaPremultiplied) {
     *hwBuffer = nullptr;
     if (preferredColorConfig == Default) {
         int osVersion = androidOSVersion();
@@ -71,6 +72,13 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                 imageConfig = "ARGB_8888";
                 imageData = rgba8888Data;
             }
+
+            if (!alphaPremultiplied) {
+                coder::PremultiplyRGBA(imageData.data(), *stride, imageData.data(), *stride,
+                                       imageWidth,
+                                       imageHeight);
+            }
+
             break;
         case Rgba_F16:
             if (*useFloats) {

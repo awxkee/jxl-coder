@@ -57,6 +57,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::PromoteTo;
     using hwy::HWY_NAMESPACE::DemoteTo;
     using hwy::HWY_NAMESPACE::Combine;
+    using hwy::HWY_NAMESPACE::Round;
     using hwy::HWY_NAMESPACE::Rebind;
     using hwy::HWY_NAMESPACE::LowerHalf;
     using hwy::HWY_NAMESPACE::UpperHalf;
@@ -80,15 +81,16 @@ namespace coder::HWY_NAMESPACE {
         auto vMaxColors = Set(rf32, (float) maxColors);
 
         auto lower = DemoteTo(ru8, ConvertTo(ri32,
-                                             Max(Min(Mul(
+                                             Max(Min(Round(Mul(
                                                      PromoteTo(rf32, BitCast(df16, LowerHalf(v))),
-                                                     vMaxColors), vMaxColors), minColors)
+                                                     vMaxColors)), vMaxColors), minColors)
         ));
         auto upper = DemoteTo(ru8, ConvertTo(ri32,
-                                             Max(Min(Mul(PromoteTo(rf32,
-                                                                   BitCast(df16,
-                                                                           UpperHalf(dfu416, v))),
-                                                         vMaxColors), vMaxColors), minColors)
+                                             Max(Min(Round(Mul(PromoteTo(rf32,
+                                                                         BitCast(df16,
+                                                                                 UpperHalf(dfu416,
+                                                                                           v))),
+                                                               vMaxColors)), vMaxColors), minColors)
         ));
         return Combine(du8, upper, lower);
     }
@@ -128,10 +130,10 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            auto tmpR = (uint16_t) std::clamp(half_to_float(src[0]) / scale, 0.0f, maxColors);
-            auto tmpG = (uint16_t) std::clamp(half_to_float(src[1]) / scale, 0.0f, maxColors);
-            auto tmpB = (uint16_t) std::clamp(half_to_float(src[2]) / scale, 0.0f, maxColors);
-            auto tmpA = (uint16_t) std::clamp(half_to_float(src[3]) / scale, 0.0f, maxColors);
+            auto tmpR = (uint8_t) clamp(round(half_to_float(src[0]) * maxColors), 0.0f, maxColors);
+            auto tmpG = (uint8_t) clamp(round(half_to_float(src[1]) * maxColors), 0.0f, maxColors);
+            auto tmpB = (uint8_t) clamp(round(half_to_float(src[2]) * maxColors), 0.0f, maxColors);
+            auto tmpA = (uint8_t) clamp(round(half_to_float(src[3]) * maxColors), 0.0f, maxColors);
 
             dst[0] = tmpR;
             dst[1] = tmpG;
@@ -141,7 +143,6 @@ namespace coder::HWY_NAMESPACE {
             src += 4;
             dst += 4;
         }
-
     }
 
     void RGBAF16BitToNBitU8(const uint16_t *sourceData, int srcStride,
@@ -169,7 +170,7 @@ namespace coder::HWY_NAMESPACE {
             workers.emplace_back([start, end, mSrc, srcStride, mDst, width, scale,
                                          maxColors, dstStride]() {
                 for (int y = start; y < end; ++y) {
-                    auto src = mSrc + y + srcStride;
+                    auto src = mSrc + y * srcStride;
                     auto dst = mDst + y * dstStride;
                     RGBAF16BitToNBitRowU8(reinterpret_cast<const uint16_t *>(src),
                                           reinterpret_cast<uint8_t *>(dst), width, scale,

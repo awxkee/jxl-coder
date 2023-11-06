@@ -67,18 +67,18 @@ namespace coder::HWY_NAMESPACE {
 
     inline Vec<FixedTag<uint16_t, 8>>
     ConvertRow(Vec<FixedTag<uint8_t, 8>> v, float scale) {
-        FixedTag<uint8_t, 4> du8x4;
         FixedTag<uint16_t, 8> du16x8;
         Rebind<int32_t, FixedTag<uint8_t, 4>> ri32;
         Rebind<float32_t, decltype(ri32)> df32;
         Rebind<float16_t, decltype(df32)> dff16;
         Rebind<uint16_t, decltype(dff16)> du16;
+        auto r = PromoteTo(du16x8, v);
         auto lower = BitCast(du16, DemoteTo(dff16,
-                                            Mul(ConvertTo(df32, PromoteTo(ri32, LowerHalf(v))),
+                                            Mul(ConvertTo(df32, PromoteLowerTo(ri32, r)),
                                                 Set(df32, scale))));
         auto upper = BitCast(du16, DemoteTo(dff16,
                                             Mul(ConvertTo(df32,
-                                                          PromoteTo(ri32, UpperHalf(du8x4, v))),
+                                                          PromoteUpperTo(ri32, r)),
                                                 Set(df32, scale))));
         return Combine(du16x8, upper, lower);
     }
@@ -128,7 +128,6 @@ namespace coder::HWY_NAMESPACE {
             src += 4;
             dst += 4;
         }
-
     }
 
     void Rgba8ToF16HWY(const uint8_t *sourceData, int srcStride,

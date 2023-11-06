@@ -115,7 +115,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     jobject hwBuffer = nullptr;
     ReformatColorConfig(env, rgbaPixels, bitmapPixelConfig, preferredColorConfig, bitDepth,
                         finalWidth, finalHeight, &stride, &useBitmapFloats,
-                        &hwBuffer);
+                        &hwBuffer, alphaPremultiplied);
 
     if (bitmapPixelConfig == "HARDWARE") {
         jclass bitmapClass = env->FindClass("android/graphics/Bitmap");

@@ -46,13 +46,17 @@
 #include "colorspaces/dcip3.h"
 #include "colorspaces/itur2020_HLG.h"
 #include "colorspaces/bt2020_pq_colorspace.h"
+#include "RGBAlpha.h"
+#include "CopyUnaligned.h"
+
+using namespace std;
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap,
                                              jint javaColorSpace, jint javaCompressionOption,
                                              jint effort, jstring bitmapColorProfile,
-                                             jint dataSpace, jint jQuality) {
+                                             jint dataSpace, jint jQuality, jint decodingSpeed) {
     try {
         auto colorspace = static_cast<jxl_colorspace>(javaColorSpace);
         if (!colorspace) {
@@ -92,7 +96,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             info.format != ANDROID_BITMAP_FORMAT_RGBA_F16 &&
             info.format != ANDROID_BITMAP_FORMAT_RGBA_1010102 &&
             info.format != ANDROID_BITMAP_FORMAT_RGB_565) {
-            std::string msg(
+            string msg(
                     "Currently support encoding only RGBA_8888, RGBA_F16, RGBA_1010102, RBR_565 images pixel format");
             throwException(env, msg);
             return static_cast<jbyteArray>(nullptr);
@@ -104,7 +108,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             return static_cast<jbyteArray>(nullptr);
         }
 
-        std::vector<uint8_t> rgbaPixels(info.stride * info.height);
+        vector<uint8_t> rgbaPixels(info.stride * info.height);
         memcpy(rgbaPixels.data(), addr, info.stride * info.height);
 
         if (AndroidBitmap_unlockPixels(env, bitmap) != 0) {
@@ -137,6 +141,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                                (int) info.width, (int) info.height);
             imageStride = newStride;
             rgbaPixels = rgba8888Pixels;
+        } else if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888) {
+            coder::UnpremultiplyRGBA(rgbaPixels.data(), imageStride,
+                                     rgbaPixels.data(), imageStride,
+                                     (int) info.width,
+                                     (int) info.height);
         }
 
         bool useFloat16 = info.format == ANDROID_BITMAP_FORMAT_RGBA_F16 ||
@@ -144,28 +153,43 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
         std::vector<uint8_t> rgbPixels;
         switch (colorspace) {
-            case rgb:
-                rgbPixels.resize(info.width * info.height * 3 *
-                                 (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t)));
+            case rgb: {
+                int requiredStride = (int) info.width * 3 *
+                                     (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
+                rgbPixels.resize(info.height * requiredStride);
                 if (useFloat16) {
                     coder::Rgba16bit2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
                                          (int) imageStride,
                                          reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                                         (int) info.width * (int) sizeof(uint16_t) * 3,
+                                         (int) requiredStride,
                                          (int) info.height, (int) info.width);
                 } else {
                     libyuv::ARGBToRGB24(rgbaPixels.data(), static_cast<int>(imageStride),
                                         rgbPixels.data(),
-                                        static_cast<int>(info.width * 3),
+                                        static_cast<int>(requiredStride),
                                         static_cast<int>(info.width),
                                         static_cast<int>(info.height));
                 }
+                imageStride = requiredStride;
+            }
                 break;
-            case rgba:
-                rgbPixels.resize(imageStride * info.height);
-                std::copy(rgbaPixels.begin(), rgbaPixels.end(), rgbPixels.begin());
+            case rgba: {
+                int requiredStride = (int) info.width * 4 *
+                                     (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
+                if (requiredStride == info.stride) {
+                    rgbPixels = rgbaPixels;
+                } else {
+                    rgbPixels.resize(requiredStride * (int) info.height);
+                    coder::CopyUnalignedRGBA(rgbaPixels.data(), imageStride, rgbPixels.data(),
+                                             requiredStride, (int) info.width, (int) info.height,
+                                             (int) (useFloat16 ? sizeof(uint16_t)
+                                                               : sizeof(uint8_t)));
+                }
+                imageStride = requiredStride;
+            }
                 break;
         }
+
         rgbaPixels.clear();
 
         std::vector<uint8_t> compressedVector;
@@ -215,7 +239,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
         if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
                               &compressedVector, colorspace,
-                              compressionOption, useFloat16, iccProfile, effort, (int) jQuality)) {
+                              compressionOption, useFloat16, iccProfile,
+                              effort, (int) jQuality, (int) decodingSpeed)) {
             throwCantCompressImage(env);
             return static_cast<jbyteArray>(nullptr);
         }

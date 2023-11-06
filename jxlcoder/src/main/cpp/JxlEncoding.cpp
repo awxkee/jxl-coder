@@ -33,21 +33,25 @@
 #include "thread_parallel_runner_cxx.h"
 #include <vector>
 
+using namespace std;
+
 static inline float JXLGetDistance(int quality) {
     if (quality == 0)
         return (1.0f);
     if (quality >= 30)
-        return std::clamp((0.1f + (float) (100 - std::min(100.0f, (float)quality)) * 0.09f), 0.0f, 15.0f);
-    return std::clamp((6.24f + (float) pow(2.5f, (30.0 - (float) quality) / 5.0) / 6.25f), 0.0f, 15.0f);
+        return clamp((0.1f + (float) (100 - std::min(100.0f, (float) quality)) * 0.09f), 0.0f,
+                          15.0f);
+    return clamp((6.24f + (float) pow(2.5f, (30.0 - (float) quality) / 5.0) / 6.25f), 0.0f,
+                      15.0f);
 }
 
 bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       const uint32_t ysize, std::vector<uint8_t> *compressed,
                       jxl_colorspace colorspace, jxl_compression_option compression_option,
-                      bool useFloat16, std::vector<uint8_t> iccProfile, int effort, int quality) {
+                      bool useFloat16, std::vector<uint8_t> iccProfile, int effort, int quality,
+                      int decodingSpeed) {
     auto enc = JxlEncoderMake(/*memory_manager=*/nullptr);
-    auto runner = JxlThreadParallelRunnerMake(
-            /*memory_manager=*/nullptr,
+    auto runner = JxlThreadParallelRunnerMake(nullptr,
                                JxlThreadParallelRunnerDefaultNumWorkerThreads());
     if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
                                                        JxlThreadParallelRunner,
@@ -55,47 +59,48 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
         return false;
     }
 
-    JxlPixelFormat pixel_format;
+    JxlPixelFormat pixelFormat;
     switch (colorspace) {
         case rgb:
-            pixel_format = {3, useFloat16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN,
-                            0};
+            pixelFormat = {3, useFloat16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN,
+                           0};
             break;
         case rgba:
-            pixel_format = {4, useFloat16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8, JXL_LITTLE_ENDIAN,
-                            0};
+            pixelFormat = {4, useFloat16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN,
+                           0};
             break;
     }
 
-    JxlBasicInfo basic_info;
-    JxlEncoderInitBasicInfo(&basic_info);
-    basic_info.xsize = xsize;
-    basic_info.ysize = ysize;
-    basic_info.bits_per_sample = useFloat16 ? 16 : 8;
-    basic_info.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
+    JxlBasicInfo basicInfo;
+    JxlEncoderInitBasicInfo(&basicInfo);
+    basicInfo.xsize = xsize;
+    basicInfo.ysize = ysize;
+    basicInfo.bits_per_sample = useFloat16 ? 16 : 8;
+    basicInfo.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
     if (useFloat16) {
-        basic_info.exponent_bits_per_sample = 5;
+        basicInfo.exponent_bits_per_sample = 5;
     }
-    basic_info.num_color_channels = 3;
+    basicInfo.num_color_channels = 3;
+    basicInfo.alpha_premultiplied = false;
 
     if (colorspace == rgba) {
-        basic_info.num_extra_channels = 1;
-        basic_info.alpha_bits = useFloat16 ? 16 : 8;
+        basicInfo.num_extra_channels = 1;
+        basicInfo.alpha_bits = useFloat16 ? 16 : 8;
         if (useFloat16) {
-            basic_info.alpha_exponent_bits = 5;
+            basicInfo.alpha_exponent_bits = 5;
         }
     }
 
-    if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basic_info)) {
+    if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basicInfo)) {
         return false;
     }
 
     switch (colorspace) {
         case rgb:
-            basic_info.num_color_channels = 3;
+            basicInfo.num_color_channels = 3;
             break;
         case rgba:
-            basic_info.num_color_channels = 4;
+            basicInfo.num_color_channels = 4;
             JxlExtraChannelInfo channelInfo;
             JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
             channelInfo.bits_per_sample = useFloat16 ? 16 : 8;
@@ -113,7 +118,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
         }
     } else {
         JxlColorEncoding color_encoding = {};
-        JxlColorEncodingSetToSRGB(&color_encoding, pixel_format.num_channels < 3);
+        JxlColorEncodingSetToSRGB(&color_encoding, pixelFormat.num_channels < 3);
         if (JXL_ENC_SUCCESS !=
             JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
             return false;
@@ -145,7 +150,13 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     }
 
     if (JXL_ENC_SUCCESS !=
-        JxlEncoderAddImageFrame(frameSettings, &pixel_format,
+        JxlEncoderFrameSettingsSetOption(frameSettings, JXL_ENC_FRAME_SETTING_DECODING_SPEED,
+                                         decodingSpeed)) {
+        return false;
+    }
+
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderAddImageFrame(frameSettings, &pixelFormat,
                                 (void *) pixels.data(),
                                 sizeof(uint8_t) * pixels.size())) {
         return false;

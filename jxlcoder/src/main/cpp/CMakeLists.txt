@@ -27,7 +27,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlDecoding.cpp JniDecoding.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp
         F32ToRGB1010102.cpp Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
         Support.cpp ReformatBitmap.cpp Rgb565.cpp Rgb1010102.cpp F32toU8.cpp Rgba8ToF16.cpp CopyUnaligned.cpp
-        XScaler.cpp RgbaF16bitNBitU8.cpp)
+        XScaler.cpp RgbaF16bitNBitU8.cpp RGBAlpha.cpp)
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
 

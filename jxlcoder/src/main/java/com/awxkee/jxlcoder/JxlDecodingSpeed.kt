@@ -4,7 +4,7 @@
  * Copyright (c) 2023 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
- * Created by Radzivon Bartoshyk on 04/09/2023
+ * Created by Radzivon Bartoshyk on 6/11/2023
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,33 +26,12 @@
  *
  */
 
-#ifndef JXLCODER_JXLENCODING_H
-#define JXLCODER_JXLENCODING_H
+package com.awxkee.jxlcoder
 
-#include <vector>
-
-enum jxl_colorspace {
-    rgb = 1,
-    rgba = 2
-};
-
-enum jxl_compression_option {
-    loseless = 1,
-    loosy = 2
-};
-
-/**
- * Compresses the provided pixels.
- *
- * @param pixels input pixels
- * @param xsize width of the input image
- * @param ysize height of the input image
- * @param compressed will be populated with the compressed bytes
- */
-bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
-                      const uint32_t ysize, std::vector<uint8_t> *compressed,
-                      jxl_colorspace colorspace, jxl_compression_option compression_option,
-                      bool useFloat16, std::vector<uint8_t> iccProfile,
-                      int effort, int quality, int decodingSpeed);
-
-#endif //JXLCODER_JXLENCODING_H
+enum class JxlDecodingSpeed(internal val value: Int) {
+    SLOWEST(0),
+    SLOW(1),
+    MEDIUM(2),
+    FAST(3),
+    FASTEST(4)
+}

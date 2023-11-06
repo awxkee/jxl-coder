@@ -104,6 +104,7 @@ class JxlCoder {
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         @IntRange(from = 1L, to = 9L) effort: Int = 7,
         @IntRange(from = 0, to = 100) quality: Int = 0,
+        decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.SLOWEST,
     ): ByteArray {
         if (effort < 1 || effort > 9) {
             throw Exception("Effort must be on 1..<10")
@@ -129,6 +130,7 @@ class JxlCoder {
             bitmapColorSpace,
             dataSpaceValue,
             quality,
+            decodingSpeed.value,
         )
     }
 
@@ -164,6 +166,7 @@ class JxlCoder {
         bitmapColorSpace: String?,
         dataSpaceValue: Int,
         quality: Int,
+        decodingSpeed: Int
     ): ByteArray
 
     companion object {

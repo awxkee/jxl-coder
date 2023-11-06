@@ -55,8 +55,6 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
         return false;
     }
 
-    JxlDecoderSetUnpremultiplyAlpha(dec.get(), JXL_TRUE);
-
     JxlBasicInfo info;
     JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
 
@@ -84,7 +82,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
             if (info.bits_per_sample > 8 && allowedFloats) {
                 *useFloats = true;
                 useBitmapHalfFloats = true;
-                format = {4, JXL_TYPE_FLOAT16, JXL_LITTLE_ENDIAN, 0};
+                format = {4, JXL_TYPE_FLOAT16, JXL_NATIVE_ENDIAN, 0};
             } else {
                 *useFloats = false;
                 useBitmapHalfFloats = false;
