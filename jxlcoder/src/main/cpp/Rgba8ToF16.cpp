@@ -65,7 +65,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::float16_t;
     using hwy::float32_t;
 
-    inline Vec<FixedTag<uint16_t, 8>>
+    inline __attribute__((flatten)) Vec<FixedTag<uint16_t, 8>>
     ConvertRow(Vec<FixedTag<uint8_t, 8>> v, float scale) {
         FixedTag<uint16_t, 8> du16x8;
         Rebind<int32_t, FixedTag<uint8_t, 4>> ri32;

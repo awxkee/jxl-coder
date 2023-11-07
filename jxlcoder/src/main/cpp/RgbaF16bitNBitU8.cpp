@@ -66,7 +66,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::float16_t;
     using hwy::float32_t;
 
-    inline Vec<FixedTag<uint8_t, 8>>
+    inline __attribute__((flatten)) Vec<FixedTag<uint8_t, 8>>
     ConvertRow(Vec<FixedTag<uint16_t, 8>> v, float maxColors) {
         FixedTag<float16_t, 4> df16;
         FixedTag<uint16_t, 4> dfu416;

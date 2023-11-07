@@ -31,7 +31,8 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::Div;
     using hwy::HWY_NAMESPACE::ConvertTo;
 
-    Vec<FixedTag<uint16_t, 8>> RearrangeVec(Vec<FixedTag<uint16_t, 8>> vec) {
+    inline __attribute__((flatten)) Vec<FixedTag<uint16_t, 8>>
+    RearrangeVec(Vec<FixedTag<uint16_t, 8>> vec) {
         const FixedTag<uint16_t, 8> du16x8;
         const FixedTag<uint16_t, 4> du16x4;
         const FixedTag<uint32_t, 4> du32x4;
@@ -62,7 +63,6 @@ namespace coder::HWY_NAMESPACE {
         using VU16x8 = Vec<decltype(du16x8)>;
 
         VU16x8 mult255 = Set(du16x8, 255);
-        VU16x8 mult255d2 = Set(du16x8, 255 / 2);
 
         for (int y = 0; y < height; ++y) {
             auto mSrc = reinterpret_cast<const uint8_t *>(src + y * srcStride);
@@ -79,29 +79,31 @@ namespace coder::HWY_NAMESPACE {
                 VU16x8 rLow = PromoteLowerTo(du16x8, r8);
                 VU16x8 gLow = PromoteLowerTo(du16x8, g8);
                 VU16x8 bLow = PromoteLowerTo(du16x8, b8);
-                VU16x8 tmp = Add(Mul(Min(rLow, aLow), mult255), mult255d2);
+                auto lowADivider = ShiftRight<1>(aLow);
+                VU16x8 tmp = Add(Mul(Min(rLow, aLow), mult255), lowADivider);
                 rLow = RearrangeVec(tmp);
-                tmp = Add(Mul(Min(gLow, aLow), mult255), mult255d2);
+                tmp = Add(Mul(Min(gLow, aLow), mult255), lowADivider);
                 gLow = RearrangeVec(tmp);
-                tmp = Add(Mul(Min(bLow, aLow), mult255), mult255d2);
+                tmp = Add(Mul(Min(bLow, aLow), mult255), lowADivider);
                 bLow = RearrangeVec(tmp);
 
                 VU16x8 aHigh = PromoteUpperTo(du16x8, a8);
                 VU16x8 rHigh = PromoteUpperTo(du16x8, r8);
                 VU16x8 gHigh = PromoteUpperTo(du16x8, g8);
                 VU16x8 bHigh = PromoteUpperTo(du16x8, b8);
-                tmp = Add(Mul(Min(rHigh, aHigh), mult255), mult255d2);
+                auto highADivider = ShiftRight<1>(aHigh);
+                tmp = Add(Mul(Min(rHigh, aHigh), mult255), highADivider);
                 rHigh = RearrangeVec(tmp);
-                tmp = Add(Mul(Min(gHigh, aHigh), mult255), mult255d2);
+                tmp = Add(Mul(Min(gHigh, aHigh), mult255), highADivider);
                 gHigh = RearrangeVec(tmp);
-                tmp = Add(Mul(Min(bHigh, aHigh), mult255), mult255d2);
+                tmp = Add(Mul(Min(bHigh, aHigh), mult255), highADivider);
                 bHigh = RearrangeVec(tmp);
 
                 r8 = Combine(du8x16, DemoteTo(du8x8, rHigh), DemoteTo(du8x8, rLow));
                 g8 = Combine(du8x16, DemoteTo(du8x8, gHigh), DemoteTo(du8x8, gLow));
                 b8 = Combine(du8x16, DemoteTo(du8x8, bHigh), DemoteTo(du8x8, bLow));
 
-                StoreInterleaved4(r8, g8, b8, a8, du8x16, dst);
+                StoreInterleaved4(r8, g8, b8, a8, du8x16, mDst);
 
                 mSrc += pixels * 4;
                 mDst += pixels * 4;
@@ -168,7 +170,7 @@ namespace coder::HWY_NAMESPACE {
                 g8 = Combine(du8x16, DemoteTo(du8x8, gHigh), DemoteTo(du8x8, gLow));
                 b8 = Combine(du8x16, DemoteTo(du8x8, bHigh), DemoteTo(du8x8, bLow));
 
-                StoreInterleaved4(r8, g8, b8, a8, du8x16, dst);
+                StoreInterleaved4(r8, g8, b8, a8, du8x16, mDst);
 
                 mSrc += pixels * 4;
                 mDst += pixels * 4;
