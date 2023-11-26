@@ -43,8 +43,8 @@ HWY_BEFORE_NAMESPACE();
 namespace coder::HWY_NAMESPACE {
     namespace hn = hwy::HWY_NAMESPACE;
     using hwy::HWY_NAMESPACE::FixedTag;
-    using hwy::HWY_NAMESPACE::Load;
-    using hwy::HWY_NAMESPACE::Store;
+    using hwy::HWY_NAMESPACE::LoadU;
+    using hwy::HWY_NAMESPACE::StoreU;
 
     void
     CopyRGBA16RowHWY(const uint16_t *HWY_RESTRICT data, uint16_t *HWY_RESTRICT dst, int width) {
@@ -52,9 +52,9 @@ namespace coder::HWY_NAMESPACE {
         using V = hn::Vec<decltype(du)>;
         int x = 0;
         int pixels = 2;
-        for (x = 0; x + pixels < width; x += pixels) {
-            V color = Load(du, data);
-            Store(color, du, dst);
+        for (; x + pixels < width; x += pixels) {
+            V color = LoadU(du, data);
+            StoreU(color, du, dst);
             data += 4 * pixels;
             dst += 4 * pixels;
         }
@@ -74,9 +74,9 @@ namespace coder::HWY_NAMESPACE {
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 

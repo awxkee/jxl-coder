@@ -49,7 +49,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::Vec;
     using hwy::HWY_NAMESPACE::Set;
     using hwy::HWY_NAMESPACE::Zero;
-    using hwy::HWY_NAMESPACE::Load;
+    using hwy::HWY_NAMESPACE::LoadU;
     using hwy::HWY_NAMESPACE::Mul;
     using hwy::HWY_NAMESPACE::Max;
     using hwy::HWY_NAMESPACE::Min;
@@ -65,7 +65,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::LoadInterleaved4;
     using hwy::HWY_NAMESPACE::Or;
     using hwy::HWY_NAMESPACE::ShiftLeft;
-    using hwy::HWY_NAMESPACE::Store;
+    using hwy::HWY_NAMESPACE::StoreU;
     using hwy::HWY_NAMESPACE::Round;
     using hwy::float16_t;
 
@@ -76,7 +76,6 @@ namespace coder::HWY_NAMESPACE {
         float range10 = powf(2, 10) - 1;
         const FixedTag<float, 4> df;
         const FixedTag<float16_t, 8> df16;
-        const FixedTag<uint16_t, 4> du16x4;
         const FixedTag<uint16_t, 8> du16x8;
         const Rebind<int32_t, FixedTag<float, 4>> di32;
         const FixedTag<uint32_t, 4> du;
@@ -94,7 +93,7 @@ namespace coder::HWY_NAMESPACE {
         int x = 0;
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
         int pixels = 8;
-        for (x = 0; x + pixels < width; x += pixels) {
+        for (; x + pixels < width; x += pixels) {
             VU16x8 upixels1;
             VU16x8 upixels2;
             VU16x8 upixels3;
@@ -149,7 +148,7 @@ namespace coder::HWY_NAMESPACE {
             VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             VU lower = Or(ShiftLeft<10>(GV), BV);
             VU final = Or(upper, lower);
-            Store(final, du, dst32 + 4);
+            StoreU(final, du, dst32 + 4);
 
             VU pixelsLowStore[4] = {pixelsuLow1, pixelsuLow2, pixelsuLow3, pixelsuLow4};
             AV = pixelsLowStore[permuteMap[0]];
@@ -159,7 +158,7 @@ namespace coder::HWY_NAMESPACE {
             upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             lower = Or(ShiftLeft<10>(GV), BV);
             final = Or(upper, lower);
-            Store(final, du, dst32);
+            StoreU(final, du, dst32);
 
             data += pixels * 4;
             dst32 += pixels;
@@ -196,13 +195,10 @@ namespace coder::HWY_NAMESPACE {
         const auto zeros = Zero(df);
         const auto alphaMax = Set(df, 3.0);
 
-        const Rebind<float16_t, FixedTag<uint16_t, 4>> rbfu16;
-        const Rebind<float, FixedTag<float16_t, 4>> rbf32;
-
         int x = 0;
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
         int pixels = 4;
-        for (x = 0; x + pixels < width; x += pixels) {
+        for (; x + pixels < width; x += pixels) {
             V pixels1;
             V pixels2;
             V pixels3;
@@ -234,7 +230,7 @@ namespace coder::HWY_NAMESPACE {
             VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             VU lower = Or(ShiftLeft<10>(GV), BV);
             VU final = Or(upper, lower);
-            Store(final, du, dst32);
+            StoreU(final, du, dst32);
             data += pixels * 4;
             dst32 += pixels;
         }
@@ -270,7 +266,7 @@ namespace coder::HWY_NAMESPACE {
         int x = 0;
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
         int pixels = 8;
-        for (x = 0; x + pixels < width; x += pixels) {
+        for (; x + pixels < width; x += pixels) {
             VU8 upixels1;
             VU8 upixels2;
             VU8 upixels3;
@@ -296,7 +292,7 @@ namespace coder::HWY_NAMESPACE {
             VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             VU lower = Or(ShiftLeft<10>(GV), BV);
             VU final = Or(upper, lower);
-            Store(final, du, dst32 + 4);
+            StoreU(final, du, dst32 + 4);
 
             pixelsu1 = Mul(BitCast(du, PromoteTo(di32, LowerHalf(upixels1))),
                            Set(du, 4));
@@ -316,7 +312,7 @@ namespace coder::HWY_NAMESPACE {
             upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             lower = Or(ShiftLeft<10>(GV), BV);
             final = Or(upper, lower);
-            Store(final, du, dst32);
+            StoreU(final, du, dst32);
 
             data += pixels * 4;
             dst32 += pixels;
@@ -347,7 +343,7 @@ namespace coder::HWY_NAMESPACE {
 
         int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 
@@ -422,9 +418,9 @@ namespace coder::HWY_NAMESPACE {
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 

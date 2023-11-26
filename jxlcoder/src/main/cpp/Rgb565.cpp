@@ -60,7 +60,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::ShiftRight;
     using hwy::HWY_NAMESPACE::UpperHalf;
     using hwy::HWY_NAMESPACE::LoadInterleaved4;
-    using hwy::HWY_NAMESPACE::Store;
+    using hwy::HWY_NAMESPACE::StoreU;
     using hwy::HWY_NAMESPACE::Or;
     using hwy::float16_t;
     using hwy::float32_t;
@@ -92,7 +92,7 @@ namespace coder::HWY_NAMESPACE {
             auto bdu16Vec = ShiftRight<3>(PromoteTo(rdu16, bu8Row));
 
             auto result = Or(Or(rdu16Vec, gdu16Vec), bdu16Vec);
-            Store(result, du16, dst);
+            StoreU(result, du16, dst);
             src += 4 * pixels;
             dst += pixels;
         }
@@ -108,19 +108,18 @@ namespace coder::HWY_NAMESPACE {
             src += 4;
             dst += 1;
         }
-
     }
 
-    void Rgba8To565HWY(const uint8_t *sourceData, int srcStride,
-                       uint16_t *dst, int dstStride, int width,
-                       int height, int bitDepth) {
+    void Rgba8To565HWY(const uint8_t *sourceData, const int srcStride,
+                       uint16_t *dst, const int dstStride, const int width,
+                       const int height, const int bitDepth) {
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 
@@ -208,7 +207,7 @@ namespace coder::HWY_NAMESPACE {
             auto bdu16Vec = ShiftRight<3>(PromoteTo(rdu16, b16Row));
 
             auto result = Or(Or(rdu16Vec, gdu16Vec), bdu16Vec);
-            Store(result, du16, dst);
+            StoreU(result, du16, dst);
 
             src += 4 * pixels;
             dst += pixels;
@@ -250,8 +249,6 @@ namespace coder::HWY_NAMESPACE {
         using VU16 = Vec<decltype(df16)>;
         using VU8 = Vec<decltype(du8)>;
 
-        Rebind<uint16_t, FixedTag<uint8_t, 4>> rdu16;
-
         int x = 0;
         int pixels = 4;
 
@@ -276,7 +273,7 @@ namespace coder::HWY_NAMESPACE {
             auto bdu16Vec = ShiftRight<3>(b16Row);
 
             auto result = Or(Or(rdu16Vec, gdu16Vec), bdu16Vec);
-            Store(result, du16, dst);
+            StoreU(result, du16, dst);
 
             src += 4 * pixels;
             dst += pixels;
@@ -306,7 +303,7 @@ namespace coder::HWY_NAMESPACE {
 
         int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 

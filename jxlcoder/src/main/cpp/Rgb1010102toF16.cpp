@@ -49,7 +49,7 @@ namespace coder::HWY_NAMESPACE {
 
     using hwy::HWY_NAMESPACE::FixedTag;
     using hwy::HWY_NAMESPACE::Vec;
-    using hwy::HWY_NAMESPACE::Load;
+    using hwy::HWY_NAMESPACE::LoadU;
     using hwy::float16_t;
     using hwy::HWY_NAMESPACE::RebindToFloat;
     using hwy::HWY_NAMESPACE::Rebind;
@@ -70,7 +70,6 @@ namespace coder::HWY_NAMESPACE {
 
         const FixedTag<uint32_t, 4> du32;
         const FixedTag<float, 4> df32;
-        const FixedTag<float16_t, 4> df16;
         const FixedTag<uint16_t, 4> du16;
 
         using VU32 = Vec<decltype(du32)>;
@@ -89,8 +88,8 @@ namespace coder::HWY_NAMESPACE {
         auto maxColorsF32 = Set(df32, maxColors);
         auto maxColorsAF32 = Set(df32, 3.0f);
 
-        for (x = 0; x + 4 < width; x += 4) {
-            VU32 color1010102 = Load(du32, reinterpret_cast<const uint32_t *>(srcPointer));
+        for (; x + 4 < width; x += 4) {
+            VU32 color1010102 = LoadU(du32, reinterpret_cast<const uint32_t *>(srcPointer));
             auto RF = ConvertTo(dfcf16, And(ShiftRight<20>(color1010102), mask));
             auto RF16 = DemoteTo(dfc16, Div(RF, maxColorsF32));
             auto GF = ConvertTo(dfcf16, And(ShiftRight<10>(color1010102), mask));
@@ -161,7 +160,7 @@ namespace coder::HWY_NAMESPACE {
 
         int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 

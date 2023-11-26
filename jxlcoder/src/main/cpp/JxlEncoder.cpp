@@ -112,7 +112,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         memcpy(rgbaPixels.data(), addr, info.stride * info.height);
 
         if (AndroidBitmap_unlockPixels(env, bitmap) != 0) {
-            std::string exc = "Unlocking pixels has failed";
+            string exc = "Unlocking pixels has failed";
             throwException(env, exc);
             return static_cast<jbyteArray>(nullptr);
         }
@@ -121,8 +121,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
         if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
             imageStride = (int) info.width * 4 * (int) sizeof(uint16_t);
-
-            std::vector<uint8_t> halfFloatPixels(imageStride * info.height);
+            vector<uint8_t> halfFloatPixels(imageStride * info.height);
             coder::ConvertRGBA1010102toF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
                                            (int) info.stride,
                                            reinterpret_cast<uint16_t *>(halfFloatPixels.data()),

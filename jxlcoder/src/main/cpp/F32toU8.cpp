@@ -93,7 +93,7 @@ namespace coder::HWY_NAMESPACE {
 
         auto src = reinterpret_cast<const float *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
-        for (x = 0; x + pixels < width; x += pixels) {
+        for (; x + pixels < width; x += pixels) {
             VU16 ru16Row;
             VU16 gu16Row;
             VU16 bu16Row;
@@ -115,10 +115,10 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            auto tmpR = (uint16_t) std::clamp(src[0] / scale, 0.0f, maxColors);
-            auto tmpG = (uint16_t) std::clamp(src[1] / scale, 0.0f, maxColors);
-            auto tmpB = (uint16_t) std::clamp(src[2] / scale, 0.0f, maxColors);
-            auto tmpA = (uint16_t) std::clamp(src[3] / scale, 0.0f, maxColors);
+            auto tmpR = (uint16_t) clamp(src[0] / scale, 0.0f, maxColors);
+            auto tmpG = (uint16_t) clamp(src[1] / scale, 0.0f, maxColors);
+            auto tmpB = (uint16_t) clamp(src[2] / scale, 0.0f, maxColors);
+            auto tmpA = (uint16_t) clamp(src[3] / scale, 0.0f, maxColors);
 
             dst[0] = tmpR;
             dst[1] = tmpG;
@@ -141,9 +141,9 @@ namespace coder::HWY_NAMESPACE {
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 

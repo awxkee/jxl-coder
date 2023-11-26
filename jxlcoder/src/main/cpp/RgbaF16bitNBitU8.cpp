@@ -77,8 +77,8 @@ namespace coder::HWY_NAMESPACE {
 
         using VU8 = Vec<decltype(du8)>;
 
-        auto minColors = Zero(rf32);
-        auto vMaxColors = Set(rf32, (float) maxColors);
+        const auto minColors = Zero(rf32);
+        const auto vMaxColors = Set(rf32, (float) maxColors);
 
         auto lower = DemoteTo(ru8, ConvertTo(ri32,
                                              Max(Min(Round(Mul(
@@ -100,15 +100,18 @@ namespace coder::HWY_NAMESPACE {
                           float maxColors) {
         const FixedTag<uint16_t, 8> du16;
         const FixedTag<uint8_t, 8> du8;
+        const FixedTag<float32_t, 4> df32x4;
         using VU16 = Vec<decltype(du16)>;
         using VU8 = Vec<decltype(du8)>;
+        using VF32 = Vec<decltype(df32x4)>;
 
         int x = 0;
         int pixels = 8;
 
         auto src = reinterpret_cast<const uint16_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
-        for (x = 0; x + pixels < width; x += pixels) {
+
+        for (; x + pixels < width; x += pixels) {
             VU16 ru16Row;
             VU16 gu16Row;
             VU16 bu16Row;
@@ -155,9 +158,9 @@ namespace coder::HWY_NAMESPACE {
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 

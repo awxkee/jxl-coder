@@ -47,7 +47,7 @@ namespace coder::HWY_NAMESPACE {
 
         using hwy::HWY_NAMESPACE::FixedTag;
         using hwy::HWY_NAMESPACE::Vec;
-        using hwy::HWY_NAMESPACE::Load;
+        using hwy::HWY_NAMESPACE::LoadU;
         using hwy::float16_t;
         using hwy::HWY_NAMESPACE::RebindToFloat;
         using hwy::HWY_NAMESPACE::Rebind;
@@ -84,7 +84,7 @@ namespace coder::HWY_NAMESPACE {
             auto maxColorsAF32 = Set(df32, 3.0f);
 
             for (x = 0; x + 4 < width; x += 4) {
-                VU32 color1010102 = Load(du32, reinterpret_cast<const uint32_t *>(srcPointer));
+                VU32 color1010102 = LoadU(du32, reinterpret_cast<const uint32_t *>(srcPointer));
                 auto RF = ConvertTo(dfcf16, And(ShiftRight<20>(color1010102), mask));
                 auto RF16 = Div(RF, maxColorsF32);
                 auto GF = ConvertTo(dfcf16, And(ShiftRight<10>(color1010102), mask));
@@ -154,9 +154,9 @@ namespace coder::HWY_NAMESPACE {
                 littleEndian = false;
             }
 
-            int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+            int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
                                         width * height / (256 * 256)), 1, 12);
-            std::vector<std::thread> workers;
+            vector<thread> workers;
 
             int segmentHeight = height / threadCount;
 

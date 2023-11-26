@@ -209,7 +209,7 @@ inline T LanczosWindow(T x, const T a) {
     return T(0.0);
 }
 
-template <typename T>
+template<typename T>
 inline T fastCos(T x) {
     constexpr T C0 = 0.99940307;
     constexpr T C1 = -0.49558072;
@@ -217,10 +217,10 @@ inline T fastCos(T x) {
     constexpr T C3 = -0.00434102;
 
     // Map x to the range [-pi, pi]
-    while (x < -2*M_PI) {
+    while (x < -2 * M_PI) {
         x += 2.0 * M_PI;
     }
-    while (x > 2*M_PI) {
+    while (x > 2 * M_PI) {
         x -= 2.0 * M_PI;
     }
 
@@ -234,7 +234,7 @@ template<typename T>
 inline T HannWindow(T x, const T length) {
     const float size = length * 2 - 1;
     if (abs(x) <= size) {
-        return 0.5f * (1 - fastCos(T(2)*T(M_PI) * size / length));
+        return 0.5f * (1 - fastCos(T(2) * T(M_PI) * size / length));
     }
     return T(0);
 }
@@ -379,12 +379,13 @@ void scaleRowF16(const uint8_t *src8, int srcStride, int dstStride, int inputWid
             float weightSum(0.0f);
 
             for (int j = -a + 1; j <= a; j++) {
+                int yj = (int) ky1 + j;
+                float dy = float(srcY) - (float(ky1) + (float) j);
+                float yWeight = sampler(dy, lanczosFA);
                 for (int i = -a + 1; i <= a; i++) {
                     int xi = (int) kx1 + i;
-                    int yj = (int) ky1 + j;
                     float dx = float(srcX) - (float(kx1) + (float) i);
-                    float dy = float(srcY) - (float(ky1) + (float) j);
-                    float weight = sampler(dx, lanczosFA) * sampler(dy, lanczosFA);
+                    float weight = sampler(dx, lanczosFA) * yWeight;
                     weightSum += weight;
 
                     auto row = reinterpret_cast<const uint16_t *>(src8 +
@@ -451,7 +452,7 @@ void scaleImageFloat16(const uint16_t *input,
         });
     }
 
-    for (std::thread& thread : workers) {
+    for (std::thread &thread: workers) {
         thread.join();
     }
 }
@@ -485,20 +486,14 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
             float invertDy = float(1.0f) - dy;
 
             for (int c = 0; c < components; ++c) {
-                float c1 =
-                        PromoteTo<float, uint8_t>(row1[x1 * components + c], maxColors) * invertDx *
-                        invertDy;
-                float c2 = PromoteTo<float, uint8_t>(row1[x2 * components + c], maxColors) * dx *
-                           invertDy;
-                float c3 =
-                        PromoteTo<float, uint8_t>(row2[x1 * components + c], maxColors) * invertDx *
-                        dy;
-                float c4 =
-                        PromoteTo<float, uint8_t>(row2[x2 * components + c], maxColors) * dx * dy;
+                float c1 = static_cast<float>(row1[x1 * components + c]) * invertDx * invertDy;
+                float c2 = static_cast<float>(row1[x2 * components + c]) * dx * invertDy;
+                float c3 = static_cast<float>(row2[x1 * components + c]) * invertDx * dy;
+                float c4 = static_cast<float>(row2[x2 * components + c]) * dx * dy;
 
                 float result = (c1 + c2 + c3 + c4);
-                float f = result * maxColors;
-                f = clamp(f, 0.0f, maxColors);
+                float f = result;
+                f = clamp(round(f), 0.0f, maxColors);
                 dst[x * components + c] = static_cast<uint8_t>(f);
 
             }
@@ -538,20 +533,16 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
 
             for (int c = 0; c < components; ++c) {
                 float weight = sampler(srcX - (float) xi,
-                                       PromoteTo<float, uint8_t>(
-                                               row[clamp(xi, 0, inputWidth - 1) * components +
-                                                   c], maxColors),
-                                       PromoteTo<float, uint8_t>(
-                                               rowy1[clamp(xi + 1, 0, inputWidth - 1) *
-                                                     components + c], maxColors),
-                                       PromoteTo<float, uint8_t>(
-                                               row[clamp(xi + 1, 0, inputWidth - 1) *
-                                                   components + c], maxColors),
-                                       PromoteTo<float, uint8_t>(
-                                               rowy1[clamp(xi + 1, 0, inputWidth - 1) *
-                                                     components + c], maxColors));
-                auto clr = DemoteTo<uint8_t, float>(weight, maxColors);
-                dst[x * components + c] = clr;
+                                       static_cast<float>(row[
+                                               clamp(xi, 0, inputWidth - 1) * components + c]),
+                                       static_cast<float>(rowy1[clamp(xi + 1, 0, inputWidth - 1) *
+                                                                components + c]),
+                                       static_cast<float>(row[clamp(xi + 1, 0, inputWidth - 1) *
+                                                              components + c]),
+                                       static_cast<float>(rowy1[clamp(xi + 1, 0, inputWidth - 1) *
+                                                                components + c]));
+                dst[x * components + c] = static_cast<uint8_t>(clamp(round(weight), 0.0f,
+                                                                     maxColors));
             }
         } else if (option == lanczos || option == hann) {
             KernelWindow2Func sampler;
@@ -575,13 +566,13 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
             float weightSum(0.0f);
 
             for (int j = -a + 1; j <= a; j++) {
+                int yj = (int) ky1 + j;
+                float dy = float(srcY) - (float(ky1) + (float) j);
+                float yWeight = sampler(dy, (float) lanczosFA);
                 for (int i = -a + 1; i <= a; i++) {
                     int xi = (int) kx1 + i;
-                    int yj = (int) ky1 + j;
                     float dx = float(srcX) - (float(kx1) + (float) i);
-                    float dy = float(srcY) - (float(ky1) + (float) j);
-                    float weight = sampler(dx, (float) lanczosFA) *
-                                   sampler(dy, (float) lanczosFA);
+                    float weight = sampler(dx, (float) lanczosFA) * yWeight;
                     weightSum += weight;
 
                     auto row = reinterpret_cast<const uint8_t *>(src8 +
@@ -589,8 +580,8 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
                                                                  srcStride);
 
                     for (int c = 0; c < components; ++c) {
-                        auto clrf = PromoteTo<float, uint8_t>(
-                                row[clamp(xi, 0, inputWidth - 1) * components + c], maxColors);
+                        auto clrf = static_cast<float>(row[
+                                clamp(xi, 0, inputWidth - 1) * components + c]);
                         float clr = clrf * weight;
                         rgb[c] += clr;
                     }
@@ -599,10 +590,11 @@ ScaleRowU8(const uint8_t *src8, int srcStride, int inputWidth, int inputHeight, 
 
             for (int c = 0; c < components; ++c) {
                 if (weightSum == 0) {
-                    dst[x * components + c] = DemoteTo<uint8_t, float>(rgb[c], maxColors);
+                    dst[x * components + c] = static_cast<uint8_t>(clamp(round(rgb[c]), 0.0f,
+                                                                         maxColors));
                 } else {
-                    dst[x * components + c] = DemoteTo<uint8_t, float>(rgb[c] / weightSum,
-                                                                       maxColors);
+                    dst[x * components + c] = static_cast<uint8_t>(clamp(round(rgb[c] / weightSum),
+                                                                         0.0f, maxColors));
                 }
             }
         } else {
@@ -655,7 +647,7 @@ void scaleImageU8(const uint8_t *input,
         });
     }
 
-    for (std::thread& thread : workers) {
+    for (std::thread &thread: workers) {
         thread.join();
     }
 }

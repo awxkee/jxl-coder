@@ -59,7 +59,7 @@ namespace coder::HWY_NAMESPACE {
         auto srcPixels = reinterpret_cast<const uint16_t *>(src);
         auto dstPixels = reinterpret_cast<uint16_t *>(dst);
         int pixels = du16.MaxLanes();
-        for (x = 0; x + pixels < width; x += pixels) {
+        for (; x + pixels < width; x += pixels) {
             V pixels1;
             V pixels2;
             V pixels3;
@@ -89,7 +89,7 @@ namespace coder::HWY_NAMESPACE {
 
         int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 

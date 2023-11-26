@@ -51,7 +51,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::Vec;
     using hwy::HWY_NAMESPACE::Set;
     using hwy::HWY_NAMESPACE::Zero;
-    using hwy::HWY_NAMESPACE::Load;
+    using hwy::HWY_NAMESPACE::LoadU;
     using hwy::HWY_NAMESPACE::Mul;
     using hwy::HWY_NAMESPACE::Max;
     using hwy::HWY_NAMESPACE::Min;
@@ -62,7 +62,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::LoadInterleaved4;
     using hwy::HWY_NAMESPACE::Or;
     using hwy::HWY_NAMESPACE::ShiftLeft;
-    using hwy::HWY_NAMESPACE::Store;
+    using hwy::HWY_NAMESPACE::StoreU;
     using hwy::HWY_NAMESPACE::Round;
     using hwy::float32_t;
 
@@ -82,7 +82,7 @@ namespace coder::HWY_NAMESPACE {
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
         auto src = reinterpret_cast<const float32_t *>(data);
         int pixels = 4;
-        for (x = 0; x + pixels < width; x += pixels) {
+        for (; x + pixels < width; x += pixels) {
             V pixels1;
             V pixels2;
             V pixels3;
@@ -106,7 +106,7 @@ namespace coder::HWY_NAMESPACE {
             VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             VU lower = Or(ShiftLeft<10>(GV), BV);
             VU final = Or(upper, lower);
-            Store(final, du, dst32);
+            StoreU(final, du, dst32);
             src += 4 * pixels;
             dst32 += 4;
         }
@@ -116,10 +116,10 @@ namespace coder::HWY_NAMESPACE {
             auto R16 = (float) src[permuteMap[1]];
             auto G16 = (float) src[permuteMap[2]];
             auto B16 = (float) src[permuteMap[3]];
-            auto R10 = (uint32_t) (std::clamp(R16 * range10, 0.0f, (float) range10));
-            auto G10 = (uint32_t) (std::clamp(G16 * range10, 0.0f, (float) range10));
-            auto B10 = (uint32_t) (std::clamp(B16 * range10, 0.0f, (float) range10));
-            auto A10 = (uint32_t) std::clamp(std::round(A16 * 3), 0.0f, 3.0f);
+            auto R10 = (uint32_t) (clamp(R16 * range10, 0.0f, (float) range10));
+            auto G10 = (uint32_t) (clamp(G16 * range10, 0.0f, (float) range10));
+            auto B10 = (uint32_t) (clamp(B16 * range10, 0.0f, (float) range10));
+            auto A10 = (uint32_t) clamp(round(A16 * 3), 0.0f, 3.0f);
 
             dst32[0] = (A10 << 30) | (R10 << 20) | (G10 << 10) | B10;
 
@@ -129,17 +129,17 @@ namespace coder::HWY_NAMESPACE {
     }
 
     void
-    F32ToRGBA1010102HWY(std::vector<uint8_t> &data, int srcStride, int *HWY_RESTRICT dstStride,
+    F32ToRGBA1010102HWY(vector<uint8_t> &data, int srcStride, int *HWY_RESTRICT dstStride,
                         int width,
                         int height) {
         int newStride = (int) width * 4 * (int) sizeof(uint8_t);
         *dstStride = newStride;
-        std::vector<uint8_t> newData(newStride * height);
+        vector<uint8_t> newData(newStride * height);
         int permuteMap[4] = {3, 2, 1, 0};
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
                                     width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
+        vector<thread> workers;
 
         int segmentHeight = height / threadCount;
 
