@@ -1,26 +1,27 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
-import android.graphics.ColorSpace
-import android.hardware.DataSpace
+import android.graphics.Matrix
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
-import coil.ImageLoader
-import coil.compose.AsyncImage
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
 import okio.buffer
 import okio.source
 
@@ -40,29 +41,29 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("alpha_png_freepik.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("dark_street.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
             val image = JxlCoder().decodeSampled(
                 buffer4,
-                largeImageSize!!.width,
-                largeImageSize!!.height,
+                2205,
+                2205,
                 preferredColorConfig = PreferredColorConfig.RGBA_8888,
                 ScaleMode.FIT,
-                JxlResizeFilter.LANCZOS
+                JxlResizeFilter.BICUBIC_SPLINE,
             )
 //
 //            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
 ////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
-            val compressedBuffer = JxlCoder().encode(
-                image,
-                colorSpace = JxlColorSpace.RGBA,
-                compressionOption = JxlCompressionOption.LOSSY,
-                effort = 8,
-                quality = 100,
-            )
-            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_8888)
+//            val compressedBuffer = JxlCoder().encode(
+//                image,
+//                colorSpace = JxlColorSpace.RGBA,
+//                compressionOption = JxlCompressionOption.LOSSY,
+//                effort = 8,
+//                quality = 100,
+//            )
+//            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_8888)
 
             setContent {
                 JXLCoderTheme {
@@ -80,10 +81,14 @@ class MainActivity : ComponentActivity() {
 //                                }
 //                                .build()
 //                        )
-                        Image(
-                            bitmap = decompressedImage.asImageBitmap(),
-                            contentDescription = "ok"
-                        )
+                        Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
+                            Image(
+                                bitmap = image.asImageBitmap(),
+                                modifier = Modifier.fillMaxWidth(),
+                                contentScale = ContentScale.FillWidth,
+                                contentDescription = "ok"
+                            )
+                        }
 
 //                        GlideImage(
 //                            model = "https://wh.aimuse.online/preset/hdr_cosmos.jxl",
@@ -94,6 +99,18 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+fun getResizedBitmap(bm: Bitmap, newWidth: Int, newHeight: Int): Bitmap {
+    val width = bm.width
+    val height = bm.height
+    val scaleWidth = newWidth.toFloat() / width
+    val scaleHeight = newHeight.toFloat() / height
+    val matrix = Matrix()
+    matrix.postScale(scaleWidth, scaleHeight)
+    return Bitmap.createBitmap(
+        bm, 0, 0, width, height, matrix, false
+    )
 }
 
 @Composable

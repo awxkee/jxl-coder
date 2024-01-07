@@ -88,24 +88,24 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
         std::vector<uint8_t> newImageData(imdStride * scaledHeight);
 
         if (useFloats) {
-            scaleImageFloat16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
-                              imageWidth * 4 * (int)sizeof(uint16_t),
-                              imageWidth, imageHeight,
-                              reinterpret_cast<uint16_t *>(newImageData.data()),
-                              scaledWidth * 4 * (int)sizeof(uint16_t),
-                              scaledWidth, scaledHeight,
-                              4,
-                              sampler
+            coder::scaleImageFloat16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
+                                     imageWidth * 4 * (int) sizeof(uint16_t),
+                                     imageWidth, imageHeight,
+                                     reinterpret_cast<uint16_t *>(newImageData.data()),
+                                     scaledWidth * 4 * (int) sizeof(uint16_t),
+                                     scaledWidth, scaledHeight,
+                                     4,
+                                     sampler
             );
         } else {
-            scaleImageU8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
-                         (int) imageWidth * 4 * (int) sizeof(uint8_t),
-                         imageWidth, imageHeight,
-                         reinterpret_cast<uint8_t *>(newImageData.data()),
-                         (int) scaledWidth * 4 * (int) sizeof(uint8_t),
-                         scaledWidth, scaledHeight,
-                         4, 8,
-                         sampler);
+            coder::scaleImageU8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
+                                (int) imageWidth * 4 * (int) sizeof(uint8_t),
+                                imageWidth, imageHeight,
+                                reinterpret_cast<uint8_t *>(newImageData.data()),
+                                (int) scaledWidth * 4 * (int) sizeof(uint8_t),
+                                scaledWidth, scaledHeight,
+                                4, 8,
+                                sampler);
         }
 
         imageWidth = scaledWidth;

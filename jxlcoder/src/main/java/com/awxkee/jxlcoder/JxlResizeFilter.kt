@@ -31,11 +31,11 @@ package com.awxkee.jxlcoder
 enum class JxlResizeFilter(internal val value: Int) {
     BILINEAR(1),
     NEAREST(2),
-    CUBIC(3),
+    CUBIC_SPLINE(3),
     MITCHELL_NETRAVALI(4),
     LANCZOS(5),
     CATMULL_ROM(6),
     HERMITE(7),
-    BSPLITE(8),
+    BICUBIC_SPLINE(8),
     HANN(9)
 }

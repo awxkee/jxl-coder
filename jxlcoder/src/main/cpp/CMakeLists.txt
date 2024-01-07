@@ -16,6 +16,7 @@ add_library(libbrotlidec SHARED IMPORTED)
 add_library(libbrotlienc SHARED IMPORTED)
 add_library(libjxl SHARED IMPORTED)
 add_library(libjxl_threads SHARED IMPORTED)
+add_library(libjxl_cms SHARED IMPORTED)
 add_library(libyuv STATIC IMPORTED)
 add_library(libhwy STATIC IMPORTED)
 
@@ -36,6 +37,7 @@ set_target_properties(jxlcoder libbrotlidec PROPERTIES IMPORTED_LOCATION ${CMAKE
 set_target_properties(jxlcoder libbrotlienc PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libbrotlienc.so)
 set_target_properties(jxlcoder libjxl PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl.so)
 set_target_properties(jxlcoder libjxl_threads PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_threads.so)
+set_target_properties(jxlcoder libjxl_cms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_cms.so)
 set_target_properties(jxlcoder libyuv PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libyuv.a)
 set_target_properties(jxlcoder libhwy PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libhwy.a)
 
@@ -73,7 +75,7 @@ endif ()
 add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION -DCMS_NO_REGISTER_KEYWORD -DHWY_COMPILE_ONLY_STATIC)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -funroll-loops")
 endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -93,6 +95,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         libhwy
         libjxl
         libjxl_threads
+        libjxl_cms
         -ljnigraphics
         libyuv
         log)

@@ -15,7 +15,7 @@ afterEvaluate {
             create<MavenPublication>("mavenJava") {
                 groupId = "com.github.awxkee"
                 artifactId = "jxl-coder"
-                version = "1.5.7"
+                version = "1.6.0"
                 from(components["release"])
 //                artifact(androidSourcesJar)
             }
@@ -34,9 +34,16 @@ android {
         consumerProguardFiles("consumer-rules.pro")
         externalNativeBuild {
             cmake {
-                ndkVersion = "25.2.9519653"
-                cppFlags.add ("-std=c++17")
+                ndkVersion = "26.1.10909125"
+                cppFlags.add ("-std=c++20")
                 abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
+            }
+        }
+
+        publishing {
+            singleVariant("release") {
+                withSourcesJar()
+                withJavadocJar()
             }
         }
     }
