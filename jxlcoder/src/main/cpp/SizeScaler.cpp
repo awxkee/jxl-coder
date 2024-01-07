@@ -84,7 +84,11 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
             }
         }
 
-        int imdStride = scaledWidth * 4 * (int) (useFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+        int lineWidth = scaledWidth * static_cast<int>(useFloats ? sizeof(uint16_t) : sizeof(uint8_t)) * 4;
+        int alignment = 64;
+        int padding = (alignment - (lineWidth % alignment)) % alignment;
+        int imdStride = lineWidth + padding;
+
         std::vector<uint8_t> newImageData(imdStride * scaledHeight);
 
         if (useFloats) {
@@ -92,7 +96,7 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                                      imageWidth * 4 * (int) sizeof(uint16_t),
                                      imageWidth, imageHeight,
                                      reinterpret_cast<uint16_t *>(newImageData.data()),
-                                     scaledWidth * 4 * (int) sizeof(uint16_t),
+                                     imdStride,
                                      scaledWidth, scaledHeight,
                                      4,
                                      sampler
@@ -102,7 +106,7 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                                 (int) imageWidth * 4 * (int) sizeof(uint8_t),
                                 imageWidth, imageHeight,
                                 reinterpret_cast<uint8_t *>(newImageData.data()),
-                                (int) scaledWidth * 4 * (int) sizeof(uint8_t),
+                                imdStride,
                                 scaledWidth, scaledHeight,
                                 4, 8,
                                 sampler);

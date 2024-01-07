@@ -10,20 +10,31 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.lifecycleScope
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import okio.buffer
 import okio.source
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalGlideComposeApi::class)
@@ -41,18 +52,10 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("dark_street.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("pexels-thibaut-tattevin-18273081.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
-            val image = JxlCoder().decodeSampled(
-                buffer4,
-                2205,
-                2205,
-                preferredColorConfig = PreferredColorConfig.RGBA_8888,
-                ScaleMode.FIT,
-                JxlResizeFilter.BICUBIC_SPLINE,
-            )
 //
 //            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
 ////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
@@ -67,6 +70,26 @@ class MainActivity : ComponentActivity() {
 
             setContent {
                 JXLCoderTheme {
+                    var imagesArray = remember {
+                        mutableStateListOf<Bitmap>()
+                    }
+                    LaunchedEffect(key1 = Unit, block = {
+                        for (i in 0 until 1) {
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                val image = JxlCoder().decodeSampled(
+                                    buffer4,
+                                    5455,
+                                    5455,
+                                    preferredColorConfig = PreferredColorConfig.RGBA_8888,
+                                    ScaleMode.FIT,
+                                    JxlResizeFilter.BILINEAR,
+                                )
+                                lifecycleScope.launch(Dispatchers.Main) {
+                                    imagesArray.add(image)
+                                }
+                            }
+                        }
+                    })
                     // A surface container using the 'background' color from the theme
                     Surface(
                         modifier = Modifier.fillMaxSize(),
@@ -81,13 +104,18 @@ class MainActivity : ComponentActivity() {
 //                                }
 //                                .build()
 //                        )
-                        Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
-                            Image(
-                                bitmap = image.asImageBitmap(),
-                                modifier = Modifier.fillMaxWidth(),
-                                contentScale = ContentScale.FillWidth,
-                                contentDescription = "ok"
-                            )
+                        LazyColumn(modifier = Modifier
+                            .fillMaxWidth()) {
+                            items(imagesArray.count(), key = {
+                                return@items UUID.randomUUID().toString()
+                            }) {
+                                Image(
+                                    bitmap = imagesArray[it].asImageBitmap(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentScale = ContentScale.FillWidth,
+                                    contentDescription = "ok"
+                                )
+                            }
                         }
 
 //                        GlideImage(
