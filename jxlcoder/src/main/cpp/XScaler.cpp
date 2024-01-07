@@ -56,7 +56,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::BitCast;
     using hwy::HWY_NAMESPACE::Min;
     using hwy::HWY_NAMESPACE::ConvertTo;
-    using hwy::HWY_NAMESPACE::Ceil;
+    using hwy::HWY_NAMESPACE::Floor;
     using hwy::HWY_NAMESPACE::Mul;
     using hwy::HWY_NAMESPACE::ExtractLane;
     using hwy::HWY_NAMESPACE::Zero;
@@ -296,10 +296,10 @@ namespace coder::HWY_NAMESPACE {
             return T(0);
         }
         T s1 = x * (-p0 + 3 * p1 - 3 * p2 + p3);
-        T s2 = (T(2.0) * p0 - T(5.0) * p1 + 4 * p2 - p3);
-        T s3 = (s1 + s2) * x;
+        T s2 = (T(2.0)*p0 - T(5.0)*p1 + 4 * p2 - p3);
+        T s3 = (s1 + s2)*x;
         T s4 = (-p0 + p2);
-        T s5 = (s3 + s4) * x * T(0.5);
+        T s5 = (s3 + s4)*x*T(0.5);
 
         return s5 + p1;
 //        if (x < T(1.0)) {
@@ -330,6 +330,25 @@ namespace coder::HWY_NAMESPACE {
         auto dst8 = reinterpret_cast<uint8_t *>(output) + y * dstStride;
         auto dst16 = reinterpret_cast<uint16_t *>(dst8);
 
+        const FixedTag<float32_t, 4> dfx4;
+        const FixedTag<int32_t, 4> dix4;
+        const FixedTag<float16_t, 4> df16x4;
+        using VI4 = Vec<decltype(dix4)>;
+        using VF4 = Vec<decltype(dfx4)>;
+        using VF16x4 = Vec<decltype(df16x4)>;
+
+        const int shift[4] = {0, 1, 2, 3};
+        const VI4 shiftV = LoadU(dix4, shift);
+        const VF4 xScaleV = Set(dfx4, xScale);
+        const VF4 yScaleV = Set(dfx4, yScale);
+        const VI4 addOne = Set(dix4, 1);
+        const VF4 fOneV = Set(dfx4, 1.0f);
+        const VI4 maxWidth = Set(dix4, inputWidth - 1);
+        const VI4 maxHeight = Set(dix4, inputHeight - 1);
+        const VI4 iZeros = Zero(dix4);
+        const VF4 vfZeros = Zero(dfx4);
+        const VI4 srcStrideV = Set(dix4, srcStride);
+
         for (int x = 0; x < outputWidth; ++x) {
             float srcX = (float) x * xScale;
             float srcY = (float) y * yScale;
@@ -339,31 +358,13 @@ namespace coder::HWY_NAMESPACE {
 
             if (option == bilinear) {
                 if (components == 4 && x + 8 < outputWidth) {
-                    FixedTag<float32_t, 4> dfx4;
-                    FixedTag<int32_t, 4> dix4;
-                    FixedTag<float16_t, 4> df16x4;
-                    using VI4 = Vec<decltype(dix4)>;
-                    using VF4 = Vec<decltype(dfx4)>;
-                    using VF16x4 = Vec<decltype(df16x4)>;
-
-                    int shift[4] = {0, 1, 2, 3};
-                    VI4 shiftV = LoadU(dix4, &shift[0]);
-                    VF4 xScaleV = Set(dfx4, xScale);
-                    VF4 yScaleV = Set(dfx4, yScale);
-                    VI4 addOne = Set(dix4, 1);
-                    VF4 fOneV = Set(dfx4, 1.0f);
-                    VI4 maxWidth = Set(dix4, inputWidth - 1);
-                    VI4 maxHeight = Set(dix4, inputHeight - 1);
-                    VI4 iZeros = Zero(dix4);
-                    VF4 vfZeros = Zero(dfx4);
-                    VI4 srcStrideV = Set(dix4, srcStride);
                     VI4 currentX = Set(dix4, x);
                     VI4 currentXV = Add(currentX, shiftV);
                     VF4 currentXVF = Mul(ConvertTo(dfx4, currentXV), xScaleV);
                     VF4 currentYVF = Mul(ConvertTo(dfx4, Set(dix4, y)), yScaleV);
 
-                    VI4 xi1 = ConvertTo(dix4, Ceil(currentXVF));
-                    VI4 yi1 = ConvertTo(dix4, Ceil(currentYVF));
+                    VI4 xi1 = ConvertTo(dix4, Floor(currentXVF));
+                    VI4 yi1 = Min(ConvertTo(dix4, Floor(currentYVF)), maxHeight);
 
                     VI4 xi2 = Min(Add(xi1, addOne), maxWidth);
                     VI4 yi2 = Min(Add(yi1, addOne), maxHeight);
@@ -601,6 +602,27 @@ namespace coder::HWY_NAMESPACE {
         auto dst8 = reinterpret_cast<uint8_t *>(output + y * dstStride);
         auto dst = reinterpret_cast<uint8_t *>(dst8);
 
+        const FixedTag<float32_t, 4> dfx4;
+        const FixedTag<int32_t, 4> dix4;
+        const FixedTag<uint32_t, 4> dux4;
+        const FixedTag<uint8_t, 4> du8x4;
+        using VI4 = Vec<decltype(dix4)>;
+        using VF4 = Vec<decltype(dfx4)>;
+        using VU8x4 = Vec<decltype(du8x4)>;
+
+        const int shift[4] = {0, 1, 2, 3};
+        const VI4 shiftV = LoadU(dix4, shift);
+        const VF4 xScaleV = Set(dfx4, xScale);
+        const VF4 yScaleV = Set(dfx4, yScale);
+        const VI4 addOne = Set(dix4, 1);
+        const VF4 fOneV = Set(dfx4, 1.0f);
+        const VI4 maxWidth = Set(dix4, inputWidth - 1);
+        const VI4 maxHeight = Set(dix4, inputHeight - 1);
+        const VI4 iZeros = Zero(dix4);
+        const VF4 vfZeros = Zero(dfx4);
+        const VI4 srcStrideV = Set(dix4, srcStride);
+        const VF4 maxColorsV = Set(dfx4, maxColors);
+
         for (int x = 0; x < outputWidth; ++x) {
             float srcX = (float) x * xScale;
             float srcY = (float) y * yScale;
@@ -610,34 +632,13 @@ namespace coder::HWY_NAMESPACE {
 
             if (option == bilinear) {
                 if (components == 4 && x + 8 < outputWidth) {
-                    FixedTag<float32_t, 4> dfx4;
-                    FixedTag<int32_t, 4> dix4;
-                    FixedTag<uint32_t, 4> dux4;
-                    FixedTag<uint8_t, 4> du8x4;
-                    using VI4 = Vec<decltype(dix4)>;
-                    using VF4 = Vec<decltype(dfx4)>;
-                    using VU8x4 = Vec<decltype(du8x4)>;
-
-                    int shift[4] = {0, 1, 2, 3};
-                    VI4 shiftV = LoadU(dix4, &shift[0]);
-                    VF4 xScaleV = Set(dfx4, xScale);
-                    VF4 yScaleV = Set(dfx4, yScale);
-                    VI4 addOne = Set(dix4, 1);
-                    VF4 fOneV = Set(dfx4, 1.0f);
-                    VI4 maxWidth = Set(dix4, inputWidth - 1);
-                    VI4 maxHeight = Set(dix4, inputHeight - 1);
-                    VI4 iZeros = Zero(dix4);
-                    VF4 vfZeros = Zero(dfx4);
-                    VI4 srcStrideV = Set(dix4, srcStride);
-                    VF4 maxColorsV = Set(dfx4, maxColors);
-
                     VI4 currentX = Set(dix4, x);
                     VI4 currentXV = Add(currentX, shiftV);
                     VF4 currentXVF = Mul(ConvertTo(dfx4, currentXV), xScaleV);
                     VF4 currentYVF = Mul(ConvertTo(dfx4, Set(dix4, y)), yScaleV);
 
-                    VI4 xi1 = ConvertTo(dix4, Ceil(currentXVF));
-                    VI4 yi1 = ConvertTo(dix4, Ceil(currentYVF));
+                    VI4 xi1 = ConvertTo(dix4, Floor(currentXVF));
+                    VI4 yi1 = Min(ConvertTo(dix4, Floor(currentYVF)), maxHeight);
 
                     VI4 xi2 = Min(Add(xi1, addOne), maxWidth);
                     VI4 yi2 = Min(Add(yi1, addOne), maxHeight);
