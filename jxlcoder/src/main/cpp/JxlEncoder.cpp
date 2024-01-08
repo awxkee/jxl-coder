@@ -48,6 +48,7 @@
 #include "colorspaces/bt2020_pq_colorspace.h"
 #include "RGBAlpha.h"
 #include "CopyUnaligned.h"
+#include "JxlDefinitions.h"
 
 using namespace std;
 
@@ -58,12 +59,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                                              jint effort, jstring bitmapColorProfile,
                                              jint dataSpace, jint jQuality, jint decodingSpeed) {
     try {
-        auto colorspace = static_cast<jxl_colorspace>(javaColorSpace);
+        auto colorspace = static_cast<JxlColorPixelType>(javaColorSpace);
         if (!colorspace) {
             throwInvalidColorSpaceException(env);
             return static_cast<jbyteArray>(nullptr);
         }
-        auto compressionOption = static_cast<jxl_compression_option>(javaCompressionOption);
+        auto compressionOption = static_cast<JxlCompressionOption>(javaCompressionOption);
         if (!compressionOption) {
             throwInvalidCompressionOptionException(env);
             return static_cast<jbyteArray>(nullptr);
@@ -236,9 +237,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             }
         }
 
+        JxlEncodingPixelDataFormat dataPixelFormat = useFloat16 ? BINARY_16 : UNSIGNED_8;
+
         if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
                               &compressedVector, colorspace,
-                              compressionOption, useFloat16, iccProfile,
+                              compressionOption, dataPixelFormat,
+                              ref(iccProfile),
                               effort, (int) jQuality, (int) decodingSpeed)) {
             throwCantCompressImage(env);
             return static_cast<jbyteArray>(nullptr);
