@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("pexels-thibaut-tattevin-18273081.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("wide_gamut.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
@@ -78,11 +78,11 @@ class MainActivity : ComponentActivity() {
                             lifecycleScope.launch(Dispatchers.IO) {
                                 val image = JxlCoder().decodeSampled(
                                     buffer4,
-                                    5455,
-                                    5455,
+                                    3500,
+                                    3500,
                                     preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                     ScaleMode.FIT,
-                                    JxlResizeFilter.BILINEAR,
+                                    JxlResizeFilter.LANCZOS,
                                 )
                                 lifecycleScope.launch(Dispatchers.Main) {
                                     imagesArray.add(image)
