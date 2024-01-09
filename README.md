@@ -7,6 +7,8 @@ capabilities to enhance your app's image handling capabilities.
 
 ICC profiles supported. Supports animations as well
 
+Image processing speeded up by [libhwy](https://github.com/google/highway)
+
 # Usage example
 
 ```kotlin
