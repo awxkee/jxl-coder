@@ -111,7 +111,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_awxkee_jxlcoder_JxlAnimatedImage_closeAndRelease(JNIEnv *env, jobject thiz,
+Java_com_awxkee_jxlcoder_JxlAnimatedImage_closeAndReleaseAnimatedImage(JNIEnv *env, jobject thiz,
                                                           jlong coordinatorPtr) {
     JxlAnimatedDecoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedDecoderCoordinator *>(coordinatorPtr);
     delete coordinator;

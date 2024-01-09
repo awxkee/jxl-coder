@@ -176,7 +176,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             case rgba: {
                 int requiredStride = (int) info.width * 4 *
                                      (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
-                if (requiredStride == info.stride) {
+                if (requiredStride == imageStride) {
                     rgbPixels = rgbaPixels;
                 } else {
                     rgbPixels.resize(requiredStride * (int) info.height);

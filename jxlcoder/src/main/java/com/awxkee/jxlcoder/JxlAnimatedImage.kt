@@ -170,12 +170,12 @@ class JxlAnimatedImage : Closeable {
     private external fun getLoopsCount(coordinatorPtr: Long): Int
     private external fun getFrameDurationImpl(coordinatorPtr: Long, frame: Int): Int
     private external fun getNumberOfFrames(coordinatorPtr: Long): Int
-    private external fun closeAndRelease(coordinatorPtr: Long)
+    private external fun closeAndReleaseAnimatedImage(coordinatorPtr: Long)
 
     override fun close() {
         synchronized(lock) {
             if (coordinator != -1L) {
-                closeAndRelease(coordinator)
+                closeAndReleaseAnimatedImage(coordinator)
                 coordinator = -1L
             }
         }

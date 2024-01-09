@@ -29,7 +29,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         F32ToRGB1010102.cpp Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
         Support.cpp ReformatBitmap.cpp Rgb565.cpp Rgb1010102.cpp F32toU8.cpp Rgba8ToF16.cpp CopyUnaligned.cpp
         XScaler.cpp RgbaF16bitNBitU8.cpp RGBAlpha.cpp JxlAnimatedDecoder.cpp JxlAnimatedEncoder.cpp
-        JxlAnimatedDecoderCoordinator.cpp)
+        JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp)
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
 
@@ -51,6 +51,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(CheckCXXCompilerFlag)
+if (ANDROID_ABI STREQUAL arm64-v8a)
+    add_definitions("-DHAVE_NEON=1")
+endif ()
 
 if (ANDROID_ABI STREQUAL x86)
     target_compile_options(jxlcoder PRIVATE "-msse2")

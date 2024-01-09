@@ -5,6 +5,17 @@
 #ifndef JXLCODER_JXLDEFINITIONS_H
 #define JXLCODER_JXLDEFINITIONS_H
 
+enum JxlColorMatrix {
+    MATRIX_ITUR_2020_PQ,
+    MATRIX_ITUR_709,
+    MATRIX_ITUR_2020,
+    MATRIX_DISPLAY_P3,
+    MATRIX_SRGB_LINEAR,
+    MATRIX_ADOBE_RGB,
+    MATRIX_DCI_P3,
+    MATRIX_UNKNOWN
+};
+
 enum JxlColorPixelType {
     rgb = 1,
     rgba = 2
