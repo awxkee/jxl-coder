@@ -18,6 +18,7 @@
 #include "Rgb1010102.h"
 #include "RgbaF16bitNBitU8.h"
 #include "Rgba2Rgb.h"
+#include "Rgb565.h"
 #include "CopyUnaligned.h"
 
 using namespace std;
@@ -184,21 +185,19 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
         } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
             int newStride = (int) info.width * 4 * (int) sizeof(uint8_t);
             vector<uint8_t> rgba8888Pixels(newStride * info.height);
-            libyuv::RGB565ToARGB(rgbaPixels.data(), (int) info.stride,
-                                 rgba8888Pixels.data(), newStride,
-                                 (int) info.width, (int) info.height);
-            libyuv::ARGBToABGR(rgba8888Pixels.data(), newStride,
-                               rgba8888Pixels.data(), newStride,
-                               (int) info.width, (int) info.height);
             if (dataPixelFormat == UNSIGNED_8) {
+                coder::Rgb565ToUnsigned8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                                         (int) info.stride,
+                                         rgba8888Pixels.data(), newStride,
+                                         (int) info.width, (int) info.height, 8, 255);
                 imageStride = newStride;
                 rgbaPixels = rgba8888Pixels;
             } else {
                 int b16Stride = (int) info.width * 4 * (int) sizeof(uint16_t);
                 vector<uint8_t> halfFloatPixels(imageStride * info.height);
-                coder::Rgba8ToF16(rgba8888Pixels.data(), newStride,
-                                  reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
-                                  (int) info.width, (int) info.height, 8);
+                coder::Rgb565ToF16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), newStride,
+                                    reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
+                                    (int) info.width, (int) info.height);
                 imageStride = b16Stride;
                 rgbaPixels = halfFloatPixels;
             }

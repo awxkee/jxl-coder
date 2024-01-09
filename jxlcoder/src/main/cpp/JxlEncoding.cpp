@@ -63,12 +63,12 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     JxlPixelFormat pixelFormat;
     switch (colorspace) {
         case rgb:
-            pixelFormat = {3, encodingDataFormat ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
+            pixelFormat = {3, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
                            JXL_NATIVE_ENDIAN,
                            0};
             break;
         case rgba:
-            pixelFormat = {4, encodingDataFormat ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
+            pixelFormat = {4, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
                            JXL_NATIVE_ENDIAN,
                            0};
             break;

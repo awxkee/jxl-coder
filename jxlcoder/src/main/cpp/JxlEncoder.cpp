@@ -49,6 +49,7 @@
 #include "RGBAlpha.h"
 #include "CopyUnaligned.h"
 #include "JxlDefinitions.h"
+#include "Rgb565.h"
 
 using namespace std;
 
@@ -133,12 +134,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
             int newStride = (int) info.width * 4 * (int) sizeof(uint8_t);
             std::vector<uint8_t> rgba8888Pixels(newStride * info.height);
-            libyuv::RGB565ToARGB(rgbaPixels.data(), (int) info.stride,
-                                 rgba8888Pixels.data(), newStride,
-                                 (int) info.width, (int) info.height);
-            libyuv::ARGBToABGR(rgba8888Pixels.data(), newStride,
-                               rgba8888Pixels.data(), newStride,
-                               (int) info.width, (int) info.height);
+            coder::Rgb565ToUnsigned8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                                     (int) info.stride,
+                                     rgba8888Pixels.data(), newStride,
+                                     (int) info.width, (int) info.height, 8, 255);
             imageStride = newStride;
             rgbaPixels = rgba8888Pixels;
         } else if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888) {

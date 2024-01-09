@@ -54,14 +54,22 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::PromoteTo;
     using hwy::HWY_NAMESPACE::DemoteTo;
     using hwy::HWY_NAMESPACE::Combine;
+    using hwy::HWY_NAMESPACE::And;
+    using hwy::HWY_NAMESPACE::LoadU;
     using hwy::HWY_NAMESPACE::Rebind;
+    using hwy::HWY_NAMESPACE::StoreInterleaved4;
     using hwy::HWY_NAMESPACE::LowerHalf;
     using hwy::HWY_NAMESPACE::ShiftLeft;
     using hwy::HWY_NAMESPACE::ShiftRight;
+    using hwy::HWY_NAMESPACE::PromoteLowerTo;
+    using hwy::HWY_NAMESPACE::PromoteUpperTo;
     using hwy::HWY_NAMESPACE::UpperHalf;
     using hwy::HWY_NAMESPACE::LoadInterleaved4;
     using hwy::HWY_NAMESPACE::StoreU;
     using hwy::HWY_NAMESPACE::Or;
+    using hwy::HWY_NAMESPACE::ApproximateReciprocal;
+    using hwy::HWY_NAMESPACE::Mul;
+    using hwy::HWY_NAMESPACE::Div;
     using hwy::float16_t;
     using hwy::float32_t;
 
@@ -107,6 +115,164 @@ namespace coder::HWY_NAMESPACE {
 
             src += 4;
             dst += 1;
+        }
+    }
+
+    void
+    Rgb565ToF16HWYRow(const uint16_t *source, uint16_t *destination, int width,
+                      const int *permuteMap) {
+        const FixedTag<uint16_t, 8> du16;
+        const FixedTag<float16_t, 8> df16;
+        const FixedTag<float16_t, 4> df16x4;
+        const FixedTag<uint32_t, 4> du32;
+        const FixedTag<float, 4> df;
+        using VU16 = Vec<decltype(du16)>;
+        using VF16 = Vec<decltype(df16)>;
+        using VF = Vec<decltype(df)>;
+
+        int x = 0;
+        int pixels = 8;
+
+        auto src = reinterpret_cast<const uint16_t *>(source);
+        auto dst = reinterpret_cast<uint16_t *>(destination);
+
+        int permute0Value = permuteMap[0];
+        int permute1Value = permuteMap[1];
+        int permute2Value = permuteMap[2];
+        int permute3Value = permuteMap[3];
+
+        const VU16 redBytes = Set(du16, 0b1111100000000000);
+        const VU16 greenBytes = Set(du16, 0b11111100000);
+        const VU16 blueBytes = Set(du16, 0b11111);
+        const VF16 bgPixel = Set(df16, float16_t(1.0));
+        const VF max8BitColors = ApproximateReciprocal(Set(df, 255));
+
+        for (; x + pixels < width; x += pixels) {
+            VU16 row = LoadU(du16, src);
+            auto rdu16Vec = ShiftRight<8>(And(row, redBytes));
+            auto gdu16Vec = ShiftRight<3>(And(row, greenBytes));
+            auto bdu16Vec = ShiftLeft<3>(And(row, blueBytes));
+
+            auto frdu16Vec = Combine(df16,
+                                     DemoteTo(df16x4,
+                                              Mul(ConvertTo(df, PromoteUpperTo(du32, rdu16Vec)),
+                                                  max8BitColors)),
+                                     DemoteTo(df16x4,
+                                              Mul(ConvertTo(df, PromoteLowerTo(du32, rdu16Vec)),
+                                                  max8BitColors)));
+            auto fgdu16Vec = Combine(df16,
+                                     DemoteTo(df16x4,
+                                              Mul(ConvertTo(df, PromoteUpperTo(du32, gdu16Vec)),
+                                                  max8BitColors)),
+                                     DemoteTo(df16x4,
+                                              Mul(ConvertTo(df, PromoteLowerTo(du32, gdu16Vec)),
+                                                  max8BitColors)));
+            auto fbdu16Vec = Combine(df16,
+                                     DemoteTo(df16x4,
+                                              Mul(ConvertTo(df, PromoteUpperTo(du32, bdu16Vec)),
+                                                  max8BitColors)),
+                                     DemoteTo(df16x4,
+                                              Mul(ConvertTo(df, PromoteLowerTo(du32, bdu16Vec)),
+                                                  max8BitColors)));
+
+            VF16 pixelsStore[4] = {bgPixel, frdu16Vec, fgdu16Vec, fbdu16Vec};
+            VF16 AV = pixelsStore[permute0Value];
+            VF16 RV = pixelsStore[permute1Value];
+            VF16 GV = pixelsStore[permute2Value];
+            VF16 BV = pixelsStore[permute3Value];
+
+            StoreInterleaved4(BitCast(du16, AV), BitCast(du16, RV), BitCast(du16, GV),
+                              BitCast(du16, BV), du16, reinterpret_cast<uint16_t *>(dst));
+
+            src += pixels;
+            dst += pixels * 4;
+        }
+
+        constexpr float approxMaxColors = 1 / 255.0f;
+
+        for (; x < width; ++x) {
+            uint16_t color565 = src[0];
+
+            uint16_t red565 = (color565 & 0b1111100000000000) >> 8;
+            uint16_t green565 = (color565 & 0b11111100000) >> 3;
+            uint16_t blue565 = (color565 & 0b11111) << 3;
+
+            uint16_t clr[4] = {float_to_half(1.0f),
+                               float_to_half(static_cast<float>(red565) * approxMaxColors),
+                               float_to_half(static_cast<float>(green565) * approxMaxColors),
+                               float_to_half(static_cast<float>(blue565) * approxMaxColors)};
+
+            dst[0] = clr[permute0Value];
+            dst[1] = clr[permute1Value];
+            dst[2] = clr[permute2Value];
+            dst[3] = clr[permute3Value];
+
+            src += 1;
+            dst += 4;
+        }
+    }
+
+    void
+    Rgb565ToU8HWYRow(const uint16_t *source, uint8_t *destination, int width,
+                     const int *permuteMap, const uint8_t bgColor) {
+        const FixedTag<uint16_t, 8> du16;
+        const FixedTag<uint8_t, 8> du8x8;
+        using VU16 = Vec<decltype(du16)>;
+        using VU8x8 = Vec<decltype(du8x8)>;
+
+        int x = 0;
+        int pixels = 8;
+
+        auto src = reinterpret_cast<const uint16_t *>(source);
+        auto dst = reinterpret_cast<uint8_t *>(destination);
+
+        const VU16 redBytes = Set(du16, 0b1111100000000000);
+        const VU16 greenBytes = Set(du16, 0b11111100000);
+        const VU16 blueBytes = Set(du16, 0b11111);
+        const VU8x8 bgPixel = Set(du8x8, bgColor);
+
+        int permute0Value = permuteMap[0];
+        int permute1Value = permuteMap[1];
+        int permute2Value = permuteMap[2];
+        int permute3Value = permuteMap[3];
+
+        for (; x + pixels < width; x += pixels) {
+            VU16 row = LoadU(du16, src);
+            auto rdu16Vec = DemoteTo(du8x8, ShiftRight<8>(And(row, redBytes)));
+            auto gdu16Vec = DemoteTo(du8x8, ShiftRight<3>(And(row, greenBytes)));
+            auto bdu16Vec = DemoteTo(du8x8, ShiftLeft<3>(And(row, blueBytes)));
+
+            VU8x8 pixelsStore[4] = {bgPixel, rdu16Vec, gdu16Vec, bdu16Vec};
+            VU8x8 AV = pixelsStore[permute0Value];
+            VU8x8 RV = pixelsStore[permute1Value];
+            VU8x8 GV = pixelsStore[permute2Value];
+            VU8x8 BV = pixelsStore[permute3Value];
+
+            StoreInterleaved4(AV, RV, GV, BV, du8x8, dst);
+
+            src += pixels;
+            dst += pixels * 4;
+        }
+
+        for (; x < width; ++x) {
+            uint16_t color565 = src[0];
+
+            uint16_t red8 = (color565 & 0b1111100000000000) >> 8;
+            uint16_t green8 = (color565 & 0b11111100000) >> 3;
+            uint16_t blue8 = (color565 & 0b11111) << 3;
+
+            uint8_t clr[4] = {bgColor,
+                              static_cast<uint8_t >(red8),
+                              static_cast<uint8_t >(green8),
+                              static_cast<uint8_t >(blue8)};
+
+            dst[0] = clr[permute0Value];
+            dst[1] = clr[permute1Value];
+            dst[2] = clr[permute2Value];
+            dst[3] = clr[permute3Value];
+
+            src += 1;
+            dst += 4;
         }
     }
 
@@ -364,12 +530,103 @@ namespace coder::HWY_NAMESPACE {
             thread.join();
         }
     }
+
+    void Rgb565ToF16HWY(const uint16_t *sourceData, int srcStride,
+                        uint16_t *dst, int dstStride, int width,
+                        int height, const int *permuteMap) {
+
+        auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
+        auto mDst = reinterpret_cast<uint8_t *>(dst);
+
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (312 * 312)), 1, 12);
+        vector<thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, mSrc, mDst, srcStride, dstStride, width, permuteMap]() {
+                        for (int y = start; y < end; ++y) {
+                            Rgb565ToF16HWYRow(
+                                    reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
+                                    reinterpret_cast<uint16_t *>(mDst + dstStride * y),
+                                    width, permuteMap);
+                        }
+                    });
+        }
+
+        for (std::thread &thread: workers) {
+            thread.join();
+        }
+    }
+
+    void Rgb565ToU8HWY(const uint16_t *sourceData, int srcStride,
+                       uint8_t *dst, int dstStride, int width,
+                       int height, int bitDepth, const int *permuteMap, const uint8_t bgColor) {
+
+        auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
+        auto mDst = reinterpret_cast<uint8_t *>(dst);
+
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    width * height / (312 * 312)), 1, 12);
+        vector<thread> workers;
+
+        int segmentHeight = height / threadCount;
+
+        for (int i = 0; i < threadCount; i++) {
+            int start = i * segmentHeight;
+            int end = (i + 1) * segmentHeight;
+            if (i == threadCount - 1) {
+                end = height;
+            }
+            workers.emplace_back(
+                    [start, end, mSrc, mDst, srcStride, dstStride, width, permuteMap, bgColor]() {
+                        for (int y = start; y < end; ++y) {
+                            Rgb565ToU8HWYRow(
+                                    reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
+                                    reinterpret_cast<uint8_t *>(mDst + dstStride * y),
+                                    width, permuteMap, bgColor);
+                        }
+                    });
+        }
+
+        for (std::thread &thread: workers) {
+            thread.join();
+        }
+    }
 }
 
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
 namespace coder {
+
+    HWY_EXPORT(Rgb565ToU8HWY);
+
+    void Rgb565ToUnsigned8(const uint16_t *sourceData, int srcStride,
+                           uint8_t *dst, int dstStride, int width,
+                           int height, int bitDepth, const uint8_t bgColor) {
+        int permuteMap[4] = {1, 2, 3, 0};
+        HWY_DYNAMIC_DISPATCH(Rgb565ToU8HWY)(sourceData, srcStride, dst, dstStride, width, height,
+                                            bitDepth, permuteMap, bgColor);
+    }
+
+    HWY_EXPORT(Rgb565ToF16HWY);
+
+    void Rgb565ToF16(const uint16_t *sourceData, int srcStride,
+                     uint16_t *dst, int dstStride, int width,
+                     int height) {
+        int permuteMap[4] = {1, 2, 3, 0};
+        HWY_DYNAMIC_DISPATCH(Rgb565ToF16HWY)(sourceData, srcStride, dst, dstStride, width, height,
+                                             permuteMap);
+    }
+
     HWY_EXPORT(Rgba8To565HWY);
     HWY_DLLEXPORT void Rgba8To565(const uint8_t *sourceData, int srcStride,
                                   uint16_t *dst, int dstStride, int width,

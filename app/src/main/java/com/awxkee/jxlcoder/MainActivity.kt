@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,24 +56,28 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("animated_jxl.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("dark_street.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
 //
 //            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
 ////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
-//            val compressedBuffer = JxlCoder().encode(
-//                image,
-//                colorSpace = JxlColorSpace.RGBA,
-//                compressionOption = JxlCompressionOption.LOSSY,
-//                effort = 8,
-//                quality = 100,
-//            )
-//            val decompressedImage = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_8888)
 
-            val animatedImage = JxlAnimatedImage(buffer4)
-            val drawable = animatedImage.animatedDrawable
+            val decompressedImage = JxlCoder().decode(buffer4, preferredColorConfig = PreferredColorConfig.RGB_565)
+
+            val compressedBuffer = JxlCoder().encode(
+                decompressedImage,
+                colorSpace = JxlColorSpace.RGBA,
+                compressionOption = JxlCompressionOption.LOSSY,
+                effort = 8,
+                quality = 100,
+            )
+
+            val image = JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGBA_8888)
+
+//            val animatedImage = JxlAnimatedImage(buffer4)
+//            val drawable = animatedImage.animatedDrawable
 
             setContent {
                 JXLCoderTheme {
@@ -113,8 +118,9 @@ class MainActivity : ComponentActivity() {
 //                        )
 
                         Image(
-                            painter = rememberDrawablePainter(drawable = drawable),
-                            modifier = Modifier.fillMaxWidth(),
+                            bitmap = image.asImageBitmap(),
+//                            painter = rememberDrawablePainter(drawable = drawable),
+                            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                             contentScale = ContentScale.FillWidth,
                             contentDescription = "ok"
                         )
