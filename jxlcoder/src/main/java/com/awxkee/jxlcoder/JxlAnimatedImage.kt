@@ -46,8 +46,6 @@ class JxlAnimatedImage : Closeable {
 
     private external fun createCoordinator(
         byteArray: ByteBuffer,
-        width: Int,
-        height: Int,
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
@@ -55,8 +53,6 @@ class JxlAnimatedImage : Closeable {
 
     private external fun createCoordinatorByteArray(
         byteArray: ByteArray,
-        width: Int,
-        height: Int,
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
@@ -65,16 +61,12 @@ class JxlAnimatedImage : Closeable {
     @Keep
     public constructor(
         byteBuffer: ByteBuffer,
-        scaleWidth: Int = 0, // zero scaleWidth or scaleHeight means no rescale needed
-        scaleHeight: Int = 0, // zero scaleWidth or scaleHeight means no rescale needed
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
     ) {
         coordinator = createCoordinator(
             byteBuffer,
-            scaleWidth,
-            scaleHeight,
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
@@ -84,16 +76,12 @@ class JxlAnimatedImage : Closeable {
     @Keep
     public constructor(
         byteArray: ByteArray,
-        scaleWidth: Int = 0, // zero scaleWidth or scaleHeight means no rescale needed
-        scaleHeight: Int = 0, // zero scaleWidth or scaleHeight means no rescale needed
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
     ) {
         coordinator = createCoordinatorByteArray(
             byteArray,
-            scaleWidth,
-            scaleHeight,
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
@@ -139,9 +127,9 @@ class JxlAnimatedImage : Closeable {
     }
 
     @Keep
-    public fun getFrame(frame: Int): Bitmap {
+    public fun getFrame(frame: Int, scaleWidth: Int = 0, scaleHeight: Int = 0): Bitmap {
         assertOpen()
-        return getFrameImpl(coordinator, frame)
+        return getFrameImpl(coordinator, frame, scaleWidth, scaleHeight)
     }
 
     @Keep
@@ -166,7 +154,13 @@ class JxlAnimatedImage : Closeable {
 
     private external fun getHeightImpl(coordinatorPtr: Long): Int
     private external fun getWidthImpl(coordinatorPtr: Long): Int
-    private external fun getFrameImpl(coordinatorPtr: Long, frame: Int): Bitmap
+    private external fun getFrameImpl(
+        coordinatorPtr: Long,
+        frame: Int,
+        width: Int,
+        height: Int
+    ): Bitmap
+
     private external fun getLoopsCount(coordinatorPtr: Long): Int
     private external fun getFrameDurationImpl(coordinatorPtr: Long, frame: Int): Int
     private external fun getNumberOfFrames(coordinatorPtr: Long): Int

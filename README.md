@@ -23,7 +23,8 @@ val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JPEG
 ```kotlin
 val animatedImage = JxlAnimatedImage(jxlBuffer) // Creates an animated image
 val frames = numberOfFrames
-val drawable = animatedImage.animatedDrawable // if you just wish get an animated drawable
+val drawable =
+    animatedImage.animatedDrawable // if you just wish get an animated drawable NOT OPTIMIZED It will just render all bitmaps into one drawable
 for (frame in 0 until frames) {
     val frameDuration = getFrameDuration(frame)
     val frameBitmap = getFrame(frame)

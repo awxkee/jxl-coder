@@ -43,7 +43,6 @@ extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject thiz,
                                                             jobject byteBuffer,
-                                                            jint scaleWidth, jint scaleHeight,
                                                             jint javaPreferredColorConfig,
                                                             jint javaScaleMode,
                                                             jint javaJxlResizeSampler) {
@@ -74,7 +73,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject
         copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
         JxlAnimatedDecoder *decoder = new JxlAnimatedDecoder(srcBuffer);
         JxlAnimatedDecoderCoordinator *coordinator = new JxlAnimatedDecoderCoordinator(
-                decoder, scaleWidth, scaleHeight, scaleMode, preferredColorConfig, sampler
+                decoder, scaleMode, preferredColorConfig, sampler
         );
         return reinterpret_cast<jlong >(coordinator);
     } catch (AnimatedDecoderError &err) {
@@ -92,8 +91,6 @@ extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env, jobject thiz,
                                                                      jbyteArray byteArray,
-                                                                     jint scaleWidth,
-                                                                     jint scaleHeight,
                                                                      jint javaPreferredColorConfig,
                                                                      jint javaScaleMode,
                                                                      jint javaJxlResizeSampler) {
@@ -119,7 +116,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
                                 reinterpret_cast<jbyte *>(srcBuffer.data()));
         JxlAnimatedDecoder *decoder = new JxlAnimatedDecoder(srcBuffer);
         JxlAnimatedDecoderCoordinator *coordinator = new JxlAnimatedDecoderCoordinator(
-                decoder, scaleWidth, scaleHeight, scaleMode, preferredColorConfig, sampler
+                decoder, scaleMode, preferredColorConfig, sampler
         );
         return reinterpret_cast<jlong >(coordinator);
     } catch (AnimatedDecoderError &err) {
@@ -136,7 +133,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_awxkee_jxlcoder_JxlAnimatedImage_closeAndReleaseAnimatedImage(JNIEnv *env, jobject thiz,
-                                                          jlong coordinatorPtr) {
+                                                                       jlong coordinatorPtr) {
     JxlAnimatedDecoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedDecoderCoordinator *>(coordinatorPtr);
     delete coordinator;
 }
@@ -167,7 +164,8 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getLoopsCount(JNIEnv *env, jobject thi
 extern "C"
 JNIEXPORT jobject JNICALL
 Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz,
-                                                       jlong coordinatorPtr, jint frameIndex) {
+                                                       jlong coordinatorPtr, jint frameIndex,
+                                                       jint scaleWidth, jint scaleHeight) {
     try {
         JxlAnimatedDecoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedDecoderCoordinator *>(coordinatorPtr);
 
@@ -188,8 +186,8 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                                         iccProfile.size(),
                                         useFloat16);
         }
-        int scaledWidth = coordinator->getScaleWidth();
-        int scaledHeight = coordinator->getScaleHeight();
+        int scaledWidth = scaleWidth;
+        int scaledHeight = scaleHeight;
         bool useSampler =
                 (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
 

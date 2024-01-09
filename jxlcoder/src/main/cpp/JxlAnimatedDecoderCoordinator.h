@@ -40,14 +40,11 @@ class JxlAnimatedDecoderCoordinator {
 
 public:
     JxlAnimatedDecoderCoordinator(JxlAnimatedDecoder *decoder,
-                                  int scaleWidth, int scaleHeight,
                                   ScaleMode scaleMode,
                                   PreferredColorConfig preferredColorConfig,
                                   XSampler sample) : decoder(decoder), scaleMode(scaleMode),
                                                      preferredColorConfig(preferredColorConfig),
-                                                     sampler(sample),
-                                                     scaleHeight(scaleHeight),
-                                                     scaleWidth(scaleWidth) {
+                                                     sampler(sample) {
 
     }
 
@@ -98,20 +95,11 @@ public:
         return decoder->getHeight();
     }
 
-    int getScaleWidth() {
-        return scaleWidth;
-    }
-
-    int getScaleHeight() {
-        return scaleHeight;
-    }
-
     bool isAlphaAttenuated() {
         return decoder->isAlphaAttenuated();
     }
 
 private:
-    int scaleWidth, scaleHeight;
     JxlAnimatedDecoder *decoder;
     ScaleMode scaleMode;
     PreferredColorConfig preferredColorConfig;
