@@ -18,7 +18,7 @@ val bitmap: Bitmap =
 val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JPEG XL
 ```
 
-# Animation
+# Animation Decoding
 
 ```kotlin
 val animatedImage = JxlAnimatedImage(jxlBuffer) // Creates an animated image
@@ -29,6 +29,18 @@ for (frame in 0 until frames) {
     val frameBitmap = getFrame(frame)
     // Do something with frame and duration
 }
+```
+
+# Animation Encoding
+
+```kotlin
+val encoder = JxlAnimatedEncoder(
+    width = width,
+    height = width,
+)
+encoder.addFrame(firstFrame, duration = 2000) // Duration in ms
+encoder.addFrame(secondFrame, duration = 2000) // Duration in ms
+val compressedBuffer: ByteArray = encoder.encode() // Do something with buffer
 ```
 
 # Add Jitpack repository

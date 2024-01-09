@@ -63,8 +63,20 @@ public:
         return colorPixelType;
     }
 
+    int getWidth() {
+        return encoder->getWidth();
+    }
+
+    int getHeight() {
+        return encoder->getHeight();
+    }
+
     JxlAnimatedEncoder *getEncoder() {
         return encoder;
+    }
+
+    void finish(vector<uint8_t> &dst) {
+        return encoder->encode(dst);
     }
 
     ~JxlAnimatedEncoderCoordinator() {

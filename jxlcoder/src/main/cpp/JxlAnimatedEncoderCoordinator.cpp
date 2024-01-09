@@ -144,9 +144,21 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                                                          jlong coordinatorPtr, jobject bitmap,
                                                          jint duration) {
     try {
+        JxlAnimatedEncoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
+
         AndroidBitmapInfo info;
         if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) {
             throwPixelsException(env);
+            return;
+        }
+
+        if (info.width != coordinator->getWidth() || info.height != coordinator->getHeight()) {
+            std::string exc = "Bounds of each frames must be the same to origin (" +
+                              to_string(coordinator->getWidth()) + "," +
+                              to_string(coordinator->getHeight()) + "), but were provided (" +
+                              to_string(info.width) + ", " +
+                              to_string(info.height) + ")";
+            throwException(env, exc);
             return;
         }
 
@@ -181,7 +193,6 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
             return;
         }
 
-        JxlAnimatedEncoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
         JxlEncodingPixelDataFormat dataPixelFormat = coordinator->getDataPixelFormat();
         int imageStride = (int) info.stride;
         if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
@@ -220,8 +231,8 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                 int b16Stride = (int) info.width * 4 * (int) sizeof(uint16_t);
                 vector<uint8_t> halfFloatPixels(imageStride * info.height);
                 coder::Rgb565ToF16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), newStride,
-                                    reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
-                                    (int) info.width, (int) info.height);
+                                   reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
+                                   (int) info.width, (int) info.height);
                 imageStride = b16Stride;
                 rgbaPixels = halfFloatPixels;
             }
@@ -308,5 +319,30 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
         std::string errorString = err.what();
         throwException(env, errorString);
         return;
+    }
+}
+
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_encodeAnimatedImpl(JNIEnv *env, jobject thiz,
+                                                               jlong coordinatorPtr) {
+    try {
+        JxlAnimatedEncoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
+        vector<uint8_t> buffer;
+        coordinator->finish(ref(buffer));
+        jbyteArray byteArray = env->NewByteArray((jsize) buffer.size());
+        char *memBuf = (char *) ((void *) buffer.data());
+        env->SetByteArrayRegion(byteArray, 0, (jint) buffer.size(),
+                                reinterpret_cast<const jbyte *>(memBuf));
+        buffer.clear();
+        return byteArray;
+    } catch (std::bad_alloc &err) {
+        std::string errorString = "OOM: " + string(err.what());
+        throwException(env, errorString);
+        return static_cast<jbyteArray >(nullptr);
+    } catch (AnimatedEncoderError &err) {
+        std::string errorString = err.what();
+        throwException(env, errorString);
+        return static_cast<jbyteArray >(nullptr);
     }
 }

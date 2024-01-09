@@ -43,7 +43,7 @@ class JxlAnimatedEncoder : Closeable {
     constructor(
         width: Int,
         height: Int,
-        numLoops: Int,
+        numLoops: Int = 0,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         @IntRange(from = 1L, to = 9L) effort: Int = 7,
@@ -68,6 +68,13 @@ class JxlAnimatedEncoder : Closeable {
         addFrameImpl(coordinator, bitmap, duration)
     }
 
+    fun encode(): ByteArray {
+        assertOpen()
+        val bos = encodeAnimatedImpl(coordinator)
+        close()
+        return bos
+    }
+
     private external fun createEncodeCoordinator(
         width: Int,
         height: Int,
@@ -81,6 +88,7 @@ class JxlAnimatedEncoder : Closeable {
         dataPixelFormat: Int,
     ): Long
 
+    private external fun encodeAnimatedImpl(coordinatorPtr: Long): ByteArray
     private external fun addFrameImpl(coordinatorPtr: Long, bitmap: Bitmap, duration: Int)
     private external fun closeAndReleaseAnimatedEncoder(coordinatorPtr: Long)
 
