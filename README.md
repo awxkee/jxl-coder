@@ -18,7 +18,7 @@ val bitmap: Bitmap =
 val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JPEG XL
 ```
 
-// Animation
+# Animation
 
 ```kotlin
 val animatedImage = JxlAnimatedImage(jxlBuffer) // Creates an animated image
