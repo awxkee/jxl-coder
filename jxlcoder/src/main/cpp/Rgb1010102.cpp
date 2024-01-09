@@ -90,6 +90,11 @@ namespace coder::HWY_NAMESPACE {
         const Rebind<float16_t, FixedTag<uint16_t, 8>> rbfu16;
         const Rebind<float, FixedTag<float16_t, 4>> rbf32;
 
+        const int permute0Value = permuteMap[0];
+        const int permute1Value = permuteMap[1];
+        const int permute2Value = permuteMap[2];
+        const int permute3Value = permuteMap[3];
+
         int x = 0;
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
         int pixels = 8;
@@ -141,20 +146,20 @@ namespace coder::HWY_NAMESPACE {
             VU pixelsuHigh4 = BitCast(du, ConvertTo(di32, pixelsHigh4));
 
             VU pixelsHighStore[4] = {pixelsuHigh1, pixelsuHigh2, pixelsuHigh3, pixelsuHigh4};
-            VU AV = pixelsHighStore[permuteMap[0]];
-            VU RV = pixelsHighStore[permuteMap[1]];
-            VU GV = pixelsHighStore[permuteMap[2]];
-            VU BV = pixelsHighStore[permuteMap[3]];
+            VU AV = pixelsHighStore[permute0Value];
+            VU RV = pixelsHighStore[permute1Value];
+            VU GV = pixelsHighStore[permute2Value];
+            VU BV = pixelsHighStore[permute3Value];
             VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             VU lower = Or(ShiftLeft<10>(GV), BV);
             VU final = Or(upper, lower);
             StoreU(final, du, dst32 + 4);
 
             VU pixelsLowStore[4] = {pixelsuLow1, pixelsuLow2, pixelsuLow3, pixelsuLow4};
-            AV = pixelsLowStore[permuteMap[0]];
-            RV = pixelsLowStore[permuteMap[1]];
-            GV = pixelsLowStore[permuteMap[2]];
-            BV = pixelsLowStore[permuteMap[3]];
+            AV = pixelsLowStore[permute0Value];
+            RV = pixelsLowStore[permute1Value];
+            GV = pixelsLowStore[permute2Value];
+            BV = pixelsLowStore[permute3Value];
             upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             lower = Or(ShiftLeft<10>(GV), BV);
             final = Or(upper, lower);
@@ -165,10 +170,10 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            auto A16 = (float) half_to_float(data[permuteMap[0]]);
-            auto R16 = (float) half_to_float(data[permuteMap[1]]);
-            auto G16 = (float) half_to_float(data[permuteMap[2]]);
-            auto B16 = (float) half_to_float(data[permuteMap[3]]);
+            auto A16 = (float) half_to_float(data[permute0Value]);
+            auto R16 = (float) half_to_float(data[permute1Value]);
+            auto G16 = (float) half_to_float(data[permute2Value]);
+            auto B16 = (float) half_to_float(data[permute3Value]);
             auto R10 = (uint32_t) (clamp(round(R16 * range10), 0.0f, (float) range10));
             auto G10 = (uint32_t) (clamp(round(G16 * range10), 0.0f, (float) range10));
             auto B10 = (uint32_t) (clamp(round(B16 * range10), 0.0f, (float) range10));
@@ -194,6 +199,11 @@ namespace coder::HWY_NAMESPACE {
         const auto vRange10 = Set(df, range10);
         const auto zeros = Zero(df);
         const auto alphaMax = Set(df, 3.0);
+
+        const int permute0Value = permuteMap[0];
+        const int permute1Value = permuteMap[1];
+        const int permute2Value = permuteMap[2];
+        const int permute3Value = permuteMap[3];
 
         int x = 0;
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
@@ -223,10 +233,10 @@ namespace coder::HWY_NAMESPACE {
             VU pixelsu4 = BitCast(du, ConvertTo(di32, pixels4));
 
             VU pixelsStore[4] = {pixelsu1, pixelsu2, pixelsu3, pixelsu4};
-            VU AV = pixelsStore[permuteMap[0]];
-            VU RV = pixelsStore[permuteMap[1]];
-            VU GV = pixelsStore[permuteMap[2]];
-            VU BV = pixelsStore[permuteMap[3]];
+            VU AV = pixelsStore[permute0Value];
+            VU RV = pixelsStore[permute1Value];
+            VU GV = pixelsStore[permute2Value];
+            VU BV = pixelsStore[permute3Value];
             VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             VU lower = Or(ShiftLeft<10>(GV), BV);
             VU final = Or(upper, lower);
@@ -236,10 +246,10 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            auto A16 = (float) data[permuteMap[0]];
-            auto R16 = (float) data[permuteMap[1]];
-            auto G16 = (float) data[permuteMap[2]];
-            auto B16 = (float) data[permuteMap[3]];
+            auto A16 = (float) data[permute0Value];
+            auto R16 = (float) data[permute1Value];
+            auto G16 = (float) data[permute2Value];
+            auto B16 = (float) data[permute3Value];
             auto R10 = (uint32_t) (clamp(R16 * range10, 0.0f, (float) range10));
             auto G10 = (uint32_t) (clamp(G16 * range10, 0.0f, (float) range10));
             auto B10 = (uint32_t) (clamp(B16 * range10, 0.0f, (float) range10));
@@ -263,6 +273,11 @@ namespace coder::HWY_NAMESPACE {
         using VU8 = Vec<decltype(du8x8)>;
         using VU = Vec<decltype(du)>;
 
+        const int permute0Value = permuteMap[0];
+        const int permute1Value = permuteMap[1];
+        const int permute2Value = permuteMap[2];
+        const int permute3Value = permuteMap[3];
+
         int x = 0;
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
         int pixels = 8;
@@ -285,10 +300,10 @@ namespace coder::HWY_NAMESPACE {
                             Set(du, 3)), Set(du, 127)));
 
             VU pixelsStore[4] = {pixelsu1, pixelsu2, pixelsu3, pixelsu4};
-            VU AV = pixelsStore[permuteMap[0]];
-            VU RV = pixelsStore[permuteMap[1]];
-            VU GV = pixelsStore[permuteMap[2]];
-            VU BV = pixelsStore[permuteMap[3]];
+            VU AV = pixelsStore[permute0Value];
+            VU RV = pixelsStore[permute1Value];
+            VU GV = pixelsStore[permute2Value];
+            VU BV = pixelsStore[permute3Value];
             VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             VU lower = Or(ShiftLeft<10>(GV), BV);
             VU final = Or(upper, lower);
@@ -305,10 +320,10 @@ namespace coder::HWY_NAMESPACE {
                             Set(du, 3)), Set(du, 127)));
 
             VU pixelsLowStore[4] = {pixelsu1, pixelsu2, pixelsu3, pixelsu4};
-            AV = pixelsLowStore[permuteMap[0]];
-            RV = pixelsLowStore[permuteMap[1]];
-            GV = pixelsLowStore[permuteMap[2]];
-            BV = pixelsLowStore[permuteMap[3]];
+            AV = pixelsStore[permute0Value];
+            RV = pixelsStore[permute1Value];
+            GV = pixelsStore[permute2Value];
+            BV = pixelsStore[permute3Value];
             upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
             lower = Or(ShiftLeft<10>(GV), BV);
             final = Or(upper, lower);
@@ -319,10 +334,10 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            auto A16 = ((uint32_t) data[permuteMap[0]] * 3 + 127) >> 8;
-            auto R16 = (uint32_t) data[permuteMap[1]] * 4;
-            auto G16 = (uint32_t) data[permuteMap[2]] * 4;
-            auto B16 = (uint32_t) data[permuteMap[3]] * 4;
+            auto A16 = ((uint32_t) data[permute0Value] * 3 + 127) >> 8;
+            auto R16 = (uint32_t) data[permute1Value] * 4;
+            auto G16 = (uint32_t) data[permute2Value] * 4;
+            auto B16 = (uint32_t) data[permute3Value] * 4;
 
             dst32[0] = (A16 << 30) | (R16 << 20) | (G16 << 10) | B16;
             data += 4;
@@ -582,6 +597,8 @@ void convertRGBA1010102ToU16_NEON(const uint8_t *src, int srcStride, uint16_t *d
 
     auto dstPtr = reinterpret_cast<uint8_t *>(dst);
 
+    constexpr float valueScale = 255.0f / 1023.0;
+
     for (int y = 0; y < height; ++y) {
         const uint8_t *srcPointer = src;
         uint8_t *dstPointer = dstPtr;
@@ -633,15 +650,14 @@ void convertRGBA1010102ToU16_NEON(const uint8_t *src, int srcStride, uint16_t *d
             uint32_t a1 = (rgba1010102 >> 30);
             uint32_t a = (a1 << 8) | (a1 << 6) | (a1 << 4) | (a1 << 2) | a1;
 
-            // Convert each channel to floating-point values
-            auto rFloat = std::clamp(static_cast<uint8_t>((r * 255) / 1023), (uint8_t) 255,
-                                     (uint8_t) 0);
-            auto gFloat = std::clamp(static_cast<uint8_t>((g * 255) / 1023), (uint8_t) 255,
-                                     (uint8_t) 0);
-            auto bFloat = std::clamp(static_cast<uint8_t>((b * 255) / 1023), (uint8_t) 255,
-                                     (uint8_t) 0);
-            auto aFloat = std::clamp(static_cast<uint8_t>((a * 255) / 1023), (uint8_t) 255,
-                                     (uint8_t) 0);
+            auto rFloat = clamp(static_cast<uint8_t>(r * valueScale), (uint8_t) 255,
+                                (uint8_t) 0);
+            auto gFloat = clamp(static_cast<uint8_t>(g * valueScale), (uint8_t) 255,
+                                (uint8_t) 0);
+            auto bFloat = clamp(static_cast<uint8_t>(b * valueScale), (uint8_t) 255,
+                                (uint8_t) 0);
+            auto aFloat = clamp(static_cast<uint8_t>(a * valueScale), (uint8_t) 255,
+                                (uint8_t) 0);
 
             auto dstCast = reinterpret_cast<uint8_t *>(dstPointer);
             if (littleEndian) {
@@ -744,6 +760,8 @@ void convertRGBA1010102ToU8_C(const uint8_t *src, int srcStride, uint8_t *dst, i
 
     const uint32_t mask = (1u << 10u) - 1u;
 
+    constexpr float valueScale = 255.0f / 1023.0;
+
     for (int y = 0; y < height; ++y) {
 
         auto dstPointer = reinterpret_cast<uint8_t *>(mDstPointer);
@@ -759,14 +777,13 @@ void convertRGBA1010102ToU8_C(const uint8_t *src, int srcStride, uint8_t *dst, i
             uint32_t a1 = (rgba1010102 >> 30);
             uint32_t a = (a1 << 8) | (a1 << 6) | (a1 << 4) | (a1 << 2) | a1;
 
-            // Convert each channel to floating-point values
-            auto rFloat = clamp(static_cast<uint8_t>((r * 255) / 1023), (uint8_t) 255,
+            auto rFloat = clamp(static_cast<uint8_t>(r * valueScale), (uint8_t) 255,
                                 (uint8_t) 0);
-            auto gFloat = clamp(static_cast<uint8_t>((g * 255) / 1023), (uint8_t) 255,
+            auto gFloat = clamp(static_cast<uint8_t>(g * valueScale), (uint8_t) 255,
                                 (uint8_t) 0);
-            auto bFloat = clamp(static_cast<uint8_t>((b * 255) / 1023), (uint8_t) 255,
+            auto bFloat = clamp(static_cast<uint8_t>(b * valueScale), (uint8_t) 255,
                                 (uint8_t) 0);
-            auto aFloat = clamp(static_cast<uint8_t>((a * 255) / 1023), (uint8_t) 255,
+            auto aFloat = clamp(static_cast<uint8_t>(a * valueScale), (uint8_t) 255,
                                 (uint8_t) 0);
 
             auto dstCast = reinterpret_cast<uint8_t *>(dstPointer);

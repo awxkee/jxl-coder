@@ -136,10 +136,10 @@ namespace coder::HWY_NAMESPACE {
         auto src = reinterpret_cast<const uint16_t *>(source);
         auto dst = reinterpret_cast<uint16_t *>(destination);
 
-        int permute0Value = permuteMap[0];
-        int permute1Value = permuteMap[1];
-        int permute2Value = permuteMap[2];
-        int permute3Value = permuteMap[3];
+        const int permute0Value = permuteMap[0];
+        const int permute1Value = permuteMap[1];
+        const int permute2Value = permuteMap[2];
+        const int permute3Value = permuteMap[3];
 
         const VU16 redBytes = Set(du16, 0b1111100000000000);
         const VU16 greenBytes = Set(du16, 0b11111100000);
@@ -231,10 +231,10 @@ namespace coder::HWY_NAMESPACE {
         const VU16 blueBytes = Set(du16, 0b11111);
         const VU8x8 bgPixel = Set(du8x8, bgColor);
 
-        int permute0Value = permuteMap[0];
-        int permute1Value = permuteMap[1];
-        int permute2Value = permuteMap[2];
-        int permute3Value = permuteMap[3];
+        const int permute0Value = permuteMap[0];
+        const int permute1Value = permuteMap[1];
+        const int permute2Value = permuteMap[2];
+        const int permute3Value = permuteMap[3];
 
         for (; x + pixels < width; x += pixels) {
             VU16 row = LoadU(du16, src);
