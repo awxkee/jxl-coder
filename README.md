@@ -7,6 +7,8 @@ capabilities to enhance your app's image handling capabilities.
 
 ICC profiles supported. Supports animations as well
 
+Image processing speeded up by [libhwy](https://github.com/google/highway)
+
 # Usage example
 
 ```kotlin
@@ -53,13 +55,13 @@ repositories {
 ```
 
 ```groovy
-implementation 'com.github.awxkee:jxl-coder:1.7.1' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder:1.7.2' // or any version above picker from release tags
 
 // Glide JPEG XL plugin if you need one
-implementation 'com.github.awxkee:jxl-coder-glide:1.7.1' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder-glide:1.7.2' // or any version above picker from release tags
 
 // Coil JPEG XL plugin if you need one
-implementation 'com.github.awxkee:jxl-coder-coil:1.7.1' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder-coil:1.7.2' // or any version above picker from release tags
 ```
 
 # Self-build
