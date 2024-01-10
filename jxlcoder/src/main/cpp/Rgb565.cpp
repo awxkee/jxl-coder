@@ -73,42 +73,107 @@ namespace coder::HWY_NAMESPACE {
     using hwy::float16_t;
     using hwy::float32_t;
 
-    void
-    Rgba8To565HWYRow(const uint8_t *source, uint16_t *destination, int width) {
-        const FixedTag<uint16_t, 8> du16;
+    template<typename D, typename I = Vec<D>>
+    inline __attribute__((flatten)) I
+    AttenuateVecR565(D d, I vec, I alpha) {
+        const FixedTag<uint32_t, 4> du32x4;
+        const FixedTag<uint16_t, 8> du16x8;
         const FixedTag<uint8_t, 8> du8x8;
-        using VU16 = Vec<decltype(du16)>;
-        using VU8x8 = Vec<decltype(du8x8)>;
+        const FixedTag<uint8_t, 4> du8x4;
+        const FixedTag<float, 4> df32x4;
+        using VF32x4 = Vec<decltype(df32x4)>;
+        const VF32x4 mult255 = ApproximateReciprocal(Set(df32x4, 255));
 
-        Rebind<uint16_t, FixedTag<uint8_t, 8>> rdu16;
+        auto vecLow = LowerHalf(vec);
+        auto alphaLow = LowerHalf(alpha);
+        auto vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecLow)));
+        auto mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaLow)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto lowlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+
+        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecLow)));
+        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaLow)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto lowhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+
+        auto vecHigh = UpperHalf(du8x8, vec);
+        auto alphaHigh = UpperHalf(du8x8, alpha);
+
+        vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecHigh)));
+        mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaHigh)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto highlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+
+        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecHigh)));
+        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaHigh)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto highhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+        auto low = Combine(du8x8, lowhigh, lowlow);
+        auto high = Combine(du8x8, highhigh, highlow);
+        return Combine(d, high, low);
+    }
+
+    void
+    Rgba8To565HWYRow(const uint8_t *source, uint16_t *destination, int width,
+                     const bool attenuateAlpha) {
+        const FixedTag<uint16_t, 8> du16;
+        const FixedTag<uint8_t, 16> du8x16;
+        using VU16 = Vec<decltype(du16)>;
+        using VU8x16 = Vec<decltype(du8x16)>;
 
         int x = 0;
-        int pixels = 8;
+        int pixels = 16;
 
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint16_t *>(destination);
-        for (x = 0; x + pixels < width; x += pixels) {
-            VU8x8 ru8Row;
-            VU8x8 gu8Row;
-            VU8x8 bu8Row;
-            VU8x8 au8Row;
-            LoadInterleaved4(du8x8, reinterpret_cast<const uint8_t *>(src),
+        for (; x + pixels < width; x += pixels) {
+            VU8x16 ru8Row;
+            VU8x16 gu8Row;
+            VU8x16 bu8Row;
+            VU8x16 au8Row;
+
+            LoadInterleaved4(du8x16, reinterpret_cast<const uint8_t *>(src),
                              ru8Row, gu8Row, bu8Row, au8Row);
 
-            auto rdu16Vec = ShiftLeft<11>(ShiftRight<3>(PromoteTo(rdu16, ru8Row)));
-            auto gdu16Vec = ShiftLeft<5>(ShiftRight<2>(PromoteTo(rdu16, gu8Row)));
-            auto bdu16Vec = ShiftRight<3>(PromoteTo(rdu16, bu8Row));
+            if (attenuateAlpha) {
+                ru8Row = AttenuateVecR565(du8x16, ru8Row, au8Row);
+                gu8Row = AttenuateVecR565(du8x16, gu8Row, au8Row);
+                bu8Row = AttenuateVecR565(du8x16, bu8Row, au8Row);
+            }
+
+            auto rdu16Vec = ShiftLeft<11>(ShiftRight<3>(PromoteLowerTo(du16, ru8Row)));
+            auto gdu16Vec = ShiftLeft<5>(ShiftRight<2>(PromoteLowerTo(du16, gu8Row)));
+            auto bdu16Vec = ShiftRight<3>(PromoteLowerTo(du16, bu8Row));
 
             auto result = Or(Or(rdu16Vec, gdu16Vec), bdu16Vec);
             StoreU(result, du16, dst);
+
+            rdu16Vec = ShiftLeft<11>(ShiftRight<3>(PromoteUpperTo(du16, ru8Row)));
+            gdu16Vec = ShiftLeft<5>(ShiftRight<2>(PromoteUpperTo(du16, gu8Row)));
+            bdu16Vec = ShiftRight<3>(PromoteUpperTo(du16, bu8Row));
+
+            result = Or(Or(rdu16Vec, gdu16Vec), bdu16Vec);
+            Store(result, du16, dst + 8);
+
             src += 4 * pixels;
             dst += pixels;
         }
 
         for (; x < width; ++x) {
-            uint16_t red565 = (src[0] >> 3) << 11;
-            uint16_t green565 = (src[1] >> 2) << 5;
-            uint16_t blue565 = src[2] >> 3;
+            uint8_t alpha = src[3];
+            uint8_t r = src[0];
+            uint8_t g = src[1];
+            uint8_t b = src[2];
+
+            if (attenuateAlpha) {
+                r = (r * alpha + 127) / 255;
+                g = (g * alpha + 127) / 255;
+                b = (b * alpha + 127) / 255;
+            }
+
+            uint16_t red565 = (r >> 3) << 11;
+            uint16_t green565 = (g >> 2) << 5;
+            uint16_t blue565 = b >> 3;
 
             auto result = static_cast<uint16_t>(red565 | green565 | blue565);
             dst[0] = result;
@@ -278,7 +343,7 @@ namespace coder::HWY_NAMESPACE {
 
     void Rgba8To565HWY(const uint8_t *sourceData, const int srcStride,
                        uint16_t *dst, const int dstStride, const int width,
-                       const int height, const int bitDepth) {
+                       const int height, const int bitDepth, const bool attenuateAlpha) {
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
@@ -296,12 +361,12 @@ namespace coder::HWY_NAMESPACE {
                 end = height;
             }
             workers.emplace_back(
-                    [start, end, mSrc, mDst, srcStride, dstStride, width]() {
+                    [start, end, mSrc, mDst, srcStride, dstStride, width, attenuateAlpha]() {
                         for (int y = start; y < end; ++y) {
                             Rgba8To565HWYRow(
                                     reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
                                     reinterpret_cast<uint16_t *>(mDst + dstStride * y),
-                                    width);
+                                    width, attenuateAlpha);
                         }
                     });
         }
@@ -630,9 +695,9 @@ namespace coder {
     HWY_EXPORT(Rgba8To565HWY);
     HWY_DLLEXPORT void Rgba8To565(const uint8_t *sourceData, int srcStride,
                                   uint16_t *dst, int dstStride, int width,
-                                  int height, int bitDepth) {
+                                  int height, int bitDepth, const bool attenuateAlpha) {
         HWY_DYNAMIC_DISPATCH(Rgba8To565HWY)(sourceData, srcStride, dst, dstStride, width,
-                                            height, bitDepth);
+                                            height, bitDepth, attenuateAlpha);
     }
 
     HWY_EXPORT(RGBAF16To565HWY);

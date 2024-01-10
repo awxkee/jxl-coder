@@ -262,15 +262,84 @@ namespace coder::HWY_NAMESPACE {
         }
     }
 
+    template<typename D, typename I = Vec<D>>
+    inline __attribute__((flatten)) I
+    AttenuateVecR1010102(D d, I vec, I alpha) {
+        const FixedTag<uint32_t, 4> du32x4;
+        const FixedTag<uint16_t, 8> du16x8;
+        const FixedTag<uint8_t, 8> du8x8;
+        const FixedTag<uint8_t, 4> du8x4;
+        const FixedTag<float, 4> df32x4;
+        using VF32x4 = Vec<decltype(df32x4)>;
+        const VF32x4 mult255 = ApproximateReciprocal(Set(df32x4, 255));
+
+        auto vecLow = LowerHalf(vec);
+        auto alphaLow = LowerHalf(alpha);
+        auto vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecLow)));
+        auto mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaLow)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto lowlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+
+        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecLow)));
+        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaLow)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto lowhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+
+        auto vecHigh = UpperHalf(du8x8, vec);
+        auto alphaHigh = UpperHalf(du8x8, alpha);
+
+        vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecHigh)));
+        mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaHigh)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto highlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+
+        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecHigh)));
+        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaHigh)));
+        vk = Round(Mul(Mul(vk, mul), mult255));
+        auto highhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
+        auto low = Combine(du8x8, lowhigh, lowlow);
+        auto high = Combine(du8x8, highhigh, highlow);
+        return Combine(d, high, low);
+    }
+
+    template<typename D, typename R, typename T = Vec<D>, typename I = Vec<R>>
+    inline __attribute__((flatten)) Vec<D>
+    ConvertPixelsTo(D d, R rd, I r, I g, I b, I a, const int *permuteMap) {
+        using RD = Vec<R>;
+        const T MulBy4Const = Set(d, 4);
+        const T MulBy3Const = Set(d, 3);
+        const T O127Const = Set(d, 127);
+        T pixelsu1 = Mul(BitCast(d, r), MulBy4Const);
+        T pixelsu2 = Mul(BitCast(d, g), MulBy4Const);
+        T pixelsu3 = Mul(BitCast(d, b), MulBy4Const);
+        T pixelsu4 = ShiftRight<8>(Add(Mul(BitCast(d, a), MulBy3Const), O127Const));
+
+        const int permute0Value = permuteMap[0];
+        const int permute1Value = permuteMap[1];
+        const int permute2Value = permuteMap[2];
+        const int permute3Value = permuteMap[3];
+
+        T pixelsStore[4] = {pixelsu1, pixelsu2, pixelsu3, pixelsu4};
+        T AV = pixelsStore[permute0Value];
+        T RV = pixelsStore[permute1Value];
+        T GV = pixelsStore[permute2Value];
+        T BV = pixelsStore[permute3Value];
+        T upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
+        T lower = Or(ShiftLeft<10>(GV), BV);
+        T final = Or(upper, lower);
+        return final;
+    }
+
     void
     Rgba8ToRGBA1010102HWYRow(const uint8_t *HWY_RESTRICT data, uint32_t *HWY_RESTRICT dst,
                              int width,
-                             const int *permuteMap) {
-        const FixedTag<uint8_t, 4> du8x4;
-        const FixedTag<uint8_t, 8> du8x8;
+                             const int *permuteMap,
+                             const bool attenuateAlpha) {
+        const FixedTag<uint8_t, 16> du8x16;
+        const FixedTag<uint16_t, 8> du16x4;
         const Rebind<int32_t, FixedTag<uint8_t, 4>> di32;
         const FixedTag<uint32_t, 4> du;
-        using VU8 = Vec<decltype(du8x8)>;
+        using VU8x16 = Vec<decltype(du8x16)>;
         using VU = Vec<decltype(du)>;
 
         const int permute0Value = permuteMap[0];
@@ -280,53 +349,54 @@ namespace coder::HWY_NAMESPACE {
 
         int x = 0;
         auto dst32 = reinterpret_cast<uint32_t *>(dst);
-        int pixels = 8;
+        int pixels = 16;
         for (; x + pixels < width; x += pixels) {
-            VU8 upixels1;
-            VU8 upixels2;
-            VU8 upixels3;
-            VU8 upixels4;
-            LoadInterleaved4(du8x8, reinterpret_cast<const uint8_t *>(data), upixels1, upixels2,
-                             upixels3, upixels4);
+            VU8x16 upixels1;
+            VU8x16 upixels2;
+            VU8x16 upixels3;
+            VU8x16 upixels4;
+            LoadInterleaved4(du8x16, reinterpret_cast<const uint8_t *>(data),
+                             upixels1,
+                             upixels2,
+                             upixels3,
+                             upixels4);
 
-            VU pixelsu1 = Mul(BitCast(du, PromoteTo(di32, UpperHalf(du8x4, upixels1))),
-                              Set(du, 4));
-            VU pixelsu2 = Mul(BitCast(du, PromoteTo(di32, UpperHalf(du8x4, upixels2))),
-                              Set(du, 4));
-            VU pixelsu3 = Mul(BitCast(du, PromoteTo(di32, UpperHalf(du8x4, upixels3))),
-                              Set(du, 4));
-            VU pixelsu4 = ShiftRight<8>(
-                    Add(Mul(BitCast(du, PromoteTo(di32, UpperHalf(du8x4, upixels4))),
-                            Set(du, 3)), Set(du, 127)));
+            if (attenuateAlpha) {
+                upixels1 = AttenuateVecR1010102(du8x16, upixels1, upixels4);
+                upixels2 = AttenuateVecR1010102(du8x16, upixels2, upixels4);
+                upixels3 = AttenuateVecR1010102(du8x16, upixels3, upixels4);
+            }
 
-            VU pixelsStore[4] = {pixelsu1, pixelsu2, pixelsu3, pixelsu4};
-            VU AV = pixelsStore[permute0Value];
-            VU RV = pixelsStore[permute1Value];
-            VU GV = pixelsStore[permute2Value];
-            VU BV = pixelsStore[permute3Value];
-            VU upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
-            VU lower = Or(ShiftLeft<10>(GV), BV);
-            VU final = Or(upper, lower);
+            VU final = ConvertPixelsTo(du, di32,
+                                       PromoteUpperTo(di32, PromoteUpperTo(du16x4, upixels1)),
+                                       PromoteUpperTo(di32, PromoteUpperTo(du16x4, upixels2)),
+                                       PromoteUpperTo(di32, PromoteUpperTo(du16x4, upixels3)),
+                                       PromoteUpperTo(di32, PromoteUpperTo(du16x4, upixels4)),
+                                       permuteMap);
+            StoreU(final, du, dst32 + 12);
+
+            final = ConvertPixelsTo(du, di32,
+                                    PromoteLowerTo(di32, PromoteUpperTo(du16x4, upixels1)),
+                                    PromoteLowerTo(di32, PromoteUpperTo(du16x4, upixels2)),
+                                    PromoteLowerTo(di32, PromoteUpperTo(du16x4, upixels3)),
+                                    PromoteLowerTo(di32, PromoteUpperTo(du16x4, upixels4)),
+                                    permuteMap);
+            StoreU(final, du, dst32 + 8);
+
+            final = ConvertPixelsTo(du, di32,
+                                    PromoteUpperTo(di32, PromoteLowerTo(du16x4, upixels1)),
+                                    PromoteUpperTo(di32, PromoteLowerTo(du16x4, upixels2)),
+                                    PromoteUpperTo(di32, PromoteLowerTo(du16x4, upixels3)),
+                                    PromoteUpperTo(di32, PromoteLowerTo(du16x4, upixels4)),
+                                    permuteMap);
             StoreU(final, du, dst32 + 4);
 
-            pixelsu1 = Mul(BitCast(du, PromoteTo(di32, LowerHalf(upixels1))),
-                           Set(du, 4));
-            pixelsu2 = Mul(BitCast(du, PromoteTo(di32, LowerHalf(upixels2))),
-                           Set(du, 4));
-            pixelsu3 = Mul(BitCast(du, PromoteTo(di32, LowerHalf(upixels3))),
-                           Set(du, 4));
-            pixelsu4 = ShiftRight<8>(
-                    Add(Mul(BitCast(du, PromoteTo(di32, LowerHalf(upixels4))),
-                            Set(du, 3)), Set(du, 127)));
-
-            VU pixelsLowStore[4] = {pixelsu1, pixelsu2, pixelsu3, pixelsu4};
-            AV = pixelsStore[permute0Value];
-            RV = pixelsStore[permute1Value];
-            GV = pixelsStore[permute2Value];
-            BV = pixelsStore[permute3Value];
-            upper = Or(ShiftLeft<30>(AV), ShiftLeft<20>(RV));
-            lower = Or(ShiftLeft<10>(GV), BV);
-            final = Or(upper, lower);
+            final = ConvertPixelsTo(du, di32,
+                                    PromoteLowerTo(di32, PromoteLowerTo(du16x4, upixels1)),
+                                    PromoteLowerTo(di32, PromoteLowerTo(du16x4, upixels2)),
+                                    PromoteLowerTo(di32, PromoteLowerTo(du16x4, upixels3)),
+                                    PromoteLowerTo(di32, PromoteLowerTo(du16x4, upixels4)),
+                                    permuteMap);
             StoreU(final, du, dst32);
 
             data += pixels * 4;
@@ -334,10 +404,21 @@ namespace coder::HWY_NAMESPACE {
         }
 
         for (; x < width; ++x) {
-            auto A16 = ((uint32_t) data[permute0Value] * 3 + 127) >> 8;
-            auto R16 = (uint32_t) data[permute1Value] * 4;
-            auto G16 = (uint32_t) data[permute2Value] * 4;
-            auto B16 = (uint32_t) data[permute3Value] * 4;
+            uint8_t alpha = data[permute0Value];
+            uint8_t r = data[permute1Value];
+            uint8_t g = data[permute2Value];
+            uint8_t b = data[permute3Value];
+
+            if (attenuateAlpha) {
+                r = (r * alpha + 127) / 255;
+                g = (g * alpha + 127) / 255;
+                b = (b * alpha + 127) / 255;
+            }
+
+            auto A16 = ((uint32_t) alpha * 3 + 127) >> 8;
+            auto R16 = (uint32_t) r * 4;
+            auto G16 = (uint32_t) g * 4;
+            auto B16 = (uint32_t) b * 4;
 
             dst32[0] = (A16 << 30) | (R16 << 20) | (G16 << 10) | B16;
             data += 4;
@@ -347,11 +428,12 @@ namespace coder::HWY_NAMESPACE {
 
     void
     Rgba8ToRGBA1010102HWY(const uint8_t *source,
-                          int srcStride,
+                          const int srcStride,
                           uint8_t *destination,
-                          int dstStride,
+                          const int dstStride,
                           int width,
-                          int height) {
+                          int height,
+                          const bool attenuateAlpha) {
         int permuteMap[4] = {3, 2, 1, 0};
 
         auto src = reinterpret_cast<const uint8_t *>(source);
@@ -369,12 +451,12 @@ namespace coder::HWY_NAMESPACE {
                 end = height;
             }
             workers.emplace_back(
-                    [start, end, src, destination, srcStride, dstStride, width, permuteMap]() {
+                    [start, end, src, destination, srcStride, dstStride, width, permuteMap, attenuateAlpha]() {
                         for (int y = start; y < end; ++y) {
                             Rgba8ToRGBA1010102HWYRow(
                                     reinterpret_cast<const uint8_t *>(src + srcStride * y),
                                     reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                                    width, &permuteMap[0]);
+                                    width, &permuteMap[0], attenuateAlpha);
                         }
                     });
         }
@@ -849,14 +931,14 @@ namespace coder {
 
     HWY_DLLEXPORT void
     Rgba8ToRGBA1010102(const uint8_t *source,
-                       int srcStride,
+                       const int srcStride,
                        uint8_t *destination,
-                       int dstStride,
+                       const int dstStride,
                        int width,
-                       int height) {
+                       int height, const bool attenuateAlpha) {
         HWY_DYNAMIC_DISPATCH(Rgba8ToRGBA1010102HWY)(source, srcStride, destination, dstStride,
                                                     width,
-                                                    height);
+                                                    height, attenuateAlpha);
     }
 
 }

@@ -92,7 +92,8 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                 std::vector<uint8_t> rgbaF16Data(dstStride * imageHeight);
                 coder::Rgba8ToF16(imageData.data(), *stride,
                                   reinterpret_cast<uint16_t *>(rgbaF16Data.data()), dstStride,
-                                  imageWidth, imageHeight, depth);
+                                  imageWidth, imageHeight,
+                                  depth, !alphaPremultiplied);
                 *stride = dstStride;
                 *useFloats = true;
                 imageConfig = "RGBA_F16";
@@ -116,7 +117,8 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                 std::vector<uint8_t> rgb565Data(dstStride * imageHeight);
                 coder::Rgba8To565(imageData.data(), *stride,
                                   reinterpret_cast<uint16_t *>(rgb565Data.data()), dstStride,
-                                  imageWidth, imageHeight, depth);
+                                  imageWidth, imageHeight, depth,
+                                  !alphaPremultiplied);
                 *stride = dstStride;
                 *useFloats = false;
                 imageConfig = "RGB_565";
@@ -144,7 +146,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                                           *stride,
                                           reinterpret_cast<uint8_t *>(rgba1010102Data.data()),
                                           dstStride,
-                                          imageWidth, imageHeight);
+                                          imageWidth, imageHeight, !alphaPremultiplied);
                 *stride = dstStride;
                 *useFloats = false;
                 imageConfig = "RGBA_1010102";
@@ -164,6 +166,13 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
             bufferDesc.format = (*useFloats) ? AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT
                                              : AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
             bufferDesc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+
+            if (!*useFloats && !alphaPremultiplied) {
+                coder::PremultiplyRGBA(imageData.data(), *stride,
+                                       imageData.data(), *stride,
+                                       imageWidth,
+                                       imageHeight);
+            }
 
             AHardwareBuffer *hardwareBuffer = nullptr;
 
@@ -188,17 +197,17 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
 
             if (*useFloats) {
                 int dstStride = imageWidth * 4 * (int) sizeof(uint16_t);
-                coder::CopyUnalignedRGBA(imageData.data(), dstStride, buffer,
-                                         (int) bufferDesc.stride * 4 * pixelSize,
-                                         (int) bufferDesc.width,
-                                         (int) bufferDesc.height,
-                                         (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
+                coder::CopyUnaligned(imageData.data(), dstStride, buffer,
+                                     (int) bufferDesc.stride * 4 * pixelSize,
+                                     (int) bufferDesc.width * 4,
+                                     (int) bufferDesc.height,
+                                     (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
             } else {
-                coder::CopyUnalignedRGBA(imageData.data(), *stride, buffer,
-                                         (int) bufferDesc.stride * 4 * pixelSize,
-                                         (int) bufferDesc.width,
-                                         (int) bufferDesc.height,
-                                         (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
+                coder::CopyUnaligned(imageData.data(), *stride, buffer,
+                                     (int) bufferDesc.stride * 4 * pixelSize,
+                                     (int) bufferDesc.width * 4,
+                                     (int) bufferDesc.height,
+                                     (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
             }
 
             status = AHardwareBuffer_unlock_compat(hardwareBuffer, nullptr);

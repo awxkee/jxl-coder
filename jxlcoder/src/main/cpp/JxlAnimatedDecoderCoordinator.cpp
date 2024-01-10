@@ -253,15 +253,15 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
         }
 
         if (bitmapPixelConfig == "RGB_565") {
-            coder::CopyUnalignedRGB565(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                                       reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                                       (int) info.width,
-                                       (int) info.height);
+            coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+                                 reinterpret_cast<uint8_t *>(addr), (int) info.stride,
+                                 (int) info.width,
+                                 (int) info.height, sizeof(uint16_t));
         } else {
-            coder::CopyUnalignedRGBA(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                                     reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                                     (int) info.width,
-                                     (int) info.height, useFloat16 ? 2 : 1);
+            coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+                                 reinterpret_cast<uint8_t *>(addr), (int) info.stride,
+                                 (int) info.width * 4,
+                                 (int) info.height, useFloat16 ? 2 : 1);
         }
 
 

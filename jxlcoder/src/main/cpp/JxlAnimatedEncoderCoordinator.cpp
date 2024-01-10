@@ -247,7 +247,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                 vector<uint8_t> halfFloatPixels(imageStride * info.height);
                 coder::Rgba8ToF16(rgbaPixels.data(), imageStride,
                                   reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
-                                  (int) info.width, (int) info.height, 8);
+                                  (int) info.width, (int) info.height, 8, true);
                 imageStride = b16Stride;
                 rgbaPixels = halfFloatPixels;
             }
@@ -297,10 +297,10 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                     rgbPixels = rgbaPixels;
                 } else {
                     rgbPixels.resize(requiredStride * (int) info.height);
-                    coder::CopyUnalignedRGBA(rgbaPixels.data(), imageStride, rgbPixels.data(),
-                                             requiredStride, (int) info.width, (int) info.height,
-                                             (int) (dataPixelFormat == BINARY_16 ? sizeof(uint16_t)
-                                                                                 : sizeof(uint8_t)));
+                    coder::CopyUnaligned(rgbaPixels.data(), imageStride, rgbPixels.data(),
+                                         requiredStride, (int) info.width * 4, (int) info.height,
+                                         (int) (dataPixelFormat == BINARY_16 ? sizeof(uint16_t)
+                                                                             : sizeof(uint8_t)));
                 }
                 imageStride = requiredStride;
             }

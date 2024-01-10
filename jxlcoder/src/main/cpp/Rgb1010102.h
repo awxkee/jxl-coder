@@ -49,11 +49,11 @@ namespace coder {
 
     void
     Rgba8ToRGBA1010102(const uint8_t *source,
-                       int srcStride,
+                       const int srcStride,
                        uint8_t *destination,
-                       int dstStride,
+                       const int dstStride,
                        int width,
-                       int height);
+                       int height, const bool attenuateAlpha);
 }
 
 #endif //AVIF_RGB1010102_H

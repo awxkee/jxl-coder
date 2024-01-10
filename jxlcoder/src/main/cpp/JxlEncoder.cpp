@@ -179,10 +179,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                     rgbPixels = rgbaPixels;
                 } else {
                     rgbPixels.resize(requiredStride * (int) info.height);
-                    coder::CopyUnalignedRGBA(rgbaPixels.data(), imageStride, rgbPixels.data(),
-                                             requiredStride, (int) info.width, (int) info.height,
-                                             (int) (useFloat16 ? sizeof(uint16_t)
-                                                               : sizeof(uint8_t)));
+                    coder::CopyUnaligned(rgbaPixels.data(), imageStride, rgbPixels.data(),
+                                         requiredStride,
+                                         (int) info.width * 4,
+                                         (int) info.height,
+                                         (int) (useFloat16 ? sizeof(uint16_t)
+                                                           : sizeof(uint8_t)));
                 }
                 imageStride = requiredStride;
             }

@@ -43,7 +43,7 @@ namespace coder {
 
     void Rgba8To565(const uint8_t *sourceData, int srcStride,
                     uint16_t *dst, int dstStride, int width,
-                    int height, int bitDepth);
+                    int height, int bitDepth, const bool attenuateAlpha);
 
     void RGBAF16To565(const uint16_t *sourceData, int srcStride,
                       uint16_t *dst, int dstStride, int width,

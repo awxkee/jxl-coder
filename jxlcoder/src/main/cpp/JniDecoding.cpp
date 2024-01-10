@@ -155,15 +155,16 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     }
 
     if (bitmapPixelConfig == "RGB_565") {
-        coder::CopyUnalignedRGB565(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                                   reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                                   (int) info.width,
-                                   (int) info.height);
+        coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+                             reinterpret_cast<uint8_t *>(addr), (int) info.stride,
+                             (int) info.width,
+                             (int) info.height, sizeof(uint16_t));
     } else {
-        coder::CopyUnalignedRGBA(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                                 reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                                 (int) info.width,
-                                 (int) info.height, useBitmapFloats ? 2 : 1);
+        coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+                             reinterpret_cast<uint8_t *>(addr), (int) info.stride,
+                             (int) info.width * 4,
+                             (int) info.height,
+                             useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
     }
 
 
