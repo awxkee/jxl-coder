@@ -712,9 +712,8 @@ namespace coder::HWY_NAMESPACE {
                 }
             } else {
                 auto row = reinterpret_cast<const uint16_t *>(src8 + y1 * srcStride);
-                for (int c = 0; c < components; ++c) {
-                    dst16[x * components + c] = row[x1 * components + c];
-                }
+                memcpy(&dst16[x * components], &row[x1 * components],
+                       sizeof(uint16_t) * components);
             }
         }
     }
@@ -1122,9 +1121,13 @@ namespace coder::HWY_NAMESPACE {
                     }
                 }
             } else {
-                auto row = reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride);
-                for (int c = 0; c < components; ++c) {
-                    dst[x * components + c] = row[x1 * components + c];
+                if (components == 4) {
+                    auto row = reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride);
+                    reinterpret_cast<uint32_t *>(dst)[x] = reinterpret_cast<const uint32_t *>(row)[x1];
+                } else {
+                    auto row = reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride);
+                    memcpy(&dst[x * components], &row[x1 * components],
+                           sizeof(uint8_t) * components);
                 }
             }
         }

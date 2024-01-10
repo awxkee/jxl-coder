@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("dark_street.jxl").source().buffer().readByteArray()
+            val buffer4 = this.assets.open("happy_india.jxl").source().buffer().readByteArray()
             assert(JxlCoder.isJXL(buffer4))
             val largeImageSize = JxlCoder().getSize(buffer4)
             assert(largeImageSize != null)
@@ -65,7 +65,10 @@ class MainActivity : ComponentActivity() {
 ////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
 
             val decompressedImage =
-                JxlCoder().decode(buffer4, preferredColorConfig = PreferredColorConfig.RGBA_F16)
+                JxlCoder().decodeSampled(
+                    buffer4, largeImageSize!!.width * 2, largeImageSize.height * 2,
+                    preferredColorConfig = PreferredColorConfig.RGBA_F16
+                )
 
 //            val first = JxlCoder().decode(
 //                this.assets.open("happy_india.jxl").source().buffer()
@@ -85,7 +88,10 @@ class MainActivity : ComponentActivity() {
             )
 
             val image =
-                JxlCoder().decode(compressedBuffer, preferredColorConfig = PreferredColorConfig.RGB_565)
+                JxlCoder().decode(
+                    compressedBuffer,
+                    preferredColorConfig = PreferredColorConfig.RGB_565
+                )
 
 //            val encoder = JxlAnimatedEncoder(
 //                width = decompressedImage.width,

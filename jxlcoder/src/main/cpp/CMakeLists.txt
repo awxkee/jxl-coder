@@ -19,6 +19,7 @@ add_library(libjxl_threads SHARED IMPORTED)
 add_library(libjxl_cms SHARED IMPORTED)
 add_library(libyuv STATIC IMPORTED)
 add_library(libhwy STATIC IMPORTED)
+add_library(libskcms STATIC IMPORTED)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlEncoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
@@ -41,6 +42,7 @@ set_target_properties(jxlcoder libjxl_threads PROPERTIES IMPORTED_LOCATION ${CMA
 set_target_properties(jxlcoder libjxl_cms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_cms.so)
 set_target_properties(jxlcoder libyuv PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libyuv.a)
 set_target_properties(jxlcoder libhwy PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libhwy.a)
+set_target_properties(jxlcoder libskcms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libskcms.a)
 
 add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)
 target_include_directories(cpufeatures PUBLIC ${ANDROID_NDK}/sources/android/cpufeatures)
@@ -100,6 +102,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         libjxl
         libjxl_threads
         libjxl_cms
+        libskcms
         -ljnigraphics
         libyuv
         log)
