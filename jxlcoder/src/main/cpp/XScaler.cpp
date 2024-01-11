@@ -30,6 +30,7 @@
 #include "half.hpp"
 #include <thread>
 #include <vector>
+#include "algo/sampler.h"
 
 #if defined(__clang__)
 #pragma clang fp contract(fast) exceptions(ignore) reassociate(on)
@@ -40,6 +41,7 @@
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
+#include "algo/sampler-inl.h"
 
 using namespace half_float;
 using namespace std;
@@ -75,290 +77,6 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::Neg;
     using hwy::float32_t;
     using hwy::float16_t;
-
-    // P Found using maxima
-//
-// y(x) := 4 * x * (%pi-x) / (%pi^2) ;
-// z(x) := (1-p)*y(x) + p * y(x)^2;
-// e(x) := z(x) - sin(x);
-// solve( diff( integrate( e(x)^2, x, 0, %pi/2 ), p ) = 0, p ),numer;
-//
-// [p = .2248391013559941]
-    template<typename T>
-    inline T fastSin1(T x) {
-        constexpr T A = T(4.0) / (T(M_PI) * T(M_PI));
-        constexpr T P = 0.2248391013559941;
-        T y = A * x * (T(M_PI) - x);
-        return y * ((1 - P) + y * P);
-    }
-
-// P and Q found using maxima
-//
-// y(x) := 4 * x * (%pi-x) / (%pi^2) ;
-// zz(x) := (1-p-q)*y(x) + p * y(x)^2 + q * y(x)^3
-// ee(x) := zz(x) - sin(x)
-// solve( [ integrate( diff(ee(x)^2, p ), x, 0, %pi/2 ) = 0, integrate( diff(ee(x)^2,q), x, 0, %pi/2 ) = 0 ] , [p,q] ),numer;
-//
-// [[p = .1952403377008734, q = .01915214119105392]]
-    template<typename T>
-    inline T fastSin2(T x) {
-        constexpr T A = T(4.0) / (T(M_PI) * T(M_PI));
-        constexpr T P = 0.1952403377008734;
-        constexpr T Q = 0.01915214119105392;
-
-        T y = A * x * (T(M_PI) - x);
-
-        return y * ((1 - P - Q) + y * (P + y * Q));
-    }
-
-    inline half_float::half castU16(uint16_t t) {
-        half_float::half result;
-        result.data_ = t;
-        return result;
-    }
-
-    template<typename T>
-    inline half_float::half PromoteToHalf(T t, float maxColors) {
-        half_float::half result((float) t / maxColors);
-        return result;
-    }
-
-    template<typename D, typename T>
-    inline D PromoteTo(T t, float maxColors) {
-        D result = static_cast<D>((float) t / maxColors);
-        return result;
-    }
-
-    template<typename T>
-    inline T DemoteHalfTo(half t, float maxColors) {
-        return (T) clamp(((float) t * (float) maxColors), 0.0f, (float) maxColors);
-    }
-
-    template<typename D, typename T>
-    inline D DemoteTo(T t, float maxColors) {
-        return (D) clamp(((float) t * (float) maxColors), 0.0f, (float) maxColors);
-    }
-
-    template<typename T>
-    T SimpleCubic(T t, T A, T B, T C, T D) {
-        T duplet = t * t;
-        T triplet = duplet * t;
-        T a = -A / T(2.0) + (T(3.0) * B) / T(2.0) - (T(3.0) * C) / T(2.0) + D / T(2.0);
-        T b = A - (T(5.0) * B) / T(2.0) + T(2.0) * C - D / T(2.0);
-        T c = -A / T(2.0) + C / T(2.0);
-        T d = B;
-        return a * triplet * T(3.0) + b * duplet + c * t + d;
-    }
-
-    template<typename T>
-    T CubicHermite(T d, T p0, T p1, T p2, T p3) {
-        constexpr T C = T(0.0);
-        constexpr T B = T(0.0);
-        T duplet = d * d;
-        T triplet = duplet * d;
-        T firstRow = ((T(-1 / 6.0) * B - C) * p0 + (T(-1.5) * B - C + T(2.0)) * p1 +
-                      (T(1.5) * B + C - T(2.0)) * p2 + (T(1 / 6.0) * B + C) * p3) * triplet;
-        T secondRow = ((T(0.5) * B + 2 * C) * p0 + (T(2.0) * B + C - T(3.0)) * p1 +
-                       (T(-2.5) * B - T(2.0) * C + T(3.0)) * p2 - C * p3) * duplet;
-        T thirdRow = ((T(-0.5) * B - C) * p0 + (T(0.5) * B + C) * p2) * d;
-        T fourthRow =
-                (T(1.0 / 6.0) * B) * p0 + (T(-1.0 / 3.0) * B + T(1)) * p1 + (T(1.0 / 6.0) * B) * p2;
-        return firstRow + secondRow + thirdRow + fourthRow;
-    }
-
-    template<class D, typename T = Vec<D>>
-    inline T CubicSplineGeneric(const D df, T C, T B, T d, T p0, T p1, T p2, T p3) {
-        T duplet = Mul(d, d);
-        T triplet = Mul(duplet, d);
-        T firstRow = MulAdd(MulSub(Set(df, -1 / 6.0), B, C), p0,
-                            MulAdd(Add(MulSub(Set(df, -1.5), B, C), Set(df, 2.0)), p1,
-                                   MulAdd(Sub(MulAdd(Set(df, 1.5), B, C), Set(df, 2.0)), p2,
-                                          Mul(MulAdd(Set(df, 1 / 6.0), B, C), p3))));
-        firstRow = Mul(firstRow, triplet);
-        T sc1 = MulAdd(Set(df, 0.5), B, Mul(Set(df, 2.0), C));
-        T sc2 = Sub(MulAdd(Set(df, 2.0), B, C), Set(df, 3.0));
-        T sc3 = Add(MulAdd(Set(df, -2.5), B, Mul(Set(df, -2.0), C)), Set(df, 3.0));
-        T secondRow = MulAdd(sc1, p0, MulAdd(sc2, p1, MulAdd(sc3, p2, Mul(Neg(C), p3))));
-        secondRow = Mul(secondRow, duplet);
-        T thirdRow = Mul(
-                MulAdd(MulSub(Set(df, -0.5), B, C), p0, Mul(MulAdd(Set(df, 0.5), B, C), p2)), d);
-        T f1 = MulAdd(Mul(Set(df, 1.0 / 6.0), B), p0,
-                      Mul(MulAdd(Set(df, -1.0 / 3.0), B, Set(df, 1.0)), p1));
-        T f2 = Mul(Mul(Set(df, 1.0 / 6.0), B), p2);
-        T fourthRow = Add(f1, f2);
-        return Add(Add(Add(firstRow, secondRow), thirdRow), fourthRow);
-    }
-
-    template<class D, typename T = Vec<D>>
-    inline T CubicHermiteV(const D df, T d, T p0, T p1, T p2, T p3) {
-        const T C = Set(df, 0.0);
-        const T B = Set(df, 0.0);
-        return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
-    }
-
-    template<typename T>
-    T CubicBSpline(T d, T p0, T p1, T p2, T p3) {
-        constexpr T C = T(0.0);
-        constexpr T B = T(1.0);
-        T duplet = d * d;
-        T triplet = duplet * d;
-        T firstRow = ((T(-1 / 6.0) * B - C) * p0 + (T(-1.5) * B - C + T(2.0)) * p1 +
-                      (T(1.5) * B + C - T(2.0)) * p2 + (T(1 / 6.0) * B + C) * p3) * triplet;
-        T secondRow = ((T(0.5) * B + 2 * C) * p0 + (T(2.0) * B + C - T(3.0)) * p1 +
-                       (T(-2.5) * B - T(2.0) * C + T(3.0)) * p2 - C * p3) * duplet;
-        T thirdRow = ((T(-0.5) * B - C) * p0 + (T(0.5) * B + C) * p2) * d;
-        T fourthRow =
-                (T(1.0 / 6.0) * B) * p0 + (T(-1.0 / 3.0) * B + T(1)) * p1 + (T(1.0 / 6.0) * B) * p2;
-        return firstRow + secondRow + thirdRow + fourthRow;
-    }
-
-    template<class D, typename T = Vec<D>>
-    inline T MitchellNetravaliV(const D df, T d, T p0, T p1, T p2, T p3) {
-        const T C = Set(df, 1.0 / 3.0);
-        const T B = Set(df, 1.0 / 3.0);
-        return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
-    }
-
-    template<class D, typename T = Vec<D>>
-    T CubicBSplineV(const D df, T d, T p0, T p1, T p2, T p3) {
-        const T C = Set(df, 0.0);
-        const T B = Set(df, 1.0);
-        return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
-    }
-
-    template<class D, typename T = Vec<D>>
-    T SimpleCubicV(const D df, T t, T A, T B, T C, T D1) {
-        T duplet = Mul(t, t);
-        T triplet = Mul(duplet, t);
-        T a = Add(Sub(Add(Mul(Neg(A), Set(df, 0.5)), Mul(B, Set(df, 1.5))), Mul(C, Set(df, 1.5))),
-                  Mul(D1, Set(df, 0.5)));
-        T b = Sub(Add(Sub(A, Mul(B, Set(df, 2.5))), Mul(Set(df, 2.0), C)), Mul(D1, Set(df, 0.5f)));
-        T c = Add(Mul(Neg(A), Set(df, 0.5f)), Mul(C, Set(df, 0.5f)));
-        T d = B;
-        return MulAdd(Mul(a, triplet), Set(df, 3.0), MulAdd(b, duplet, MulAdd(c, t, d)));
-    }
-
-    template<typename T>
-    T MitchellNetravali(T d, T p0, T p1, T p2, T p3) {
-        constexpr T C = T(1.0 / 3.0);
-        constexpr T B = T(1.0 / 3.0);
-        T duplet = d * d;
-        T triplet = duplet * d;
-        T firstRow = ((T(-1 / 6.0) * B - C) * p0 + (T(-1.5) * B - C + T(2.0)) * p1 +
-                      (T(1.5) * B + C - T(2.0)) * p2 + (T(1 / 6.0) * B + C) * p3) * triplet;
-        T secondRow = ((T(0.5) * B + 2 * C) * p0 + (T(2.0) * B + C - T(3.0)) * p1 +
-                       (T(-2.5) * B - T(2.0) * C + T(3.0)) * p2 - C * p3) * duplet;
-        T thirdRow = ((T(-0.5) * B - C) * p0 + (T(0.5) * B + C) * p2) * d;
-        T fourthRow =
-                (T(1.0 / 6.0) * B) * p0 + (T(-1.0 / 3.0) * B + T(1)) * p1 + (T(1.0 / 6.0) * B) * p2;
-        return firstRow + secondRow + thirdRow + fourthRow;
-    }
-
-    template<class D, typename T = Vec<D>>
-    inline T fastSinV(const D d, T x) {
-        const T A = Set(d, 4.0 / (M_PI * M_PI));
-        const T P = Set(d, 0.1952403377008734);
-        const T Q = Set(d, 0.01915214119105392);
-
-        T y = Mul(Mul(A, x), Sub(Set(d, M_PI), x));
-
-        const T ones = Set(d, 1);
-        T a1 = Sub(Sub(ones, P), Q);
-        T a2 = MulAdd(y, Q, P);
-        return MulAdd(a2, y, a1);
-    }
-
-    template<class D, typename T = Vec<D>>
-    inline T sincV(const D d, T x) {
-        const T ones = Set(d, 1);
-        const T zeros = Zero(d);
-        auto maskEqualToZero = x == zeros;
-        T sine = fastSinV(d, x);
-        x = IfThenElse(maskEqualToZero, ones, x);
-        T result = Div(sine, x);
-        result = IfThenElse(maskEqualToZero, ones, result);
-        return result;
-    }
-
-    template<typename T>
-    inline T sinc(T x) {
-        if (x == 0.0) {
-            return T(1.0);
-        } else {
-            return fastSin2(x) / x;
-        }
-    }
-
-    template<typename T>
-    inline T LanczosWindow(T x, const T a) {
-        if (abs(x) < a) {
-            return sinc(T(M_PI) * x) * sinc(T(M_PI) * x / a);
-        }
-        return T(0.0);
-    }
-
-    template<typename T>
-    inline T fastCos(T x) {
-        constexpr T C0 = 0.99940307;
-        constexpr T C1 = -0.49558072;
-        constexpr T C2 = 0.03679168;
-        constexpr T C3 = -0.00434102;
-
-        while (x < -2 * M_PI) {
-            x += 2.0 * M_PI;
-        }
-        while (x > 2 * M_PI) {
-            x -= 2.0 * M_PI;
-        }
-
-        // Calculate cos(x) using Chebyshev polynomial approximation
-        T x2 = x * x;
-        T result = C0 + x2 * (C1 + x2 * (C2 + x2 * C3));
-        return result;
-    }
-
-    template<typename T>
-    inline T HannWindow(T x, const T length) {
-        const float size = length * 2 - 1;
-        if (abs(x) <= size) {
-            return 0.5f * (1 - fastCos(T(2) * T(M_PI) * size / length));
-        }
-        return T(0);
-    }
-
-    template<typename T>
-    inline T CatmullRom(T x, T p0, T p1, T p2, T p3) {
-        if (x < 0 || x > 1) {
-            return T(0);
-        }
-        T s1 = x * (-p0 + 3 * p1 - 3 * p2 + p3);
-        T s2 = (T(2.0) * p0 - T(5.0) * p1 + 4 * p2 - p3);
-        T s3 = (s1 + s2) * x;
-        T s4 = (-p0 + p2);
-        T s5 = (s3 + s4) * x * T(0.5);
-
-        return s5 + p1;
-    }
-
-    template<class D, typename T = Vec<D>>
-    inline T CatmullRomV(const D df, T d, T p0, T p1, T p2, T p3) {
-        const T ones = Set(df, 1.0);
-        const T zeros = Zero(df);
-        auto maskLessThanZero = d < zeros;
-        auto maskGreaterThanZero = d > ones;
-        const T threes = Set(df, 3.0);
-
-        T s1 = Add(MulSub(threes, p1, p0), NegMulAdd(threes, p2, p3));
-        T s2 = Add(MulSub(Set(df, 2.0), p0, p3), MulSub(Set(df, 4.0), p2, Mul(Set(df, 5.0), p1)));
-        T s3 = Mul(Add(s1, s2), d);
-        T s4 = Sub(p2, p0);
-        T s5 = Mul(Mul(Add(s3, s4), Set(df, 0.5)), d);
-
-        T result = Add(s5, p1);
-        result = IfThenElse(maskLessThanZero, zeros, result);
-        result = IfThenElse(maskGreaterThanZero, zeros, result);
-        return result;
-    }
 
     typedef float (*KernelSample4Func)(float, float, float, float, float);
 
@@ -624,25 +342,63 @@ namespace coder::HWY_NAMESPACE {
                     float kWeightSum = 0;
                     VF4 color = Set(dfx4, 0);
 
+                    const int appendixLow[4] = {-2, -1, 0, 1};
+                    const int appendixHigh[4] = {2, 3, 0, 0};
+
+                    const VF4 aVector = Set(dfx4, a);
+                    VF4 srcXV = Set(dfx4, srcX);
+                    VI4 kx1V = Set(dix4, kx1);
+                    const VI4 appendixLowV = LoadU(dix4, appendixLow);
+                    const VI4 appendixHighV = LoadU(dix4, appendixHigh);
+
                     for (int j = -a + 1; j <= a; j++) {
                         int yj = (int) ky1 + j;
                         float dy = float(srcY) - (float(ky1) + (float) j);
-                        float yWeight = sampler(dy, lanczosFA);
+                        float yWeight;
+                        if (option == lanczos) {
+                            yWeight = sampler(dy, lanczosFA);
+                        } else {
+                            yWeight = HannWindow(float(j), lanczosFA);
+                        }
                         auto row = reinterpret_cast<const uint16_t *>(src8 +
                                                                       clamp(yj, 0,
                                                                             inputHeight - 1) *
                                                                       srcStride);
-                        for (int i = -a + 1; i <= a; i++) {
-                            int xi = (int) kx1 + i;
-                            float dx = float(srcX) - (float(kx1) + (float) i);
-                            float weight = sampler(dx, lanczosFA) * yWeight;
-
-                            kWeightSum += weight;
-
-                            int sizeXPos = clamp(xi, 0, mMaxWidth) * components;
+                        VF4 yWeightV = Set(dfx4, yWeight);
+                        VI4 xi = Add(kx1V, appendixLowV);
+                        VF4 dx = Sub(srcXV, ConvertTo(dfx4, xi));
+                        VF4 weights;
+                        if (option == lanczos) {
+                            weights = Mul(LanczosWindowHWY(dfx4, dx, aVector), yWeightV);
+                        } else {
+                            weights = Mul(HannWindow(dfx4, ConvertTo(dfx4, appendixLowV), a),
+                                          yWeightV);
+                        }
+                        kWeightSum += ExtractLane(SumOfLanes(dfx4, weights), 0);
+                        for (int i = 0; i < 4; ++i) {
+                            int sizeXPos = clamp(ExtractLane(xi, i), 0, mMaxWidth) * components;
                             VF16x4 r1 = LoadU(df16x4,
                                               reinterpret_cast<const float16_t *>(&row[sizeXPos]));
                             VF4 fr1 = PromoteTo(dfx4, r1);
+                            fr1 = Mul(fr1, Set(dfx4, ExtractLane(weights, i)));
+                            color = Add(color, fr1);
+                        }
+
+                        xi = Add(kx1V, appendixHighV);
+                        dx = Sub(srcXV, ConvertTo(dfx4, xi));
+                        if (option == lanczos) {
+                            weights = Mul(LanczosWindowHWY(dfx4, dx, aVector), yWeightV);
+                        } else {
+                            weights = Mul(HannWindow(dfx4, ConvertTo(dfx4, appendixHighV), a),
+                                          yWeightV);
+                        }
+                        for (int i = 0; i < 2; ++i) {
+                            int sizeXPos = clamp(ExtractLane(xi, i), 0, mMaxWidth) * components;
+                            VF16x4 r1 = LoadU(df16x4,
+                                              reinterpret_cast<const float16_t *>(&row[sizeXPos]));
+                            VF4 fr1 = PromoteTo(dfx4, r1);
+                            float weight = ExtractLane(weights, i);
+                            kWeightSum += weight;
                             fr1 = Mul(fr1, Set(dfx4, weight));
                             color = Add(color, fr1);
                         }
@@ -658,18 +414,8 @@ namespace coder::HWY_NAMESPACE {
                                reinterpret_cast<float16_t *>(&dst16[x * components]));
                     }
                 } else {
-                    KernelWindow2Func sampler;
                     auto lanczosFA = float(3.0f);
                     int a = 3;
-                    switch (option) {
-                        case hann:
-                            sampler = HannWindow<float>;
-                            a = 3;
-                            lanczosFA = 3;
-                            break;
-                        default:
-                            sampler = LanczosWindow<float>;
-                    }
                     float rgb[components];
                     fill(rgb, rgb + components, 0.0f);
 
@@ -681,11 +427,21 @@ namespace coder::HWY_NAMESPACE {
                     for (int j = -a + 1; j <= a; j++) {
                         int yj = (int) ky1 + j;
                         float dy = float(srcY) - (float(ky1) + (float) j);
-                        float yWeight = sampler(dy, lanczosFA);
+                        float yWeight;
+                        if (option == lanczos) {
+                            yWeight = LanczosWindow(dy, lanczosFA);
+                        } else {
+                            yWeight = HannWindow(float(j), lanczosFA);
+                        }
                         for (int i = -a + 1; i <= a; i++) {
                             int xi = (int) kx1 + i;
                             float dx = float(srcX) - (float(kx1) + (float) i);
-                            float weight = sampler(dx, lanczosFA) * yWeight;
+                            float weight;
+                            if (option == lanczos) {
+                                weight = LanczosWindow(dx, lanczosFA) * yWeight;
+                            } else {
+                                weight = HannWindow(float(i), lanczosFA) * yWeight;
+                            }
                             weightSum += weight;
 
                             auto row = reinterpret_cast<const uint16_t *>(src8 +
@@ -1029,23 +785,64 @@ namespace coder::HWY_NAMESPACE {
                     const int a = kernelSize;
                     const int mMaxHeight = inputHeight - 1;
                     const int mMaxWidth = inputWidth - 1;
+
+                    const int appendixLow[4] = {-2, -1, 0, 1};
+                    const int appendixHigh[4] = {2, 3, 0, 0};
+
+                    const VF4 aVector = Set(dfx4, a);
+                    VF4 srcXV = Set(dfx4, srcX);
+                    VI4 kx1V = Set(dix4, kx1);
+                    const VI4 appendixLowV = LoadU(dix4, appendixLow);
+                    const VI4 appendixHighV = LoadU(dix4, appendixHigh);
+
                     for (int j = -a + 1; j <= a; j++) {
                         int yj = (int) ky1 + j;
                         float dy = float(srcY) - (float(ky1) + (float) j);
-                        float yWeight = sampler(dy, (float) a);
-                        auto srcRow = reinterpret_cast<const uint8_t *>(src8 +
-                                                                        clamp(yj, 0, mMaxHeight) *
-                                                                        srcStride);
-                        for (int i = -a + 1; i <= a; i++) {
-                            int xi = (int) kx1 + i;
-                            float dx = float(srcX) - (float(kx1) + (float) i);
-                            float weight = sampler(dx, (float) a) * yWeight;
-                            kWeightSum += weight;
+                        float yWeight;
+                        if (option == lanczos) {
+                            yWeight = sampler(dy, float(kernelSize));
+                        } else {
+                            yWeight = HannWindow(float(j), float(kernelSize));
+                        }
+                        auto row = reinterpret_cast<const uint8_t *>(src8 +
+                                                                     clamp(yj, 0,
+                                                                           inputHeight - 1) *
+                                                                     srcStride);
+                        VF4 yWeightV = Set(dfx4, yWeight);
+                        VI4 xi = Add(kx1V, appendixLowV);
+                        VF4 dx = Sub(srcXV, ConvertTo(dfx4, xi));
+                        VF4 weights;
+                        if (option == lanczos) {
+                            weights = Mul(LanczosWindowHWY(dfx4, dx, aVector), yWeightV);
+                        } else {
+                            weights = Mul(HannWindow(dfx4, ConvertTo(dfx4, appendixLowV), a),
+                                          yWeightV);
+                        }
+                        kWeightSum += ExtractLane(SumOfLanes(dfx4, weights), 0);
+                        for (int i = 0; i < 4; ++i) {
+                            int sizeXPos = clamp(ExtractLane(xi, i), 0, mMaxWidth) * components;
+                            VU8x4 u81 = LoadU(du8x4,
+                                              reinterpret_cast<const uint8_t *>(&row[sizeXPos]));
+                            VF4 fr1 = ConvertTo(dfx4, PromoteTo(dix4, u81));
+                            fr1 = Mul(fr1, Set(dfx4, ExtractLane(weights, i)));
+                            color = Add(color, fr1);
+                        }
 
-                            int sizeXPos = clamp(xi, 0, mMaxWidth) * components;
-                            VU8x4 r1 = LoadU(du8x4,
-                                             reinterpret_cast<const uint8_t *>(&srcRow[sizeXPos]));
-                            VF4 fr1 = ConvertTo(dfx4, PromoteTo(dux4, r1));
+                        xi = Add(kx1V, appendixHighV);
+                        dx = Sub(srcXV, ConvertTo(dfx4, xi));
+                        if (option == lanczos) {
+                            weights = Mul(LanczosWindowHWY(dfx4, dx, aVector), yWeightV);
+                        } else {
+                            weights = Mul(HannWindow(dfx4, ConvertTo(dfx4, appendixHighV), a),
+                                          yWeightV);
+                        }
+                        for (int i = 0; i < 2; ++i) {
+                            int sizeXPos = clamp(ExtractLane(xi, i), 0, mMaxWidth) * components;
+                            VU8x4 u81 = LoadU(du8x4,
+                                              reinterpret_cast<const uint8_t *>(&row[sizeXPos]));
+                            VF4 fr1 = ConvertTo(dfx4, PromoteTo(dix4, u81));
+                            float weight = ExtractLane(weights, i);
+                            kWeightSum += weight;
                             fr1 = Mul(fr1, Set(dfx4, weight));
                             color = Add(color, fr1);
                         }
@@ -1087,11 +884,21 @@ namespace coder::HWY_NAMESPACE {
                     for (int j = -a + 1; j <= a; j++) {
                         int yj = (int) ky1 + j;
                         float dy = float(srcY) - (float(ky1) + (float) j);
-                        float yWeight = sampler(dy, (float) lanczosFA);
+                        float yWeight;
+                        if (option == lanczos) {
+                            yWeight = LanczosWindow(dy, float(lanczosFA));
+                        } else {
+                            yWeight = HannWindow(float(j), float(lanczosFA));
+                        }
                         for (int i = -a + 1; i <= a; i++) {
                             int xi = (int) kx1 + i;
                             float dx = float(srcX) - (float(kx1) + (float) i);
-                            float weight = sampler(dx, (float) lanczosFA) * yWeight;
+                            float weight;
+                            if (option == lanczos) {
+                                weight = LanczosWindow(dx, float(lanczosFA)) * yWeight;
+                            } else {
+                                weight = HannWindow(float(i), float(lanczosFA)) * yWeight;
+                            }
                             weightSum += weight;
 
                             auto row = reinterpret_cast<const uint8_t *>(src8 +

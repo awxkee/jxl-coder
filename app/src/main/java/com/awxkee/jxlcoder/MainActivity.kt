@@ -35,6 +35,7 @@ import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import okio.FileNotFoundException
 import okio.buffer
 import okio.source
 import java.nio.ByteBuffer
@@ -55,43 +56,45 @@ class MainActivity : ComponentActivity() {
 //        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
 //        assert(JxlCoder.isJXL(buffer3))
 //        assert(JxlCoder().getSize(buffer3) != null)
+
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val buffer4 = this.assets.open("happy_india.jxl").source().buffer().readByteArray()
-            assert(JxlCoder.isJXL(buffer4))
-            val largeImageSize = JxlCoder().getSize(buffer4)
-            assert(largeImageSize != null)
+//            val buffer4 = this.assets.open("happy_india.jxl").source().buffer().readByteArray()
+//            assert(JxlCoder.isJXL(buffer4))
+//            val largeImageSize = JxlCoder().getSize(buffer4)
+//            assert(largeImageSize != null)
 //
 //            val image10Bit = image //.copy(Bitmap.Config.RGBA_F16, true)
 ////            image10Bit.setColorSpace(ColorSpace.get(ColorSpace.Named.DCI_P3))
 
-            val decompressedImage =
-                JxlCoder().decodeSampled(
-                    buffer4, largeImageSize!!.width * 2, largeImageSize.height * 2,
-                    preferredColorConfig = PreferredColorConfig.RGBA_F16
-                )
-
-//            val first = JxlCoder().decode(
-//                this.assets.open("happy_india.jxl").source().buffer()
-//                    .readByteArray(),
-//                preferredColorConfig = PreferredColorConfig.RGB_565
+//            val decompressedImage =
+//                JxlCoder().decodeSampled(
+//                    buffer4, largeImageSize!!.width * 2, largeImageSize.height * 2,
+//                    preferredColorConfig = PreferredColorConfig.RGBA_F16
+//                )
+//
+////            val first = JxlCoder().decode(
+////                this.assets.open("happy_india.jxl").source().buffer()
+////                    .readByteArray(),
+////                preferredColorConfig = PreferredColorConfig.RGB_565
+////            )
+////
+////            val resized = getResizedBitmap(first, decompressedImage.width, decompressedImage.height)
+////            first.recycle()
+//
+//            val compressedBuffer = JxlCoder().encode(
+//                decompressedImage,
+//                colorSpace = JxlColorSpace.RGB,
+//                compressionOption = JxlCompressionOption.LOSSY,
+//                effort = 4,
+//                quality = 90,
 //            )
 //
-//            val resized = getResizedBitmap(first, decompressedImage.width, decompressedImage.height)
-//            first.recycle()
-
-            val compressedBuffer = JxlCoder().encode(
-                decompressedImage,
-                colorSpace = JxlColorSpace.RGB,
-                compressionOption = JxlCompressionOption.LOSSY,
-                effort = 4,
-                quality = 90,
-            )
-
-            val image =
-                JxlCoder().decode(
-                    compressedBuffer,
-                    preferredColorConfig = PreferredColorConfig.RGB_565
-                )
+//            val image =
+//                JxlCoder().decode(
+//                    compressedBuffer,
+//                    preferredColorConfig = PreferredColorConfig.RGB_565
+//                )
 
 //            val encoder = JxlAnimatedEncoder(
 //                width = decompressedImage.width,
@@ -112,22 +115,30 @@ class MainActivity : ComponentActivity() {
                         mutableStateListOf<Bitmap>()
                     }
                     LaunchedEffect(key1 = Unit, block = {
-//                        for (i in 0 until 1) {
-//                            lifecycleScope.launch(Dispatchers.IO) {
-//                                val image = JxlCoder().decodeSampled(
-//                                    buffer4,
-//                                    3500,
-//                                    3500,
-//                                    preferredColorConfig = PreferredColorConfig.RGBA_8888,
-//                                    ScaleMode.FIT,
-//                                    JxlResizeFilter.LANCZOS,
-//                                )
-//                                lifecycleScope.launch(Dispatchers.Main) {
-//                                    imagesArray.add(image)
-//                                }
-//                            }
-//                        }
-
+                        val assets = (this@MainActivity.assets.list("") ?: return@LaunchedEffect)
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            for (asset in assets) {
+                                try {
+                                    val buffer4 = this@MainActivity.assets.open(asset).source().buffer().readByteArray()
+                                    val largeImageSize = JxlCoder().getSize(buffer4)
+                                    val image = JxlCoder().decodeSampled(
+                                        buffer4,
+                                        largeImageSize!!.width / 2,
+                                        largeImageSize!!.height / 2,
+                                        preferredColorConfig = PreferredColorConfig.DEFAULT,
+                                        ScaleMode.FIT,
+                                        JxlResizeFilter.MITCHELL_NETRAVALI,
+                                    )
+                                    lifecycleScope.launch(Dispatchers.Main) {
+                                        imagesArray.add(image)
+                                    }
+                                } catch (e: Exception) {
+                                    if (e !is FileNotFoundException) {
+                                        throw e
+                                    }
+                                }
+                            }
+                        }
                     })
                     // A surface container using the 'background' color from the theme
                     Surface(
@@ -144,28 +155,30 @@ class MainActivity : ComponentActivity() {
 //                                .build()
 //                        )
 
-                        Image(
-                            bitmap = image.asImageBitmap(),
-//                            painter = rememberDrawablePainter(drawable = drawable),
+//                        Image(
+//                            bitmap = image.asImageBitmap(),
+////                            painter = rememberDrawablePainter(drawable = drawable),
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .fillMaxHeight(),
+//                            contentScale = ContentScale.FillWidth,
+//                            contentDescription = "ok"
+//                        )
+                        LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(),
-                            contentScale = ContentScale.FillWidth,
-                            contentDescription = "ok"
-                        )
-//                        LazyColumn(modifier = Modifier
-//                            .fillMaxWidth()) {
-//                            items(imagesArray.count(), key = {
-//                                return@items UUID.randomUUID().toString()
-//                            }) {
-//                                Image(
-//                                    bitmap = imagesArray[it].asImageBitmap(),
-//                                    modifier = Modifier.fillMaxWidth(),
-//                                    contentScale = ContentScale.FillWidth,
-//                                    contentDescription = "ok"
-//                                )
-//                            }
-//                        }
+                        ) {
+                            items(imagesArray.count(), key = {
+                                return@items UUID.randomUUID().toString()
+                            }) {
+                                Image(
+                                    bitmap = imagesArray[it].asImageBitmap(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentScale = ContentScale.FillWidth,
+                                    contentDescription = "ok"
+                                )
+                            }
+                        }
 
 //                        GlideImage(
 //                            model = "https://wh.aimuse.online/preset/hdr_cosmos.jxl",

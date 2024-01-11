@@ -39,6 +39,7 @@ using namespace std;
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
+#include "imagebit/attenuate-inl.h"
 
 HWY_BEFORE_NAMESPACE();
 
@@ -262,45 +263,6 @@ namespace coder::HWY_NAMESPACE {
         }
     }
 
-    template<typename D, typename I = Vec<D>>
-    inline __attribute__((flatten)) I
-    AttenuateVecR1010102(D d, I vec, I alpha) {
-        const FixedTag<uint32_t, 4> du32x4;
-        const FixedTag<uint16_t, 8> du16x8;
-        const FixedTag<uint8_t, 8> du8x8;
-        const FixedTag<uint8_t, 4> du8x4;
-        const FixedTag<float, 4> df32x4;
-        using VF32x4 = Vec<decltype(df32x4)>;
-        const VF32x4 mult255 = ApproximateReciprocal(Set(df32x4, 255));
-
-        auto vecLow = LowerHalf(vec);
-        auto alphaLow = LowerHalf(alpha);
-        auto vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecLow)));
-        auto mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaLow)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto lowlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-
-        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecLow)));
-        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaLow)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto lowhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-
-        auto vecHigh = UpperHalf(du8x8, vec);
-        auto alphaHigh = UpperHalf(du8x8, alpha);
-
-        vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecHigh)));
-        mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaHigh)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto highlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-
-        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecHigh)));
-        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaHigh)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto highhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-        auto low = Combine(du8x8, lowhigh, lowlow);
-        auto high = Combine(du8x8, highhigh, highlow);
-        return Combine(d, high, low);
-    }
 
     template<typename D, typename R, typename T = Vec<D>, typename I = Vec<R>>
     inline __attribute__((flatten)) Vec<D>
@@ -362,9 +324,9 @@ namespace coder::HWY_NAMESPACE {
                              upixels4);
 
             if (attenuateAlpha) {
-                upixels1 = AttenuateVecR1010102(du8x16, upixels1, upixels4);
-                upixels2 = AttenuateVecR1010102(du8x16, upixels2, upixels4);
-                upixels3 = AttenuateVecR1010102(du8x16, upixels3, upixels4);
+                upixels1 = AttenuateVec(du8x16, upixels1, upixels4);
+                upixels2 = AttenuateVec(du8x16, upixels2, upixels4);
+                upixels3 = AttenuateVec(du8x16, upixels3, upixels4);
             }
 
             VU final = ConvertPixelsTo(du, di32,

@@ -40,6 +40,7 @@ using namespace half_float;
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
+#include "imagebit/attenuate-inl.h"
 
 HWY_BEFORE_NAMESPACE();
 
@@ -83,46 +84,6 @@ namespace coder::HWY_NAMESPACE {
         return Combine(d, upper, lower);
     }
 
-    template<typename D, typename I = Vec<D>>
-    inline __attribute__((flatten)) I
-    AttenuateVecR8toBF16(D d, I vec, I alpha) {
-        const FixedTag<uint32_t, 4> du32x4;
-        const FixedTag<uint16_t, 8> du16x8;
-        const FixedTag<uint8_t, 8> du8x8;
-        const FixedTag<uint8_t, 4> du8x4;
-        const FixedTag<float, 4> df32x4;
-        using VF32x4 = Vec<decltype(df32x4)>;
-        const VF32x4 mult255 = ApproximateReciprocal(Set(df32x4, 255));
-
-        auto vecLow = LowerHalf(vec);
-        auto alphaLow = LowerHalf(alpha);
-        auto vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecLow)));
-        auto mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaLow)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto lowlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-
-        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecLow)));
-        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaLow)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto lowhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-
-        auto vecHigh = UpperHalf(du8x8, vec);
-        auto alphaHigh = UpperHalf(du8x8, alpha);
-
-        vk = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, vecHigh)));
-        mul = ConvertTo(df32x4, PromoteLowerTo(du32x4, PromoteTo(du16x8, alphaHigh)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto highlow = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-
-        vk = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, vecHigh)));
-        mul = ConvertTo(df32x4, PromoteUpperTo(du32x4, PromoteTo(du16x8, alphaHigh)));
-        vk = Round(Mul(Mul(vk, mul), mult255));
-        auto highhigh = DemoteTo(du8x4, ConvertTo(du32x4, vk));
-        auto low = Combine(du8x8, lowhigh, lowlow);
-        auto high = Combine(du8x8, highhigh, highlow);
-        return Combine(d, high, low);
-    }
-
     void
     Rgba8ToF16HWYRow(const uint8_t *source, uint16_t *destination, int width, float scale,
                      const int *permuteMap, const bool attenuateAlpha) {
@@ -154,9 +115,9 @@ namespace coder::HWY_NAMESPACE {
                              ru8Row, gu8Row, bu8Row, au8Row);
 
             if (attenuateAlpha) {
-                ru8Row = AttenuateVecR8toBF16(du8x16, ru8Row, au8Row);
-                gu8Row = AttenuateVecR8toBF16(du8x16, gu8Row, au8Row);
-                bu8Row = AttenuateVecR8toBF16(du8x16, bu8Row, au8Row);
+                ru8Row = AttenuateVec(du8x16, ru8Row, au8Row);
+                gu8Row = AttenuateVec(du8x16, gu8Row, au8Row);
+                bu8Row = AttenuateVec(du8x16, bu8Row, au8Row);
             }
 
             auto r16Row = ConvertRow(du16, PromoteLowerTo(du16, ru8Row), vScale);
