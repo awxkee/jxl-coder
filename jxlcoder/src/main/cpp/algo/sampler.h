@@ -175,9 +175,10 @@ static inline T CatmullRom(T x, T p0, T p1, T p2, T p3) {
 
 template<typename T>
 inline T HannWindow(const T n, const T length) {
-    const float size = length * 2;
+    const T size = length * 2;
+    const T part = M_PI / size;
     if (abs(n) <= size) {
-        float v = sin(M_PI * n / size);
+        float v = fastSin2(part * n);
         return v * v;
     }
     return T(0);

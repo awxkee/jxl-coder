@@ -40,6 +40,7 @@ using namespace half_float;
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
+#include "algo/math-inl.h"
 
 HWY_BEFORE_NAMESPACE();
 
@@ -49,8 +50,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::FixedTag;
     using hwy::HWY_NAMESPACE::Vec;
     using hwy::HWY_NAMESPACE::Mul;
-    using hwy::HWY_NAMESPACE::Max;
-    using hwy::HWY_NAMESPACE::Min;
+    using hwy::HWY_NAMESPACE::ClampRound;
     using hwy::HWY_NAMESPACE::Zero;
     using hwy::HWY_NAMESPACE::BitCast;
     using hwy::HWY_NAMESPACE::ConvertTo;
@@ -81,16 +81,18 @@ namespace coder::HWY_NAMESPACE {
         const auto vMaxColors = Set(rf32, (float) maxColors);
 
         auto lower = DemoteTo(ru8, ConvertTo(ri32,
-                                             Max(Min(Round(Mul(
+                                             ClampRound(rf32, Mul(
                                                      PromoteTo(rf32, BitCast(df16, LowerHalf(v))),
-                                                     vMaxColors)), vMaxColors), minColors)
+                                                     vMaxColors), vMaxColors, minColors)
         ));
         auto upper = DemoteTo(ru8, ConvertTo(ri32,
-                                             Max(Min(Round(Mul(PromoteTo(rf32,
-                                                                         BitCast(df16,
-                                                                                 UpperHalf(dfu416,
-                                                                                           v))),
-                                                               vMaxColors)), vMaxColors), minColors)
+                                             ClampRound(rf32, Mul(PromoteTo(rf32,
+                                                                            BitCast(df16,
+                                                                                    UpperHalf(
+                                                                                            dfu416,
+                                                                                            v))),
+                                                                  vMaxColors), vMaxColors,
+                                                        minColors)
         ));
         return Combine(du8, upper, lower);
     }

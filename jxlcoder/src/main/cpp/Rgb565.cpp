@@ -36,6 +36,7 @@
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
 #include "imagebit/attenuate-inl.h"
+#include "algo/math-inl.h"
 
 using namespace std;
 
@@ -71,6 +72,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::ApproximateReciprocal;
     using hwy::HWY_NAMESPACE::Mul;
     using hwy::HWY_NAMESPACE::Div;
+    using hwy::HWY_NAMESPACE::ClampRound;
     using hwy::float16_t;
     using hwy::float32_t;
 
@@ -352,15 +354,18 @@ namespace coder::HWY_NAMESPACE {
         auto vMaxColors = Set(rf32, (int) maxColors);
 
         auto lower = DemoteTo(ru8, ConvertTo(ri32,
-                                             Max(Min(Mul(
+                                             ClampRound(rf32, Mul(
                                                      PromoteTo(rf32, BitCast(df16, LowerHalf(v))),
-                                                     vMaxColors), vMaxColors), minColors)
+                                                     vMaxColors), vMaxColors, minColors)
         ));
         auto upper = DemoteTo(ru8, ConvertTo(ri32,
-                                             Max(Min(Mul(PromoteTo(rf32,
-                                                                   BitCast(df16,
-                                                                           UpperHalf(dfu416, v))),
-                                                         vMaxColors), vMaxColors), minColors)
+                                             ClampRound(rf32, Mul(PromoteTo(rf32,
+                                                                            BitCast(df16,
+                                                                                    UpperHalf(
+                                                                                            dfu416,
+                                                                                            v))),
+                                                                  vMaxColors), vMaxColors,
+                                                        minColors)
         ));
         return Combine(du8, upper, lower);
     }
@@ -428,7 +433,8 @@ namespace coder::HWY_NAMESPACE {
         auto minColors = Zero(df32);
         auto vMaxColors = Set(df32, (float) maxColors);
         auto lower = DemoteTo(ru8,
-                              ConvertTo(ri32, Max(Min(Mul(v, vMaxColors), vMaxColors), minColors)));
+                              ConvertTo(ri32, ClampRound(df32, Mul(v, vMaxColors), vMaxColors,
+                                                         minColors)));
         return lower;
     }
 

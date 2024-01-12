@@ -127,7 +127,7 @@ class MainActivity : ComponentActivity() {
                                         largeImageSize!!.height / 2,
                                         preferredColorConfig = PreferredColorConfig.DEFAULT,
                                         ScaleMode.FIT,
-                                        JxlResizeFilter.MITCHELL_NETRAVALI,
+                                        JxlResizeFilter.LANCZOS,
                                     )
                                     lifecycleScope.launch(Dispatchers.Main) {
                                         imagesArray.add(image)

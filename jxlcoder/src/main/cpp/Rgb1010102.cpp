@@ -40,6 +40,7 @@ using namespace std;
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
 #include "imagebit/attenuate-inl.h"
+#include "algo/math-inl.h"
 
 HWY_BEFORE_NAMESPACE();
 
@@ -52,8 +53,6 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::Zero;
     using hwy::HWY_NAMESPACE::LoadU;
     using hwy::HWY_NAMESPACE::Mul;
-    using hwy::HWY_NAMESPACE::Max;
-    using hwy::HWY_NAMESPACE::Min;
     using hwy::HWY_NAMESPACE::And;
     using hwy::HWY_NAMESPACE::Add;
     using hwy::HWY_NAMESPACE::BitCast;
@@ -68,6 +67,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::ShiftLeft;
     using hwy::HWY_NAMESPACE::StoreU;
     using hwy::HWY_NAMESPACE::Round;
+    using hwy::HWY_NAMESPACE::ClampRound;
     using hwy::float16_t;
 
     void
@@ -112,35 +112,27 @@ namespace coder::HWY_NAMESPACE {
             V16 fpixels2 = BitCast(rbfu16, upixels2);
             V16 fpixels3 = BitCast(rbfu16, upixels3);
             V16 fpixels4 = BitCast(rbfu16, upixels4);
-            V pixelsLow1 = Min(
-                    Max(Round(Mul(PromoteLowerTo(rbf32, fpixels1), vRange10)), zeros),
-                    vRange10);
-            V pixelsLow2 = Min(
-                    Max(Round(Mul(PromoteLowerTo(rbf32, fpixels2), vRange10)), zeros),
-                    vRange10);
-            V pixelsLow3 = Min(
-                    Max(Round(Mul(PromoteLowerTo(rbf32, fpixels3), vRange10)), zeros),
-                    vRange10);
-            V pixelsLow4 = Min(
-                    Max(Round(Mul(PromoteLowerTo(rbf32, fpixels4), alphaMax)), zeros),
-                    alphaMax);
+            V pixelsLow1 = ClampRound(rbf32, Mul(PromoteLowerTo(rbf32, fpixels1), vRange10), zeros,
+                                      vRange10);
+            V pixelsLow2 = ClampRound(rbf32, Mul(PromoteLowerTo(rbf32, fpixels2), vRange10), zeros,
+                                      vRange10);
+            V pixelsLow3 = ClampRound(rbf32, Mul(PromoteLowerTo(rbf32, fpixels3), vRange10), zeros,
+                                      vRange10);
+            V pixelsLow4 = ClampRound(rbf32, Mul(PromoteLowerTo(rbf32, fpixels4), alphaMax), zeros,
+                                      alphaMax);
             VU pixelsuLow1 = BitCast(du, ConvertTo(di32, pixelsLow1));
             VU pixelsuLow2 = BitCast(du, ConvertTo(di32, pixelsLow2));
             VU pixelsuLow3 = BitCast(du, ConvertTo(di32, pixelsLow3));
             VU pixelsuLow4 = BitCast(du, ConvertTo(di32, pixelsLow4));
 
-            V pixelsHigh1 = Min(
-                    Max(Round(Mul(PromoteUpperTo(rbf32, fpixels1), vRange10)), zeros),
-                    vRange10);
-            V pixelsHigh2 = Min(
-                    Max(Round(Mul(PromoteUpperTo(rbf32, fpixels2), vRange10)), zeros),
-                    vRange10);
-            V pixelsHigh3 = Min(
-                    Max(Round(Mul(PromoteUpperTo(rbf32, fpixels3), vRange10)), zeros),
-                    vRange10);
-            V pixelsHigh4 = Min(
-                    Max(Round(Mul(PromoteUpperTo(rbf32, fpixels4), alphaMax)), zeros),
-                    alphaMax);
+            V pixelsHigh1 = ClampRound(rbf32, Mul(PromoteUpperTo(rbf32, fpixels1), vRange10), zeros,
+                                       vRange10);
+            V pixelsHigh2 = ClampRound(rbf32, Mul(PromoteUpperTo(rbf32, fpixels2), vRange10), zeros,
+                                       vRange10);
+            V pixelsHigh3 = ClampRound(rbf32, Mul(PromoteUpperTo(rbf32, fpixels3), vRange10), zeros,
+                                       vRange10);
+            V pixelsHigh4 = ClampRound(rbf32, Mul(PromoteUpperTo(rbf32, fpixels4), alphaMax), zeros,
+                                       alphaMax);
             VU pixelsuHigh1 = BitCast(du, ConvertTo(di32, pixelsHigh1));
             VU pixelsuHigh2 = BitCast(du, ConvertTo(di32, pixelsHigh2));
             VU pixelsuHigh3 = BitCast(du, ConvertTo(di32, pixelsHigh3));
@@ -216,18 +208,14 @@ namespace coder::HWY_NAMESPACE {
             V pixels4;
             LoadInterleaved4(df, reinterpret_cast<const float *>(data), pixels1, pixels2,
                              pixels3, pixels4);
-            pixels1 = Min(
-                    Max(Round(Mul(pixels1, vRange10)), zeros),
-                    vRange10);
-            pixels2 = Min(
-                    Max(Round(Mul(pixels2, vRange10)), zeros),
-                    vRange10);
-            pixels3 = Min(
-                    Max(Round(Mul(pixels3, vRange10)), zeros),
-                    vRange10);
-            pixels4 = Min(
-                    Max(Round(Mul(pixels4, alphaMax)), zeros),
-                    alphaMax);
+            pixels1 = ClampRound(df, Mul(pixels1, vRange10), zeros,
+                                 vRange10);
+            pixels2 = ClampRound(df, Mul(pixels2, vRange10), zeros,
+                                 vRange10);
+            pixels3 = ClampRound(df, Mul(pixels3, vRange10), zeros,
+                                 vRange10);
+            pixels4 = ClampRound(df, Mul(pixels4, alphaMax), zeros,
+                                 alphaMax);
             VU pixelsu1 = BitCast(du, ConvertTo(di32, pixels1));
             VU pixelsu2 = BitCast(du, ConvertTo(di32, pixels2));
             VU pixelsu3 = BitCast(du, ConvertTo(di32, pixels3));

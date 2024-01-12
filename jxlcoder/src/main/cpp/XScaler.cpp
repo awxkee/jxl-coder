@@ -327,8 +327,6 @@ namespace coder::HWY_NAMESPACE {
                     switch (option) {
                         case hann:
                             sampler = HannWindow<float>;
-                            a = 3;
-                            lanczosFA = 3;
                             break;
                         default:
                             sampler = LanczosWindow<float>;
@@ -356,7 +354,7 @@ namespace coder::HWY_NAMESPACE {
                         float dy = float(srcY) - (float(ky1) + (float) j);
                         float yWeight;
                         if (option == lanczos) {
-                            yWeight = sampler(dy, lanczosFA);
+                            yWeight = LanczosWindow(dy, lanczosFA);
                         } else {
                             yWeight = HannWindow(float(j), lanczosFA);
                         }

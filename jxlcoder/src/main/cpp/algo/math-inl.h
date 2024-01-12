@@ -23,6 +23,9 @@
 #endif
 
 #include "hwy/highway.h"
+#include "fast_math-inl.h"
+
+#define HWY_MATH_INLINE inline __attribute__((flatten))
 
 HWY_BEFORE_NAMESPACE();
 
@@ -45,7 +48,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallAcos(const D d, VecArg <V> x) {
+        CallAcos(const D d, VecArg<V> x) {
             return Acos(d, x);
         }
 
@@ -65,8 +68,18 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallAcosh(const D d, VecArg <V> x) {
+        CallAcosh(const D d, VecArg<V> x) {
             return Acosh(d, x);
+        }
+
+        template<class D, class V>
+        HWY_MATH_INLINE V Clamp(const D d, const V x, const V min, const V max) {
+            return Max(Min(x, max), min);
+        }
+
+        template<class D, class V>
+        HWY_MATH_INLINE V ClampRound(const D d, const V x, const V min, const V max) {
+            return Max(Min(Round(x), max), min);
         }
 
 /**
@@ -85,7 +98,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallAsin(const D d, VecArg <V> x) {
+        CallAsin(const D d, VecArg<V> x) {
             return Asin(d, x);
         }
 
@@ -105,7 +118,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallAsinh(const D d, VecArg <V> x) {
+        CallAsinh(const D d, VecArg<V> x) {
             return Asinh(d, x);
         }
 
@@ -125,7 +138,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallAtan(const D d, VecArg <V> x) {
+        CallAtan(const D d, VecArg<V> x) {
             return Atan(d, x);
         }
 
@@ -145,7 +158,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallAtanh(const D d, VecArg <V> x) {
+        CallAtanh(const D d, VecArg<V> x) {
             return Atanh(d, x);
         }
 
@@ -162,8 +175,8 @@ namespace hwy {
  * Correctly handles negative zero, infinities, and NaN.
  * @return atan2 of 'y', 'x'
  */
-        template<class D, class V = VFromD <D>, class M = MFromD <D>,
-                typename T = TFromD <D>>
+        template<class D, class V = VFromD<D>, class M = MFromD<D>,
+                typename T = TFromD<D>>
         HWY_INLINE V
 
         Atan2(const D d, V y, V x) {
@@ -198,7 +211,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallAtan2(const D d, VecArg <V> y, VecArg <V> x) {
+        CallAtan2(const D d, VecArg<V> y, VecArg<V> x) {
             return Atan2(d, y, x);
         }
 
@@ -218,7 +231,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallCos(const D d, VecArg <V> x) {
+        CallCos(const D d, VecArg<V> x) {
             return Cos(d, x);
         }
 
@@ -238,7 +251,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallExp(const D d, VecArg <V> x) {
+        CallExp(const D d, VecArg<V> x) {
             return Exp(d, x);
         }
 
@@ -258,7 +271,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallExpm1(const D d, VecArg <V> x) {
+        CallExpm1(const D d, VecArg<V> x) {
             return Expm1(d, x);
         }
 
@@ -278,7 +291,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallLog(const D d, VecArg <V> x) {
+        CallLog(const D d, VecArg<V> x) {
             return Log(d, x);
         }
 
@@ -298,7 +311,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallLog10(const D d, VecArg <V> x) {
+        CallLog10(const D d, VecArg<V> x) {
             return Log10(d, x);
         }
 
@@ -318,7 +331,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallLog1p(const D d, VecArg <V> x) {
+        CallLog1p(const D d, VecArg<V> x) {
             return Log1p(d, x);
         }
 
@@ -338,7 +351,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallLog2(const D d, VecArg <V> x) {
+        CallLog2(const D d, VecArg<V> x) {
             return Log2(d, x);
         }
 
@@ -358,7 +371,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallSin(const D d, VecArg <V> x) {
+        CallSin(const D d, VecArg<V> x) {
             return Sin(d, x);
         }
 
@@ -378,7 +391,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallSinh(const D d, VecArg <V> x) {
+        CallSinh(const D d, VecArg<V> x) {
             return Sinh(d, x);
         }
 
@@ -398,7 +411,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallTanh(const D d, VecArg <V> x) {
+        CallTanh(const D d, VecArg<V> x) {
             return Tanh(d, x);
         }
 
@@ -418,7 +431,7 @@ namespace hwy {
         template<class D, class V>
         HWY_NOINLINE V
 
-        CallSinCos(const D d, VecArg <V> x, VecArg <V> &s, VecArg <V> &c) {
+        CallSinCos(const D d, VecArg<V> x, VecArg<V> &s, VecArg<V> &c) {
             SinCos(d, x, s, c);
         }
 
@@ -693,7 +706,7 @@ namespace hwy {
                 template<class D, class V>
                 HWY_INLINE V
                 AsinPoly(D
-                d, V x2, V /*x*/) {
+                         d, V x2, V /*x*/) {
                     const auto k0 = Set(d, +0.1666677296f);
                     const auto k1 = Set(d, +0.07495029271f);
                     const auto k2 = Set(d, +0.04547423869f);
@@ -706,26 +719,26 @@ namespace hwy {
 
 #if HWY_HAVE_FLOAT64 && HWY_HAVE_INTEGER64
 
-            template <>
+            template<>
             struct AsinImpl<double> {
-              // Polynomial approximation for asin(x) over the range [0, 0.5).
-              template <class D, class V>
-              HWY_INLINE V AsinPoly(D d, V x2, V /*x*/) {
-                const auto k0 = Set(d, +0.1666666666666497543);
-                const auto k1 = Set(d, +0.07500000000378581611);
-                const auto k2 = Set(d, +0.04464285681377102438);
-                const auto k3 = Set(d, +0.03038195928038132237);
-                const auto k4 = Set(d, +0.02237176181932048341);
-                const auto k5 = Set(d, +0.01735956991223614604);
-                const auto k6 = Set(d, +0.01388715184501609218);
-                const auto k7 = Set(d, +0.01215360525577377331);
-                const auto k8 = Set(d, +0.006606077476277170610);
-                const auto k9 = Set(d, +0.01929045477267910674);
-                const auto k10 = Set(d, -0.01581918243329996643);
-                const auto k11 = Set(d, +0.03161587650653934628);
+                // Polynomial approximation for asin(x) over the range [0, 0.5).
+                template<class D, class V>
+                HWY_INLINE V AsinPoly(D d, V x2, V /*x*/) {
+                    const auto k0 = Set(d, +0.1666666666666497543);
+                    const auto k1 = Set(d, +0.07500000000378581611);
+                    const auto k2 = Set(d, +0.04464285681377102438);
+                    const auto k3 = Set(d, +0.03038195928038132237);
+                    const auto k4 = Set(d, +0.02237176181932048341);
+                    const auto k5 = Set(d, +0.01735956991223614604);
+                    const auto k6 = Set(d, +0.01388715184501609218);
+                    const auto k7 = Set(d, +0.01215360525577377331);
+                    const auto k8 = Set(d, +0.006606077476277170610);
+                    const auto k9 = Set(d, +0.01929045477267910674);
+                    const auto k10 = Set(d, -0.01581918243329996643);
+                    const auto k11 = Set(d, +0.03161587650653934628);
 
-                return Estrin(x2, k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11);
-              }
+                    return Estrin(x2, k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11);
+                }
             };
 
 #endif
@@ -736,7 +749,7 @@ namespace hwy {
                 template<class D, class V>
                 HWY_INLINE V
                 AtanPoly(D
-                d, V x) {
+                         d, V x) {
                     const auto k0 = Set(d, -0.333331018686294555664062f);
                     const auto k1 = Set(d, +0.199926957488059997558594f);
                     const auto k2 = Set(d, -0.142027363181114196777344f);
@@ -753,36 +766,36 @@ namespace hwy {
 
 #if HWY_HAVE_FLOAT64 && HWY_HAVE_INTEGER64
 
-            template <>
+            template<>
             struct AtanImpl<double> {
-              // Polynomial approximation for atan(x) over the range [0, 1.0).
-              template <class D, class V>
-              HWY_INLINE V AtanPoly(D d, V x) {
-                const auto k0 = Set(d, -0.333333333333311110369124);
-                const auto k1 = Set(d, +0.199999999996591265594148);
-                const auto k2 = Set(d, -0.14285714266771329383765);
-                const auto k3 = Set(d, +0.111111105648261418443745);
-                const auto k4 = Set(d, -0.090908995008245008229153);
-                const auto k5 = Set(d, +0.0769219538311769618355029);
-                const auto k6 = Set(d, -0.0666573579361080525984562);
-                const auto k7 = Set(d, +0.0587666392926673580854313);
-                const auto k8 = Set(d, -0.0523674852303482457616113);
-                const auto k9 = Set(d, +0.0466667150077840625632675);
-                const auto k10 = Set(d, -0.0407629191276836500001934);
-                const auto k11 = Set(d, +0.0337852580001353069993897);
-                const auto k12 = Set(d, -0.0254517624932312641616861);
-                const auto k13 = Set(d, +0.016599329773529201970117);
-                const auto k14 = Set(d, -0.00889896195887655491740809);
-                const auto k15 = Set(d, +0.00370026744188713119232403);
-                const auto k16 = Set(d, -0.00110611831486672482563471);
-                const auto k17 = Set(d, +0.000209850076645816976906797);
-                const auto k18 = Set(d, -1.88796008463073496563746e-5);
+                // Polynomial approximation for atan(x) over the range [0, 1.0).
+                template<class D, class V>
+                HWY_INLINE V AtanPoly(D d, V x) {
+                    const auto k0 = Set(d, -0.333333333333311110369124);
+                    const auto k1 = Set(d, +0.199999999996591265594148);
+                    const auto k2 = Set(d, -0.14285714266771329383765);
+                    const auto k3 = Set(d, +0.111111105648261418443745);
+                    const auto k4 = Set(d, -0.090908995008245008229153);
+                    const auto k5 = Set(d, +0.0769219538311769618355029);
+                    const auto k6 = Set(d, -0.0666573579361080525984562);
+                    const auto k7 = Set(d, +0.0587666392926673580854313);
+                    const auto k8 = Set(d, -0.0523674852303482457616113);
+                    const auto k9 = Set(d, +0.0466667150077840625632675);
+                    const auto k10 = Set(d, -0.0407629191276836500001934);
+                    const auto k11 = Set(d, +0.0337852580001353069993897);
+                    const auto k12 = Set(d, -0.0254517624932312641616861);
+                    const auto k13 = Set(d, +0.016599329773529201970117);
+                    const auto k14 = Set(d, -0.00889896195887655491740809);
+                    const auto k15 = Set(d, +0.00370026744188713119232403);
+                    const auto k16 = Set(d, -0.00110611831486672482563471);
+                    const auto k17 = Set(d, +0.000209850076645816976906797);
+                    const auto k18 = Set(d, -1.88796008463073496563746e-5);
 
-                const auto y = Mul(x, x);
-                return MulAdd(Estrin(y, k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11,
-                                     k12, k13, k14, k15, k16, k17, k18),
-                              Mul(y, x), x);
-              }
+                    const auto y = Mul(x, x);
+                    return MulAdd(Estrin(y, k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11,
+                                         k12, k13, k14, k15, k16, k17, k18),
+                                  Mul(y, x), x);
+                }
             };
 
 #endif
@@ -791,14 +804,14 @@ namespace hwy {
             struct CosSinImpl<float> {
                 // Rounds float toward zero and returns as int32_t.
                 template<class D, class V>
-                HWY_INLINE Vec<Rebind < int32_t, D>> ToInt32(D /*unused*/, V x) {
+                HWY_INLINE Vec<Rebind<int32_t, D>> ToInt32(D /*unused*/, V x) {
                     return ConvertTo(Rebind<int32_t, D>(), x);
                 }
 
                 template<class D, class V>
                 HWY_INLINE V
                 Poly(D
-                d, V x) {
+                     d, V x) {
                     const auto k0 = Set(d, -1.66666597127914428710938e-1f);
                     const auto k1 = Set(d, +8.33307858556509017944336e-3f);
                     const auto k2 = Set(d, -1.981069071916863322258e-4f);
@@ -811,8 +824,8 @@ namespace hwy {
                 template<class D, class V, class VI32>
                 HWY_INLINE V
                 CosReduce(D
-                d, V x, VI32
-                q) {
+                          d, V x, VI32
+                          q) {
                     // kHalfPiPart0f + kHalfPiPart1f + kHalfPiPart2f + kHalfPiPart3f ~= -pi/2
                     const V kHalfPiPart0f = Set(d, -0.5f * 3.140625f);
                     const V kHalfPiPart1f = Set(d, -0.5f * 0.0009670257568359375f);
@@ -831,8 +844,8 @@ namespace hwy {
                 template<class D, class V, class VI32>
                 HWY_INLINE V
                 SinReduce(D
-                d, V x, VI32
-                q) {
+                          d, V x, VI32
+                          q) {
                     // kPiPart0f + kPiPart1f + kPiPart2f + kPiPart3f ~= -pi
                     const V kPiPart0f = Set(d, -3.140625f);
                     const V kPiPart1f = Set(d, -0.0009670257568359375f);
@@ -850,7 +863,7 @@ namespace hwy {
 
                 // (q & 2) == 0 ? -0.0 : +0.0
                 template<class D, class VI32>
-                HWY_INLINE Vec<Rebind < float, D>> CosSignFromQuadrant(D d, VI32
+                HWY_INLINE Vec<Rebind<float, D>> CosSignFromQuadrant(D d, VI32
                 q) {
                     const VI32 kTwo = Set(Rebind<int32_t, D>(), 2);
                     return BitCast(d, ShiftLeft<30>(AndNot(q, kTwo)));
@@ -858,7 +871,7 @@ namespace hwy {
 
                 // ((q & 1) ? -0.0 : +0.0)
                 template<class D, class VI32>
-                HWY_INLINE Vec<Rebind < float, D>> SinSignFromQuadrant(D d, VI32
+                HWY_INLINE Vec<Rebind<float, D>> SinSignFromQuadrant(D d, VI32
                 q) {
                     const VI32 kOne = Set(Rebind<int32_t, D>(), 1);
                     return BitCast(d, ShiftLeft<31>(And(q, kOne)));
@@ -867,79 +880,79 @@ namespace hwy {
 
 #if HWY_HAVE_FLOAT64 && HWY_HAVE_INTEGER64
 
-            template <>
+            template<>
             struct CosSinImpl<double> {
-              // Rounds double toward zero and returns as int32_t.
-              template <class D, class V>
-              HWY_INLINE Vec<Rebind<int32_t, D>> ToInt32(D /*unused*/, V x) {
-                return DemoteTo(Rebind<int32_t, D>(), x);
-              }
+                // Rounds double toward zero and returns as int32_t.
+                template<class D, class V>
+                HWY_INLINE Vec<Rebind<int32_t, D>> ToInt32(D /*unused*/, V x) {
+                    return DemoteTo(Rebind<int32_t, D>(), x);
+                }
 
-              template <class D, class V>
-              HWY_INLINE V Poly(D d, V x) {
-                const auto k0 = Set(d, -0.166666666666666657414808);
-                const auto k1 = Set(d, +0.00833333333333332974823815);
-                const auto k2 = Set(d, -0.000198412698412696162806809);
-                const auto k3 = Set(d, +2.75573192239198747630416e-6);
-                const auto k4 = Set(d, -2.50521083763502045810755e-8);
-                const auto k5 = Set(d, +1.60590430605664501629054e-10);
-                const auto k6 = Set(d, -7.64712219118158833288484e-13);
-                const auto k7 = Set(d, +2.81009972710863200091251e-15);
-                const auto k8 = Set(d, -7.97255955009037868891952e-18);
+                template<class D, class V>
+                HWY_INLINE V Poly(D d, V x) {
+                    const auto k0 = Set(d, -0.166666666666666657414808);
+                    const auto k1 = Set(d, +0.00833333333333332974823815);
+                    const auto k2 = Set(d, -0.000198412698412696162806809);
+                    const auto k3 = Set(d, +2.75573192239198747630416e-6);
+                    const auto k4 = Set(d, -2.50521083763502045810755e-8);
+                    const auto k5 = Set(d, +1.60590430605664501629054e-10);
+                    const auto k6 = Set(d, -7.64712219118158833288484e-13);
+                    const auto k7 = Set(d, +2.81009972710863200091251e-15);
+                    const auto k8 = Set(d, -7.97255955009037868891952e-18);
 
-                const auto y = Mul(x, x);
-                return MulAdd(Estrin(y, k0, k1, k2, k3, k4, k5, k6, k7, k8), Mul(y, x), x);
-              }
+                    const auto y = Mul(x, x);
+                    return MulAdd(Estrin(y, k0, k1, k2, k3, k4, k5, k6, k7, k8), Mul(y, x), x);
+                }
 
-              template <class D, class V, class VI32>
-              HWY_INLINE V CosReduce(D d, V x, VI32 q) {
-                // kHalfPiPart0d + kHalfPiPart1d + kHalfPiPart2d + kHalfPiPart3d ~= -pi/2
-                const V kHalfPiPart0d = Set(d, -0.5 * 3.1415926218032836914);
-                const V kHalfPiPart1d = Set(d, -0.5 * 3.1786509424591713469e-8);
-                const V kHalfPiPart2d = Set(d, -0.5 * 1.2246467864107188502e-16);
-                const V kHalfPiPart3d = Set(d, -0.5 * 1.2736634327021899816e-24);
+                template<class D, class V, class VI32>
+                HWY_INLINE V CosReduce(D d, V x, VI32 q) {
+                    // kHalfPiPart0d + kHalfPiPart1d + kHalfPiPart2d + kHalfPiPart3d ~= -pi/2
+                    const V kHalfPiPart0d = Set(d, -0.5 * 3.1415926218032836914);
+                    const V kHalfPiPart1d = Set(d, -0.5 * 3.1786509424591713469e-8);
+                    const V kHalfPiPart2d = Set(d, -0.5 * 1.2246467864107188502e-16);
+                    const V kHalfPiPart3d = Set(d, -0.5 * 1.2736634327021899816e-24);
 
-                // Extended precision modular arithmetic.
-                const V qf = PromoteTo(d, q);
-                x = MulAdd(qf, kHalfPiPart0d, x);
-                x = MulAdd(qf, kHalfPiPart1d, x);
-                x = MulAdd(qf, kHalfPiPart2d, x);
-                x = MulAdd(qf, kHalfPiPart3d, x);
-                return x;
-              }
+                    // Extended precision modular arithmetic.
+                    const V qf = PromoteTo(d, q);
+                    x = MulAdd(qf, kHalfPiPart0d, x);
+                    x = MulAdd(qf, kHalfPiPart1d, x);
+                    x = MulAdd(qf, kHalfPiPart2d, x);
+                    x = MulAdd(qf, kHalfPiPart3d, x);
+                    return x;
+                }
 
-              template <class D, class V, class VI32>
-              HWY_INLINE V SinReduce(D d, V x, VI32 q) {
-                // kPiPart0d + kPiPart1d + kPiPart2d + kPiPart3d ~= -pi
-                const V kPiPart0d = Set(d, -3.1415926218032836914);
-                const V kPiPart1d = Set(d, -3.1786509424591713469e-8);
-                const V kPiPart2d = Set(d, -1.2246467864107188502e-16);
-                const V kPiPart3d = Set(d, -1.2736634327021899816e-24);
+                template<class D, class V, class VI32>
+                HWY_INLINE V SinReduce(D d, V x, VI32 q) {
+                    // kPiPart0d + kPiPart1d + kPiPart2d + kPiPart3d ~= -pi
+                    const V kPiPart0d = Set(d, -3.1415926218032836914);
+                    const V kPiPart1d = Set(d, -3.1786509424591713469e-8);
+                    const V kPiPart2d = Set(d, -1.2246467864107188502e-16);
+                    const V kPiPart3d = Set(d, -1.2736634327021899816e-24);
 
-                // Extended precision modular arithmetic.
-                const V qf = PromoteTo(d, q);
-                x = MulAdd(qf, kPiPart0d, x);
-                x = MulAdd(qf, kPiPart1d, x);
-                x = MulAdd(qf, kPiPart2d, x);
-                x = MulAdd(qf, kPiPart3d, x);
-                return x;
-              }
+                    // Extended precision modular arithmetic.
+                    const V qf = PromoteTo(d, q);
+                    x = MulAdd(qf, kPiPart0d, x);
+                    x = MulAdd(qf, kPiPart1d, x);
+                    x = MulAdd(qf, kPiPart2d, x);
+                    x = MulAdd(qf, kPiPart3d, x);
+                    return x;
+                }
 
-              // (q & 2) == 0 ? -0.0 : +0.0
-              template <class D, class VI32>
-              HWY_INLINE Vec<Rebind<double, D>> CosSignFromQuadrant(D d, VI32 q) {
-                const VI32 kTwo = Set(Rebind<int32_t, D>(), 2);
-                return BitCast(
-                    d, ShiftLeft<62>(PromoteTo(Rebind<int64_t, D>(), AndNot(q, kTwo))));
-              }
+                // (q & 2) == 0 ? -0.0 : +0.0
+                template<class D, class VI32>
+                HWY_INLINE Vec<Rebind<double, D>> CosSignFromQuadrant(D d, VI32 q) {
+                    const VI32 kTwo = Set(Rebind<int32_t, D>(), 2);
+                    return BitCast(
+                            d, ShiftLeft<62>(PromoteTo(Rebind<int64_t, D>(), AndNot(q, kTwo))));
+                }
 
-              // ((q & 1) ? -0.0 : +0.0)
-              template <class D, class VI32>
-              HWY_INLINE Vec<Rebind<double, D>> SinSignFromQuadrant(D d, VI32 q) {
-                const VI32 kOne = Set(Rebind<int32_t, D>(), 1);
-                return BitCast(
-                    d, ShiftLeft<63>(PromoteTo(Rebind<int64_t, D>(), And(q, kOne))));
-              }
+                // ((q & 1) ? -0.0 : +0.0)
+                template<class D, class VI32>
+                HWY_INLINE Vec<Rebind<double, D>> SinSignFromQuadrant(D d, VI32 q) {
+                    const VI32 kOne = Set(Rebind<int32_t, D>(), 1);
+                    return BitCast(
+                            d, ShiftLeft<63>(PromoteTo(Rebind<int64_t, D>(), And(q, kOne))));
+                }
             };
 
 #endif
@@ -948,14 +961,14 @@ namespace hwy {
             struct ExpImpl<float> {
                 // Rounds float toward zero and returns as int32_t.
                 template<class D, class V>
-                HWY_INLINE Vec<Rebind < int32_t, D>> ToInt32(D /*unused*/, V x) {
+                HWY_INLINE Vec<Rebind<int32_t, D>> ToInt32(D /*unused*/, V x) {
                     return ConvertTo(Rebind<int32_t, D>(), x);
                 }
 
                 template<class D, class V>
                 HWY_INLINE V
                 ExpPoly(D
-                d, V x) {
+                        d, V x) {
                     const auto k0 = Set(d, +0.5f);
                     const auto k1 = Set(d, +0.166666671633720397949219f);
                     const auto k2 = Set(d, +0.0416664853692054748535156f);
@@ -970,8 +983,8 @@ namespace hwy {
                 template<class D, class VI32>
                 HWY_INLINE Vec<D>
                 Pow2I(D
-                d, VI32 x) {
-                    const Rebind <int32_t, D> di32;
+                      d, VI32 x) {
+                    const Rebind<int32_t, D> di32;
                     const VI32 kOffset = Set(di32, 0x7F);
                     return BitCast(d, ShiftLeft<23>(Add(x, kOffset)));
                 }
@@ -980,8 +993,8 @@ namespace hwy {
                 template<class D, class V, class VI32>
                 HWY_INLINE V
                 LoadExpShortRange(D
-                d, V x, VI32
-                e) {
+                                  d, V x, VI32
+                                  e) {
                     const VI32 y = ShiftRight<1>(e);
                     return Mul(Mul(x, Pow2I(d, y)), Pow2I(d, Sub(e, y)));
                 }
@@ -989,8 +1002,8 @@ namespace hwy {
                 template<class D, class V, class VI32>
                 HWY_INLINE V
                 ExpReduce(D
-                d, V x, VI32
-                q) {
+                          d, V x, VI32
+                          q) {
                     // kLn2Part0f + kLn2Part1f ~= -ln(2)
                     const V kLn2Part0f = Set(d, -0.693145751953125f);
                     const V kLn2Part1f = Set(d, -1.428606765330187045e-6f);
@@ -1006,9 +1019,9 @@ namespace hwy {
             template<>
             struct LogImpl<float> {
                 template<class D, class V>
-                HWY_INLINE Vec<Rebind < int32_t, D>> Log2p1NoSubnormal(D /*d*/, V x) {
-                    const Rebind <int32_t, D> di32;
-                    const Rebind <uint32_t, D> du32;
+                HWY_INLINE Vec<Rebind<int32_t, D>> Log2p1NoSubnormal(D /*d*/, V x) {
+                    const Rebind<int32_t, D> di32;
+                    const Rebind<uint32_t, D> du32;
                     const auto kBias = Set(di32, 0x7F);
                     return Sub(BitCast(di32, ShiftRight<23>(BitCast(du32, x))), kBias);
                 }
@@ -1017,7 +1030,7 @@ namespace hwy {
                 template<class D, class V>
                 HWY_INLINE V
                 LogPoly(D
-                d, V x) {
+                        d, V x) {
                     const V k0 = Set(d, 0.66666662693f);
                     const V k1 = Set(d, 0.40000972152f);
                     const V k2 = Set(d, 0.28498786688f);
@@ -1030,88 +1043,89 @@ namespace hwy {
             };
 
 #if HWY_HAVE_FLOAT64 && HWY_HAVE_INTEGER64
-            template <>
+
+            template<>
             struct ExpImpl<double> {
-              // Rounds double toward zero and returns as int32_t.
-              template <class D, class V>
-              HWY_INLINE Vec<Rebind<int32_t, D>> ToInt32(D /*unused*/, V x) {
-                return DemoteTo(Rebind<int32_t, D>(), x);
-              }
+                // Rounds double toward zero and returns as int32_t.
+                template<class D, class V>
+                HWY_INLINE Vec<Rebind<int32_t, D>> ToInt32(D /*unused*/, V x) {
+                    return DemoteTo(Rebind<int32_t, D>(), x);
+                }
 
-              template <class D, class V>
-              HWY_INLINE V ExpPoly(D d, V x) {
-                const auto k0 = Set(d, +0.5);
-                const auto k1 = Set(d, +0.166666666666666851703837);
-                const auto k2 = Set(d, +0.0416666666666665047591422);
-                const auto k3 = Set(d, +0.00833333333331652721664984);
-                const auto k4 = Set(d, +0.00138888888889774492207962);
-                const auto k5 = Set(d, +0.000198412698960509205564975);
-                const auto k6 = Set(d, +2.4801587159235472998791e-5);
-                const auto k7 = Set(d, +2.75572362911928827629423e-6);
-                const auto k8 = Set(d, +2.75573911234900471893338e-7);
-                const auto k9 = Set(d, +2.51112930892876518610661e-8);
-                const auto k10 = Set(d, +2.08860621107283687536341e-9);
+                template<class D, class V>
+                HWY_INLINE V ExpPoly(D d, V x) {
+                    const auto k0 = Set(d, +0.5);
+                    const auto k1 = Set(d, +0.166666666666666851703837);
+                    const auto k2 = Set(d, +0.0416666666666665047591422);
+                    const auto k3 = Set(d, +0.00833333333331652721664984);
+                    const auto k4 = Set(d, +0.00138888888889774492207962);
+                    const auto k5 = Set(d, +0.000198412698960509205564975);
+                    const auto k6 = Set(d, +2.4801587159235472998791e-5);
+                    const auto k7 = Set(d, +2.75572362911928827629423e-6);
+                    const auto k8 = Set(d, +2.75573911234900471893338e-7);
+                    const auto k9 = Set(d, +2.51112930892876518610661e-8);
+                    const auto k10 = Set(d, +2.08860621107283687536341e-9);
 
-                return MulAdd(Estrin(x, k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10),
-                              Mul(x, x), x);
-              }
+                    return MulAdd(Estrin(x, k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10),
+                                  Mul(x, x), x);
+                }
 
-              // Computes 2^x, where x is an integer.
-              template <class D, class VI32>
-              HWY_INLINE Vec<D> Pow2I(D d, VI32 x) {
-                const Rebind<int32_t, D> di32;
-                const Rebind<int64_t, D> di64;
-                const VI32 kOffset = Set(di32, 0x3FF);
-                return BitCast(d, ShiftLeft<52>(PromoteTo(di64, Add(x, kOffset))));
-              }
+                // Computes 2^x, where x is an integer.
+                template<class D, class VI32>
+                HWY_INLINE Vec<D> Pow2I(D d, VI32 x) {
+                    const Rebind<int32_t, D> di32;
+                    const Rebind<int64_t, D> di64;
+                    const VI32 kOffset = Set(di32, 0x3FF);
+                    return BitCast(d, ShiftLeft<52>(PromoteTo(di64, Add(x, kOffset))));
+                }
 
-              // Sets the exponent of 'x' to 2^e.
-              template <class D, class V, class VI32>
-              HWY_INLINE V LoadExpShortRange(D d, V x, VI32 e) {
-                const VI32 y = ShiftRight<1>(e);
-                return Mul(Mul(x, Pow2I(d, y)), Pow2I(d, Sub(e, y)));
-              }
+                // Sets the exponent of 'x' to 2^e.
+                template<class D, class V, class VI32>
+                HWY_INLINE V LoadExpShortRange(D d, V x, VI32 e) {
+                    const VI32 y = ShiftRight<1>(e);
+                    return Mul(Mul(x, Pow2I(d, y)), Pow2I(d, Sub(e, y)));
+                }
 
-              template <class D, class V, class VI32>
-              HWY_INLINE V ExpReduce(D d, V x, VI32 q) {
-                // kLn2Part0d + kLn2Part1d ~= -ln(2)
-                const V kLn2Part0d = Set(d, -0.6931471805596629565116018);
-                const V kLn2Part1d = Set(d, -0.28235290563031577122588448175e-12);
+                template<class D, class V, class VI32>
+                HWY_INLINE V ExpReduce(D d, V x, VI32 q) {
+                    // kLn2Part0d + kLn2Part1d ~= -ln(2)
+                    const V kLn2Part0d = Set(d, -0.6931471805596629565116018);
+                    const V kLn2Part1d = Set(d, -0.28235290563031577122588448175e-12);
 
-                // Extended precision modular arithmetic.
-                const V qf = PromoteTo(d, q);
-                x = MulAdd(qf, kLn2Part0d, x);
-                x = MulAdd(qf, kLn2Part1d, x);
-                return x;
-              }
+                    // Extended precision modular arithmetic.
+                    const V qf = PromoteTo(d, q);
+                    x = MulAdd(qf, kLn2Part0d, x);
+                    x = MulAdd(qf, kLn2Part1d, x);
+                    return x;
+                }
             };
 
-            template <>
+            template<>
             struct LogImpl<double> {
-              template <class D, class V>
-              HWY_INLINE Vec<Rebind<int64_t, D>> Log2p1NoSubnormal(D /*d*/, V x) {
-                const Rebind<int64_t, D> di64;
-                const Rebind<uint64_t, D> du64;
-                return Sub(BitCast(di64, ShiftRight<52>(BitCast(du64, x))),
-                           Set(di64, 0x3FF));
-              }
+                template<class D, class V>
+                HWY_INLINE Vec<Rebind<int64_t, D>> Log2p1NoSubnormal(D /*d*/, V x) {
+                    const Rebind<int64_t, D> di64;
+                    const Rebind<uint64_t, D> du64;
+                    return Sub(BitCast(di64, ShiftRight<52>(BitCast(du64, x))),
+                               Set(di64, 0x3FF));
+                }
 
-              // Approximates Log(x) over the range [sqrt(2) / 2, sqrt(2)].
-              template <class D, class V>
-              HWY_INLINE V LogPoly(D d, V x) {
-                const V k0 = Set(d, 0.6666666666666735130);
-                const V k1 = Set(d, 0.3999999999940941908);
-                const V k2 = Set(d, 0.2857142874366239149);
-                const V k3 = Set(d, 0.2222219843214978396);
-                const V k4 = Set(d, 0.1818357216161805012);
-                const V k5 = Set(d, 0.1531383769920937332);
-                const V k6 = Set(d, 0.1479819860511658591);
+                // Approximates Log(x) over the range [sqrt(2) / 2, sqrt(2)].
+                template<class D, class V>
+                HWY_INLINE V LogPoly(D d, V x) {
+                    const V k0 = Set(d, 0.6666666666666735130);
+                    const V k1 = Set(d, 0.3999999999940941908);
+                    const V k2 = Set(d, 0.2857142874366239149);
+                    const V k3 = Set(d, 0.2222219843214978396);
+                    const V k4 = Set(d, 0.1818357216161805012);
+                    const V k5 = Set(d, 0.1531383769920937332);
+                    const V k6 = Set(d, 0.1479819860511658591);
 
-                const V x2 = Mul(x, x);
-                const V x4 = Mul(x2, x2);
-                return MulAdd(MulAdd(MulAdd(MulAdd(k6, x4, k4), x4, k2), x4, k0), x2,
-                              (Mul(MulAdd(MulAdd(k5, x4, k3), x4, k1), x4)));
-              }
+                    const V x2 = Mul(x, x);
+                    const V x4 = Mul(x2, x2);
+                    return MulAdd(MulAdd(MulAdd(MulAdd(k6, x4, k4), x4, k2), x4, k0), x2,
+                                  (Mul(MulAdd(MulAdd(k5, x4, k3), x4, k1), x4)));
+                }
             };
 
 #endif
@@ -1122,7 +1136,7 @@ namespace hwy {
             Log(const D d, V x) {
                 // http://git.musl-libc.org/cgit/musl/tree/src/math/log.c for more info.
                 using T = TFromD<D>;
-                impl::LogImpl <T> impl;
+                impl::LogImpl<T> impl;
 
                 constexpr bool kIsF32 = (sizeof(T) == 4);
 
@@ -1139,9 +1153,9 @@ namespace hwy {
 
                 // Integer Constants
                 using TI = MakeSigned<T>;
-                const Rebind <TI, D> di;
+                const Rebind<TI, D> di;
                 using VI =
-                decltype(Zero(di));
+                        decltype(Zero(di));
                 const VI kLowerBits = Set(di, kIsF32 ? static_cast<TI>(0x00000000L)
                                                      : static_cast<TI>(0xFFFFFFFFLL));
                 const VI kMagic = Set(di, kIsF32 ? static_cast<TI>(0x3F3504F3L)
@@ -1191,18 +1205,18 @@ namespace hwy {
 
 // Third degree poly
             template<class D, class V>
-            HWY_INLINE void SinCos3(D d, TFromD <D> dp1, TFromD <D> dp2, TFromD <D> dp3, V x,
+            HWY_INLINE void SinCos3(D d, TFromD<D> dp1, TFromD<D> dp2, TFromD<D> dp3, V x,
                                     V &s, V &c) {
                 using T = TFromD<D>;
                 using TI = MakeSigned<T>;
                 using DI = Rebind<TI, D>;
                 const DI di;
                 using VI =
-                decltype(Zero(di));
+                        decltype(Zero(di));
                 using M = Mask<D>;
 
                 static constexpr size_t
-                bits = sizeof(TI) * 8;
+                        bits = sizeof(TI) * 8;
                 const VI sign_mask = SignBit(di);
                 const VI ci_0 = Zero(di);
                 const VI ci_1 = Set(di, 1);
@@ -1292,18 +1306,18 @@ namespace hwy {
 
 // Sixth degree poly
             template<class D, class V>
-            HWY_INLINE void SinCos6(D d, TFromD <D> dp1, TFromD <D> dp2, TFromD <D> dp3, V x,
+            HWY_INLINE void SinCos6(D d, TFromD<D> dp1, TFromD<D> dp2, TFromD<D> dp3, V x,
                                     V &s, V &c) {
                 using T = TFromD<D>;
                 using TI = MakeSigned<T>;
                 using DI = Rebind<TI, D>;
                 const DI di;
                 using VI =
-                decltype(Zero(di));
+                        decltype(Zero(di));
                 using M = Mask<D>;
 
                 static constexpr size_t
-                bits = sizeof(TI) * 8;
+                        bits = sizeof(TI) * 8;
                 const VI sign_mask = SignBit(di);
                 const VI ci_0 = Zero(di);
                 const VI ci_1 = Set(di, 1);
@@ -1412,14 +1426,16 @@ namespace hwy {
             };
 
 #if HWY_HAVE_FLOAT64 && HWY_HAVE_INTEGER64
-            template <>
+
+            template<>
             struct SinCosImpl<double> {
-              template <class D, class V>
-              HWY_INLINE void SinCos(D d, V x, V& s, V& c) {
-                SinCos6(d, -7.85398125648498535156E-1, -3.77489470793079817668E-8,
-                        -2.69515142907905952645E-15, x, s, c);
-              }
+                template<class D, class V>
+                HWY_INLINE void SinCos(D d, V x, V &s, V &c) {
+                    SinCos6(d, -7.85398125648498535156E-1, -3.77489470793079817668E-8,
+                            -2.69515142907905952645E-15, x, s, c);
+                }
             };
+
 #endif
 
         }  // namespace impl
@@ -1442,7 +1458,7 @@ namespace hwy {
                     IfThenElse(mask, Mul(abs_x, abs_x), NegMulAdd(abs_x, kHalf, kHalf));
             const V y = IfThenElse(mask, abs_x, Sqrt(yy));
 
-            impl::AsinImpl <T> impl;
+            impl::AsinImpl<T> impl;
             const V t = Mul(impl.AsinPoly(d, yy, y), Mul(y, yy));
 
             const V t_plus_y = Add(t, y);
@@ -1498,7 +1514,7 @@ namespace hwy {
                     IfThenElse(mask, Mul(abs_x, abs_x), NegMulAdd(abs_x, kHalf, kHalf));
             const V y = IfThenElse(mask, abs_x, Sqrt(yy));
 
-            impl::AsinImpl <T> impl;
+            impl::AsinImpl<T> impl;
             const V z0 = MulAdd(impl.AsinPoly(d, yy, y), Mul(yy, y), y);
             const V z1 = NegMulAdd(z0, kTwo, kPiOverTwo);
             return Or(IfThenElse(mask, z0, z1), sign_x);
@@ -1552,7 +1568,7 @@ namespace hwy {
             const V abs_x = Xor(x, sign);
             const auto mask = Gt(abs_x, kOne);
 
-            impl::AtanImpl <T> impl;
+            impl::AtanImpl<T> impl;
             const auto divisor = IfThenElse(mask, abs_x, kOne);
             const V y = impl.AtanPoly(d, IfThenElse(mask, Div(kOne, divisor), abs_x));
             return Or(IfThenElse(mask, Sub(kPiOverTwo, y), y), sign);
@@ -1578,15 +1594,15 @@ namespace hwy {
 
         Cos(const D d, V x) {
             using T = TFromD<D>;
-            impl::CosSinImpl <T> impl;
+            impl::CosSinImpl<T> impl;
 
             // Float Constants
             const V kOneOverPi = Set(d, static_cast<T>(0.31830988618379067153));
 
             // Integer Constants
-            const Rebind <int32_t, D> di32;
+            const Rebind<int32_t, D> di32;
             using VI32 =
-            decltype(Zero(di32));
+                    decltype(Zero(di32));
             const VI32 kOne = Set(di32, 1);
 
             const V y = Abs(x);  // cos(x) == cos(|x|)
@@ -1612,7 +1628,7 @@ namespace hwy {
             const V kOne = Set(d, static_cast<T>(+1.0));
             const V kOneOverLog2 = Set(d, static_cast<T>(+1.442695040888963407359924681));
 
-            impl::ExpImpl <T> impl;
+            impl::ExpImpl<T> impl;
 
             // q = static_cast<int32>((x / log(2)) + ((x < 0) ? -0.5 : +0.5))
             const auto q =
@@ -1639,7 +1655,7 @@ namespace hwy {
             const V kOne = Set(d, static_cast<T>(+1.0));
             const V kOneOverLog2 = Set(d, static_cast<T>(+1.442695040888963407359924681));
 
-            impl::ExpImpl <T> impl;
+            impl::ExpImpl<T> impl;
 
             // q = static_cast<int32>((x / log(2)) + ((x < 0) ? -0.5 : +0.5))
             const auto q =
@@ -1695,16 +1711,16 @@ namespace hwy {
 
         Sin(const D d, V x) {
             using T = TFromD<D>;
-            impl::CosSinImpl <T> impl;
+            impl::CosSinImpl<T> impl;
 
             // Float Constants
             const V kOneOverPi = Set(d, static_cast<T>(0.31830988618379067153));
             const V kHalf = Set(d, static_cast<T>(0.5));
 
             // Integer Constants
-            const Rebind <int32_t, D> di32;
+            const Rebind<int32_t, D> di32;
             using VI32 =
-            decltype(Zero(di32));
+                    decltype(Zero(di32));
 
             const V abs_x = Abs(x);
             const V sign_x = Xor(abs_x, x);
@@ -1752,7 +1768,7 @@ namespace hwy {
         template<class D, class V>
         HWY_INLINE void SinCos(const D d, V x, V &s, V &c) {
             using T = TFromD<D>;
-            impl::SinCosImpl <T> impl;
+            impl::SinCosImpl<T> impl;
             impl.SinCos(d, x, s, c);
         }
 

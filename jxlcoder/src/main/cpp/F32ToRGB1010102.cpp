@@ -129,7 +129,7 @@ namespace coder::HWY_NAMESPACE {
     }
 
     void
-    F32ToRGBA1010102HWY(vector<uint8_t> &data, int srcStride, int *HWY_RESTRICT dstStride,
+    F32ToRGBA1010102HWY(vector <uint8_t> &data, int srcStride, int *HWY_RESTRICT dstStride,
                         int width,
                         int height) {
         int newStride = (int) width * 4 * (int) sizeof(uint8_t);

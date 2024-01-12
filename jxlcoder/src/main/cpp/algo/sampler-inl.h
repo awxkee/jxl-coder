@@ -61,7 +61,7 @@ using hwy::float16_t;
 using hwy::float32_t;
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T
+HWY_MATH_INLINE T
 CubicSplineGeneric(const D df, T C, T B, T d, T p0, T p1, T p2, T p3) {
     T duplet = Mul(d, d);
     T triplet = Mul(duplet, d);
@@ -85,28 +85,28 @@ CubicSplineGeneric(const D df, T C, T B, T d, T p0, T p1, T p2, T p3) {
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T CubicHermiteV(const D df, T d, T p0, T p1, T p2, T p3) {
+HWY_MATH_INLINE T CubicHermiteV(const D df, T d, T p0, T p1, T p2, T p3) {
     const T C = Set(df, 0.0);
     const T B = Set(df, 0.0);
     return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T MitchellNetravaliV(const D df, T d, T p0, T p1, T p2, T p3) {
+HWY_MATH_INLINE T MitchellNetravaliV(const D df, T d, T p0, T p1, T p2, T p3) {
     const T C = Set(df, 1.0 / 3.0);
     const T B = Set(df, 1.0 / 3.0);
     return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T CubicBSplineV(const D df, T d, T p0, T p1, T p2, T p3) {
+HWY_MATH_INLINE T CubicBSplineV(const D df, T d, T p0, T p1, T p2, T p3) {
     const T C = Set(df, 0.0);
     const T B = Set(df, 1.0);
     return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T SimpleCubicV(const D df, T t, T A, T B, T C, T D1) {
+HWY_MATH_INLINE T SimpleCubicV(const D df, T t, T A, T B, T C, T D1) {
     T duplet = Mul(t, t);
     T triplet = Mul(duplet, t);
     T a = Add(Sub(Add(Mul(Neg(A), Set(df, 0.5)), Mul(B, Set(df, 1.5))), Mul(C, Set(df, 1.5))),
@@ -118,11 +118,11 @@ inline __attribute__((flatten)) T SimpleCubicV(const D df, T t, T A, T B, T C, T
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T sincV(const D d, T x) {
+HWY_MATH_INLINE T sincV(const D d, T x) {
     const T ones = Set(d, 1);
     const T zeros = Zero(d);
     auto maskEqualToZero = x == zeros;
-    T sine = hwy::HWY_NAMESPACE::Sin(d, x);
+    T sine = coder::HWY_NAMESPACE::FastSinf(d, x);
     x = IfThenElse(maskEqualToZero, ones, x);
     T result = Div(sine, x);
     result = IfThenElse(maskEqualToZero, ones, result);
@@ -130,7 +130,7 @@ inline __attribute__((flatten)) T sincV(const D d, T x) {
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T LanczosWindowHWY(const D df, T x, const T a) {
+HWY_MATH_INLINE T LanczosWindowHWY(const D df, T x, const T a) {
     auto mask = Abs(x) >= a;
     T v = Mul(Set(df, M_PI), x);
     T r = Mul(sincV(df, v), sincV(df, Div(v, a)));
@@ -138,7 +138,7 @@ inline __attribute__((flatten)) T LanczosWindowHWY(const D df, T x, const T a) {
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T CatmullRomV(const D df, T d, T p0, T p1, T p2, T p3) {
+HWY_MATH_INLINE T CatmullRomV(const D df, T d, T p0, T p1, T p2, T p3) {
     const T ones = Set(df, 1.0);
     const T zeros = Zero(df);
     auto maskLessThanZero = d < zeros;
@@ -158,12 +158,12 @@ inline __attribute__((flatten)) T CatmullRomV(const D df, T d, T p0, T p1, T p2,
 }
 
 template<class D, typename T = Vec<D>>
-inline __attribute__((flatten)) T HannWindow(const D df, const T n, const float length) {
+HWY_MATH_INLINE T HannWindow(const D df, const T n, const float length) {
     const float size = length * 2;
     const T lengthV = Set(df, length);
     auto mask = Abs(n) > lengthV;
     const T piMulSize = Set(df, M_PI / length);
-    T res = hwy::HWY_NAMESPACE::Sin(df, Mul(piMulSize, n));
+    T res = coder::HWY_NAMESPACE::FastSinf(df, Mul(piMulSize, n));
     res = Mul(res, res);
     res = IfThenZeroElse(mask, res);
     return res;
