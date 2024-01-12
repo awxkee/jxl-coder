@@ -60,61 +60,114 @@ using hwy::HWY_NAMESPACE::IfThenZeroElse;
 using hwy::float16_t;
 using hwy::float32_t;
 
+using hwy::HWY_NAMESPACE::NegMulAdd;
+using hwy::HWY_NAMESPACE::MulAdd;
+using hwy::HWY_NAMESPACE::IfThenElse;
+using hwy::HWY_NAMESPACE::MulSub;
+using hwy::HWY_NAMESPACE::ApproximateReciprocal;
+
 template<class D, typename T = Vec<D>>
 HWY_MATH_INLINE T
-CubicSplineGeneric(const D df, T C, T B, T d, T p0, T p1, T p2, T p3) {
-    T duplet = Mul(d, d);
-    T triplet = Mul(duplet, d);
-    T firstRow = MulAdd(MulSub(Set(df, -1 / 6.0), B, C), p0,
-                        MulAdd(Add(MulSub(Set(df, -1.5), B, C), Set(df, 2.0)), p1,
-                               MulAdd(Sub(MulAdd(Set(df, 1.5), B, C), Set(df, 2.0)), p2,
-                                      Mul(MulAdd(Set(df, 1 / 6.0), B, C), p3))));
-    firstRow = Mul(firstRow, triplet);
-    T sc1 = MulAdd(Set(df, 0.5), B, Mul(Set(df, 2.0), C));
-    T sc2 = Sub(MulAdd(Set(df, 2.0), B, C), Set(df, 3.0));
-    T sc3 = Add(MulAdd(Set(df, -2.5), B, Mul(Set(df, -2.0), C)), Set(df, 3.0));
-    T secondRow = MulAdd(sc1, p0, MulAdd(sc2, p1, MulAdd(sc3, p2, Mul(Neg(C), p3))));
-    secondRow = Mul(secondRow, duplet);
-    T thirdRow = Mul(
-            MulAdd(MulSub(Set(df, -0.5), B, C), p0, Mul(MulAdd(Set(df, 0.5), B, C), p2)), d);
-    T f1 = MulAdd(Mul(Set(df, 1.0 / 6.0), B), p0,
-                  Mul(MulAdd(Set(df, -1.0 / 3.0), B, Set(df, 1.0)), p1));
-    T f2 = Mul(Mul(Set(df, 1.0 / 6.0), B), p2);
-    T fourthRow = Add(f1, f2);
-    return Add(Add(Add(firstRow, secondRow), thirdRow), fourthRow);
+BCSplinePartOne(const D df, T x, const T B, const T C, const T tripled, const T doubled) {
+    x = Abs(x);
+    T mult = Set(df, 1.0f / 6.0f);
+    T r1 = NegMulAdd(Set(df, 9), B, NegMulAdd(Set(df, 6.0), C, Set(df, 12)));
+    T r2 = MulAdd(Set(df, 6), C, MulSub(Set(df, 12.0f), B, Set(df, 18.0f)));
+    T r3 = NegMulAdd(Set(df, 2), B, Set(df, 6));
+    return Mul(MulAdd(r1, tripled, MulAdd(r2, doubled, r3)), mult);
 }
 
 template<class D, typename T = Vec<D>>
-HWY_MATH_INLINE T CubicHermiteV(const D df, T d, T p0, T p1, T p2, T p3) {
-    const T C = Set(df, 0.0);
-    const T B = Set(df, 0.0);
-    return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
+HWY_MATH_INLINE T
+BCSplinePartTwo(const D df, T x, const T B, const T C, const T tripled, const T doubled) {
+    x = Abs(x);
+    T mult = Set(df, 1.0f / 6.0f);
+    T r1 = MulSub(Set(df, -6.0f), C, B);
+    T r2 = MulAdd(Set(df, 6.0), B, Mul(Set(df, 30), C));
+    T r3 = MulSub(Set(df, -12), B, Mul(Set(df, 48), C));
+    T r4 = MulAdd(Set(df, 8.0), B, Mul(Set(df, 24.0f), C));
+    T rr = MulAdd(r1, tripled, MulAdd(r2, doubled, MulAdd(r3, x, r4)));
+    return Mul(rr, mult);
 }
 
 template<class D, typename T = Vec<D>>
-HWY_MATH_INLINE T MitchellNetravaliV(const D df, T d, T p0, T p1, T p2, T p3) {
+HWY_MATH_INLINE T BCSpline(const D df, T x, const T B, const T C) {
+    x = Abs(x);
+    const T zeros = Zero(df);
+    const T ones = Set(df, 1.0);
+    const T two = Set(df, 2.0);
+    const T doubled = Mul(x, x);
+    const T tripled = Mul(doubled, x);
+    auto setZeroMask = x > two;
+    auto setP1Mask = x < ones;
+    auto setP2Mask = x >= ones;
+    T res = Zero(df);
+    const T p1 = BCSplinePartOne(df, x, B, C, tripled, doubled);
+    const T p2 = BCSplinePartTwo(df, x, B, C, tripled, doubled);
+    res = IfThenElse(setP1Mask, p1, zeros);
+    res = IfThenElse(setP2Mask, p2, res);
+    res = IfThenElse(setZeroMask, zeros, res);
+    return res;
+}
+
+#include "sampler.h"
+
+using hwy::HWY_NAMESPACE::InsertLane;
+using hwy::HWY_NAMESPACE::ExtractLane;
+using hwy::HWY_NAMESPACE::LoadU;
+
+template<class D, typename T = Vec<D>>
+HWY_MATH_INLINE T MitchellNetravaliV(const D df, T d) {
     const T C = Set(df, 1.0 / 3.0);
     const T B = Set(df, 1.0 / 3.0);
-    return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
+    return BCSpline<D, T>(df, d, B, C);
 }
 
 template<class D, typename T = Vec<D>>
-HWY_MATH_INLINE T CubicBSplineV(const D df, T d, T p0, T p1, T p2, T p3) {
+HWY_MATH_INLINE T CubicHermiteV(const D df, T d) {
+    const T C = Set(df, 0.0);
+    const T B = Set(df, 0.0);
+    return BCSpline<D, T>(df, d, B, C);
+}
+
+template<class D, typename T = Vec<D>>
+HWY_MATH_INLINE T CubicBSplineV(const D df, T d) {
     const T C = Set(df, 0.0);
     const T B = Set(df, 1.0);
-    return CubicSplineGeneric<D, T>(df, C, B, d, p0, p1, p2, p3);
+    return BCSpline<D, T>(df, d, B, C);
 }
 
 template<class D, typename T = Vec<D>>
-HWY_MATH_INLINE T SimpleCubicV(const D df, T t, T A, T B, T C, T D1) {
-    T duplet = Mul(t, t);
-    T triplet = Mul(duplet, t);
-    T a = Add(Sub(Add(Mul(Neg(A), Set(df, 0.5)), Mul(B, Set(df, 1.5))), Mul(C, Set(df, 1.5))),
-              Mul(D1, Set(df, 0.5)));
-    T b = Sub(Add(Sub(A, Mul(B, Set(df, 2.5))), Mul(Set(df, 2.0), C)), Mul(D1, Set(df, 0.5f)));
-    T c = Add(Mul(Neg(A), Set(df, 0.5f)), Mul(C, Set(df, 0.5f)));
-    T d = B;
-    return MulAdd(Mul(a, triplet), Set(df, 3.0), MulAdd(b, duplet, MulAdd(c, t, d)));
+HWY_MATH_INLINE T SimpleCubicV(const D df, T x) {
+    /*
+     *     if ( x < 0.0f ) x = -x;
+
+    if (x < 1.0f)
+        return (4.0f + x*x*(3.0f*x - 6.0f))/6.0f;
+    else if (x < 2.0f)
+        return (8.0f + x*(-12.0f + x*(6.0f - x)))/6.0f;
+
+    return (0.0f);
+     */
+
+    x = Abs(x);
+    const T zeros = Zero(df);
+    const T ones = Set(df, 1.0);
+    const T two = Set(df, 2.0);
+    const T doubled = Mul(x, x);
+    const T tripled = Mul(doubled, x);
+    auto setZeroMask = x > two;
+    auto setP1Mask = x < ones;
+    auto setP2Mask = x >= ones;
+    const T mSix = Set(df, 6.0f);
+    const T sixScale = ApproximateReciprocal(mSix);
+    T res = Zero(df);
+    const T p1 = Mul(MulAdd(MulSub(Set(df, 3), x, mSix), Mul(x, x), Set(df, 4.0f)), sixScale);
+    const T p2 = Mul(MulAdd(MulSub(Sub(mSix, x), x, Set(df, 12.0f)), x, Set(df, 8.0f)), sixScale);
+    res = IfThenElse(setP1Mask, p1, zeros);
+    res = IfThenElse(setP2Mask, p2, res);
+    res = IfThenElse(setZeroMask, zeros, res);
+    return res;
 }
 
 template<class D, typename T = Vec<D>>
@@ -122,7 +175,7 @@ HWY_MATH_INLINE T sincV(const D d, T x) {
     const T ones = Set(d, 1);
     const T zeros = Zero(d);
     auto maskEqualToZero = x == zeros;
-    T sine = coder::HWY_NAMESPACE::FastSinf(d, x);
+    T sine = hwy::HWY_NAMESPACE::Sin(d, x);
     x = IfThenElse(maskEqualToZero, ones, x);
     T result = Div(sine, x);
     result = IfThenElse(maskEqualToZero, ones, result);
@@ -138,33 +191,21 @@ HWY_MATH_INLINE T LanczosWindowHWY(const D df, T x, const T a) {
 }
 
 template<class D, typename T = Vec<D>>
-HWY_MATH_INLINE T CatmullRomV(const D df, T d, T p0, T p1, T p2, T p3) {
-    const T ones = Set(df, 1.0);
-    const T zeros = Zero(df);
-    auto maskLessThanZero = d < zeros;
-    auto maskGreaterThanZero = d > ones;
-    const T threes = Set(df, 3.0);
-
-    T s1 = Add(MulSub(threes, p1, p0), NegMulAdd(threes, p2, p3));
-    T s2 = Add(MulSub(Set(df, 2.0), p0, p3), MulSub(Set(df, 4.0), p2, Mul(Set(df, 5.0), p1)));
-    T s3 = Mul(Add(s1, s2), d);
-    T s4 = Sub(p2, p0);
-    T s5 = Mul(Mul(Add(s3, s4), Set(df, 0.5)), d);
-
-    T result = Add(s5, p1);
-    result = IfThenElse(maskLessThanZero, zeros, result);
-    result = IfThenElse(maskGreaterThanZero, zeros, result);
-    return result;
+HWY_MATH_INLINE T CatmullRomV(const D df, T d) {
+    const T C = Set(df, 0.0);
+    const T B = Set(df, 0.5);
+    return BCSpline<D, T>(df, d, B, C);
 }
 
 template<class D, typename T = Vec<D>>
 HWY_MATH_INLINE T HannWindow(const D df, const T n, const float length) {
     const float size = length * 2;
+    const T sizeV = Set(df, size);
     const T lengthV = Set(df, length);
-    auto mask = Abs(n) > lengthV;
-    const T piMulSize = Set(df, M_PI / length);
-    T res = coder::HWY_NAMESPACE::FastSinf(df, Mul(piMulSize, n));
-    res = Mul(res, res);
+    auto mask = Abs(n) > Set(df, length);
+    const T piMulSize = Set(df, M_PI / size);
+    T res = hwy::HWY_NAMESPACE::Cos(df, Mul(piMulSize, n));
+    res = Mul(Mul(res, res), ApproximateReciprocal(sizeV));
     res = IfThenZeroElse(mask, res);
     return res;
 }

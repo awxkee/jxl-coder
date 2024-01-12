@@ -1,6 +1,7 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -30,10 +31,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
+import com.awxkee.jxlcoder.scale.BitmapScaler
+import com.awxkee.jxlcoder.scale.ScaleMode
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import okio.FileNotFoundException
 import okio.buffer
@@ -115,8 +119,51 @@ class MainActivity : ComponentActivity() {
                         mutableStateListOf<Bitmap>()
                     }
                     LaunchedEffect(key1 = Unit, block = {
-                        val assets = (this@MainActivity.assets.list("") ?: return@LaunchedEffect)
                         lifecycleScope.launch(Dispatchers.IO) {
+                            val buffer4 =
+                                this@MainActivity.assets.open("Screenshot.png").source().buffer()
+                                    .readByteArray()
+                            val magickBuffer =
+                                this@MainActivity.assets.open("magick_x2.png").source().buffer()
+                                    .readByteArray()
+                            val bitmap =
+                                ImageDecoder.decodeBitmap(ImageDecoder.createSource(buffer4))
+                                    .copy(Bitmap.Config.ARGB_8888, true)
+
+                            // originals
+                            val job = lifecycleScope.launch(Dispatchers.Main) {
+                                imagesArray.add(bitmap)
+                                imagesArray.add(
+                                    ImageDecoder.decodeBitmap(
+                                        ImageDecoder.createSource(
+                                            magickBuffer
+                                        )
+                                    )
+                                )
+                                imagesArray.add(
+                                    ImageDecoder.decodeBitmap(
+                                        ImageDecoder.createSource(
+                                            this@MainActivity.assets.open("magick_x2_catmull.png").source()
+                                                .buffer()
+                                                .readByteArray()
+                                        )
+                                    )
+                                )
+                            }
+                            job.join()
+
+                            ScaleMode.values().forEach { scaleMode ->
+                                val scaledBitmap = BitmapScaler.scale(
+                                    bitmap,
+                                    bitmap.width * 2,
+                                    bitmap.height * 2,
+                                    scaleMode,
+                                )
+                                lifecycleScope.launch {
+                                    imagesArray.add(scaledBitmap)
+                                }
+                            }
+                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
                             for (asset in assets) {
                                 try {
                                     val buffer4 = this@MainActivity.assets.open(asset).source().buffer().readByteArray()
@@ -126,7 +173,7 @@ class MainActivity : ComponentActivity() {
                                         largeImageSize!!.width / 2,
                                         largeImageSize!!.height / 2,
                                         preferredColorConfig = PreferredColorConfig.DEFAULT,
-                                        ScaleMode.FIT,
+                                        com.awxkee.jxlcoder.ScaleMode.FIT,
                                         JxlResizeFilter.LANCZOS,
                                     )
                                     lifecycleScope.launch(Dispatchers.Main) {

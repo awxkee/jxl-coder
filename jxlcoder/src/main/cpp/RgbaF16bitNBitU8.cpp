@@ -83,7 +83,7 @@ namespace coder::HWY_NAMESPACE {
         auto lower = DemoteTo(ru8, ConvertTo(ri32,
                                              ClampRound(rf32, Mul(
                                                      PromoteTo(rf32, BitCast(df16, LowerHalf(v))),
-                                                     vMaxColors), vMaxColors, minColors)
+                                                     vMaxColors), minColors, vMaxColors)
         ));
         auto upper = DemoteTo(ru8, ConvertTo(ri32,
                                              ClampRound(rf32, Mul(PromoteTo(rf32,
@@ -91,8 +91,8 @@ namespace coder::HWY_NAMESPACE {
                                                                                     UpperHalf(
                                                                                             dfu416,
                                                                                             v))),
-                                                                  vMaxColors), vMaxColors,
-                                                        minColors)
+                                                                  vMaxColors), minColors,
+                                                        vMaxColors)
         ));
         return Combine(du8, upper, lower);
     }

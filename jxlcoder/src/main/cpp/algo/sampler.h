@@ -64,62 +64,52 @@ static inline D DemoteTo(T t, float maxColors) {
 }
 
 template<typename T>
-static inline T SimpleCubic(T t, T A, T B, T C, T D) {
-    T duplet = t * t;
-    T triplet = duplet * t;
-    T a = -A / T(2.0) + (T(3.0) * B) / T(2.0) - (T(3.0) * C) / T(2.0) + D / T(2.0);
-    T b = A - (T(5.0) * B) / T(2.0) + T(2.0) * C - D / T(2.0);
-    T c = -A / T(2.0) + C / T(2.0);
-    T d = B;
-    return a * triplet * T(3.0) + b * duplet + c * t + d;
+static inline float BCSpline(T x, const T B, const T C) {
+    if (x < 0.0f) x = -x;
+
+    const T dp = x * x;
+    const T tp = dp * x;
+
+    if (x < 1.0f)
+        return ((12 - 9 * B - 6 * C) * tp + (-18 + 12 * B + 6 * C) * dp + (6 - 2 * B)) * (T(1) / T(6));
+    else if (x < 2.0f)
+        return ((-B - 6 * C) * tp + (6 * B + 30 * C) * dp + (-12 * B - 48 * C) * x +
+                (8 * B + 24 * C)) * (T(1) / T(6));
+
+    return (0.0f);
 }
 
 template<typename T>
-static inline T CubicHermite(T d, T p0, T p1, T p2, T p3) {
+static inline T SimpleCubic(T x) {
+    if ( x < 0.0f ) x = -x;
+
+    if (x < 1.0f)
+        return (4.0f + x*x*(3.0f*x - 6.0f))/6.0f;
+    else if (x < 2.0f)
+        return (8.0f + x*(-12.0f + x*(6.0f - x)))/6.0f;
+
+    return (0.0f);
+}
+
+template<typename T>
+static inline T CubicHermite(T x) {
     constexpr T C = T(0.0);
     constexpr T B = T(0.0);
-    T duplet = d * d;
-    T triplet = duplet * d;
-    T firstRow = ((T(-1 / 6.0) * B - C) * p0 + (T(-1.5) * B - C + T(2.0)) * p1 +
-                  (T(1.5) * B + C - T(2.0)) * p2 + (T(1 / 6.0) * B + C) * p3) * triplet;
-    T secondRow = ((T(0.5) * B + 2 * C) * p0 + (T(2.0) * B + C - T(3.0)) * p1 +
-                   (T(-2.5) * B - T(2.0) * C + T(3.0)) * p2 - C * p3) * duplet;
-    T thirdRow = ((T(-0.5) * B - C) * p0 + (T(0.5) * B + C) * p2) * d;
-    T fourthRow =
-            (T(1.0 / 6.0) * B) * p0 + (T(-1.0 / 3.0) * B + T(1)) * p1 + (T(1.0 / 6.0) * B) * p2;
-    return firstRow + secondRow + thirdRow + fourthRow;
+    return BCSpline(x, B, C);
 }
 
 template<typename T>
-static inline T CubicBSpline(T d, T p0, T p1, T p2, T p3) {
+static inline float BSpline(T x) {
     constexpr T C = T(0.0);
     constexpr T B = T(1.0);
-    T duplet = d * d;
-    T triplet = duplet * d;
-    T firstRow = ((T(-1 / 6.0) * B - C) * p0 + (T(-1.5) * B - C + T(2.0)) * p1 +
-                  (T(1.5) * B + C - T(2.0)) * p2 + (T(1 / 6.0) * B + C) * p3) * triplet;
-    T secondRow = ((T(0.5) * B + 2 * C) * p0 + (T(2.0) * B + C - T(3.0)) * p1 +
-                   (T(-2.5) * B - T(2.0) * C + T(3.0)) * p2 - C * p3) * duplet;
-    T thirdRow = ((T(-0.5) * B - C) * p0 + (T(0.5) * B + C) * p2) * d;
-    T fourthRow =
-            (T(1.0 / 6.0) * B) * p0 + (T(-1.0 / 3.0) * B + T(1)) * p1 + (T(1.0 / 6.0) * B) * p2;
-    return firstRow + secondRow + thirdRow + fourthRow;
+    return BCSpline(x, B, C);
 }
 
 template<typename T>
-static inline T MitchellNetravali(T d, T p0, T p1, T p2, T p3) {
-    constexpr T C = T(1.0 / 3.0);
-    constexpr T B = T(1.0 / 3.0);
-    T duplet = d * d;
-    T triplet = duplet * d;
-    T firstRow = ((T(-1 / 6.0) * B - C) * p0 + (T(-1.5) * B - C + T(2.0)) * p1 +
-                  (T(1.5) * B + C - T(2.0)) * p2 + (T(1 / 6.0) * B + C) * p3) * triplet;
-    T secondRow = ((T(0.5) * B + 2 * C) * p0 + (T(2.0) * B + C - T(3.0)) * p1 +
-                   (T(-2.5) * B - T(2.0) * C + T(3.0)) * p2 - C * p3) * duplet;
-    T thirdRow = ((T(-0.5) * B - C) * p0 + (T(0.5) * B + C) * p2) * d;
-    T fourthRow =
-            (T(1.0 / 6.0) * B) * p0 + (T(-1.0 / 3.0) * B + T(1)) * p1 + (T(1.0 / 6.0) * B) * p2;
-    return firstRow + secondRow + thirdRow + fourthRow;
+static inline float MitchellNetravalli(T x) {
+    constexpr T B = 1.0f / 3.0f;
+    constexpr T C = 1.0f / 3.0f;
+    return BCSpline(x, B, C);
 }
 
 template<typename T>
@@ -127,7 +117,7 @@ static inline T sinc(T x) {
     if (x == 0.0) {
         return T(1.0);
     } else {
-        return fastSin2(x) / x;
+        return sin(x) / x;
     }
 }
 
@@ -160,28 +150,20 @@ static inline T fastCos(T x) {
 }
 
 template<typename T>
-static inline T CatmullRom(T x, T p0, T p1, T p2, T p3) {
-    if (x < 0 || x > 1) {
-        return T(0);
-    }
-    T s1 = x * (-p0 + 3 * p1 - 3 * p2 + p3);
-    T s2 = (T(2.0) * p0 - T(5.0) * p1 + 4 * p2 - p3);
-    T s3 = (s1 + s2) * x;
-    T s4 = (-p0 + p2);
-    T s5 = (s3 + s4) * x * T(0.5);
-
-    return s5 + p1;
+static inline T CatmullRom(T x) {
+    return BCSpline(x, 0.0f, 0.5f);
 }
 
 template<typename T>
 inline T HannWindow(const T n, const T length) {
     const T size = length * 2;
     const T part = M_PI / size;
-    if (abs(n) <= size) {
-        float v = fastSin2(part * n);
-        return v * v;
+    if (abs(n) > length) {
+        return 0;
     }
-    return T(0);
+    T r = cos(n * part);
+    r = r * r;
+    return r / size;
 }
 
 #endif //JXLCODER_SAMPLER_H
