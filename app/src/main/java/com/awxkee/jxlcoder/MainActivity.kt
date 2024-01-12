@@ -31,8 +31,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
+import com.awxkee.jxlcoder.scale.BitmapScaleMode
 import com.awxkee.jxlcoder.scale.BitmapScaler
-import com.awxkee.jxlcoder.scale.ScaleMode
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
@@ -152,7 +152,7 @@ class MainActivity : ComponentActivity() {
                             }
                             job.join()
 
-                            ScaleMode.values().forEach { scaleMode ->
+                            BitmapScaleMode.values().forEach { scaleMode ->
                                 val scaledBitmap = BitmapScaler.scale(
                                     bitmap,
                                     bitmap.width * 2,

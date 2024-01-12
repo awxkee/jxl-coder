@@ -39,7 +39,7 @@ object BitmapScaler {
         bitmap: Bitmap,
         dstWidth: Int,
         dstHeight: Int,
-        scaleMode: ScaleMode
+        scaleMode: BitmapScaleMode
     ): Bitmap = scaleImpl(
         bitmap = bitmap,
         dstWidth = dstWidth,

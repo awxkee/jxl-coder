@@ -28,7 +28,7 @@
 
 package com.awxkee.jxlcoder.scale
 
-enum class ScaleMode {
+enum class BitmapScaleMode {
     Bilinear,
     Nearest,
     Cubic,
