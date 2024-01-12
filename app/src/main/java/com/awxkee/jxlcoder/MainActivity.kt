@@ -131,53 +131,55 @@ class MainActivity : ComponentActivity() {
                                     .copy(Bitmap.Config.ARGB_8888, true)
 
                             // originals
-                            val job = lifecycleScope.launch(Dispatchers.Main) {
-                                imagesArray.add(bitmap)
-                                imagesArray.add(
-                                    ImageDecoder.decodeBitmap(
-                                        ImageDecoder.createSource(
-                                            magickBuffer
-                                        )
-                                    )
-                                )
-                                imagesArray.add(
-                                    ImageDecoder.decodeBitmap(
-                                        ImageDecoder.createSource(
-                                            this@MainActivity.assets.open("magick_x2_catmull.png").source()
-                                                .buffer()
-                                                .readByteArray()
-                                        )
-                                    )
-                                )
-                            }
-                            job.join()
+//                            val job = lifecycleScope.launch(Dispatchers.Main) {
+//                                imagesArray.add(bitmap)
+//                                imagesArray.add(
+//                                    ImageDecoder.decodeBitmap(
+//                                        ImageDecoder.createSource(
+//                                            magickBuffer
+//                                        )
+//                                    )
+//                                )
+//                                imagesArray.add(
+//                                    ImageDecoder.decodeBitmap(
+//                                        ImageDecoder.createSource(
+//                                            this@MainActivity.assets.open("magick_x2_catmull.png").source()
+//                                                .buffer()
+//                                                .readByteArray()
+//                                        )
+//                                    )
+//                                )
+//                            }
+//                            job.join()
 
-                            BitmapScaleMode.values().forEach { scaleMode ->
-                                val scaledBitmap = BitmapScaler.scale(
-                                    bitmap,
-                                    bitmap.width * 2,
-                                    bitmap.height * 2,
-                                    scaleMode,
-                                )
-                                lifecycleScope.launch {
-                                    imagesArray.add(scaledBitmap)
-                                }
-                            }
-                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
+//                            BitmapScaleMode.values().forEach { scaleMode ->
+//                                val scaledBitmap = BitmapScaler.scale(
+//                                    bitmap,
+//                                    bitmap.width * 2,
+//                                    bitmap.height * 2,
+//                                    scaleMode,
+//                                )
+//                                lifecycleScope.launch {
+//                                    imagesArray.add(scaledBitmap)
+//                                }
+//                            }
+                            val assets = (this@MainActivity.assets.list("") ?: return@launch).takeLast(5)
                             for (asset in assets) {
                                 try {
                                     val buffer4 = this@MainActivity.assets.open(asset).source().buffer().readByteArray()
                                     val largeImageSize = JxlCoder().getSize(buffer4)
-                                    val image = JxlCoder().decodeSampled(
-                                        buffer4,
-                                        largeImageSize!!.width / 2,
-                                        largeImageSize!!.height / 2,
-                                        preferredColorConfig = PreferredColorConfig.DEFAULT,
-                                        com.awxkee.jxlcoder.ScaleMode.FIT,
-                                        JxlResizeFilter.LANCZOS,
-                                    )
-                                    lifecycleScope.launch(Dispatchers.Main) {
-                                        imagesArray.add(image)
+                                    if (largeImageSize != null) {
+                                        val image = JxlCoder().decodeSampled(
+                                            buffer4,
+                                            largeImageSize.width / 2,
+                                            largeImageSize.height / 2,
+                                            preferredColorConfig = PreferredColorConfig.DEFAULT,
+                                            com.awxkee.jxlcoder.ScaleMode.FIT,
+                                            JxlResizeFilter.BILINEAR,
+                                        )
+                                        lifecycleScope.launch(Dispatchers.Main) {
+                                            imagesArray.add(image)
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     if (e !is FileNotFoundException) {

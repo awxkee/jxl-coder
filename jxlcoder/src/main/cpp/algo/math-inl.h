@@ -82,7 +82,12 @@ namespace hwy {
             return Max(Min(Round(x), max), min);
         }
 
-/**
+        template<class D, typename T = Vec<D>>
+        HWY_MATH_INLINE T Lerp(const D df, T s, T e, T t) {
+            return MulAdd(t, Sub(e, s), s);
+        }
+
+        /**
  * Highway SIMD version of std::asin(x).
  *
  * Valid Lane Types: float32, float64

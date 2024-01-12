@@ -79,8 +79,6 @@ namespace coder::HWY_NAMESPACE {
     using hwy::float32_t;
     using hwy::float16_t;
 
-    typedef float (*KernelWindow2Func)(float, const float);
-
     float SampleOptionResult(float value, const XSampler option) {
         switch (option) {
             case bilinear:
@@ -187,21 +185,11 @@ namespace coder::HWY_NAMESPACE {
                     VI4 xi2 = Min(Add(xi1, addOne), maxWidth);
                     VI4 yi2 = Min(Add(yi1, addOne), maxHeight);
 
-                    VI4 idx = Max(Sub(xi2, xi1), iZeros);
-                    VI4 idy = Max(Sub(yi2, yi1), iZeros);
-
                     VI4 row1Add = Mul(yi1, srcStrideV);
                     VI4 row2Add = Mul(yi2, srcStrideV);
 
-                    VF4 dx = ConvertTo(dfx4, idx);
-                    VF4 dy = ConvertTo(dfx4, idy);
-                    VF4 invertDx = Sub(fOneV, dx);
-                    VF4 invertDy = Sub(fOneV, dy);
-
-                    VF4 pf1 = Mul(invertDx, invertDy);
-                    VF4 pf2 = Mul(dx, invertDy);
-                    VF4 pf3 = Mul(invertDx, dy);
-                    VF4 pf4 = Mul(dx, dy);
+                    VF4 dx = Max(Sub(currentXVF, ConvertTo(dfx4, xi1)), vfZeros);
+                    VF4 dy = Max(Sub(currentYVF, ConvertTo(dfx4, yi1)), vfZeros);
 
                     for (int i = 0; i < 4; i++) {
                         auto row1 = reinterpret_cast<const float16_t *>(src8 +
@@ -209,15 +197,16 @@ namespace coder::HWY_NAMESPACE {
                         auto row2 = reinterpret_cast<const float16_t *>(src8 +
                                                                         ExtractLane(row2Add, i));
                         VF16x4 lane = LoadU(df16x4, &row1[ExtractLane(xi1, i) * components]);
-                        VF4 c1 = Mul(PromoteTo(dfx4, lane), pf1);
+                        VF4 c1 = PromoteTo(dfx4, lane);
                         lane = LoadU(df16x4, &row1[ExtractLane(xi2, i) * components]);
-                        VF4 c2 = Mul(PromoteTo(dfx4, lane), pf2);
+                        VF4 c2 = PromoteTo(dfx4, lane);
                         lane = LoadU(df16x4, &row2[ExtractLane(xi1, i) * components]);
-                        VF4 c3 = Mul(PromoteTo(dfx4, lane), pf3);
+                        VF4 c3 = PromoteTo(dfx4, lane);
                         lane = LoadU(df16x4, &row2[ExtractLane(xi2, i) * components]);
-                        VF4 c4 = Mul(PromoteTo(dfx4, lane), pf4);
-                        VF4 sum = Max(Add(Add(Add(c1, c2), c3), c4), vfZeros);
-                        VF16x4 pixel = DemoteTo(df16x4, sum);
+                        VF4 c4 = PromoteTo(dfx4, lane);
+                        VF4 value = Blerp(dfx4, c1, c2, c3, c4, Set(dfx4, ExtractLane(dx, i)),
+                                          Set(dfx4, ExtractLane(dy, i)));
+                        VF16x4 pixel = DemoteTo(df16x4, Max(value, vfZeros));
                         auto u8Store = reinterpret_cast<float16_t *>(&dst16[
                                 ExtractLane(currentXV, i) * components]);
                         StoreU(pixel, df16x4, u8Store);
@@ -228,8 +217,8 @@ namespace coder::HWY_NAMESPACE {
                     int x2 = min(x1 + 1, inputWidth - 1);
                     int y2 = min(y1 + 1, inputHeight - 1);
 
-                    float dx((float) x2 - (float) x1);
-                    float dy((float) y2 - (float) y1);
+                    float dx((float) srcX - (float) x1);
+                    float dy((float) srcY - (float) y1);
 
                     float invertDx = float(1.0f) - dx;
                     float invertDy = float(1.0f) - dy;
@@ -237,18 +226,12 @@ namespace coder::HWY_NAMESPACE {
                     auto row1 = reinterpret_cast<const uint16_t *>(src8 + y1 * srcStride);
                     auto row2 = reinterpret_cast<const uint16_t *>(src8 + y2 * srcStride);
 
-                    float pf1 = invertDx * invertDy;
-                    float pf2 = dx * invertDy;
-                    float pf3 = invertDx * dy;
-                    float pf4 = dx * dy;
-
                     for (int c = 0; c < components; ++c) {
-                        float c1 = castU16(row1[x1 * components + c]) * pf1;
-                        float c2 = castU16(row1[x2 * components + c]) * pf2;
-                        float c3 = castU16(row2[x1 * components + c]) * pf3;
-                        float c4 = castU16(row2[x2 * components + c]) * pf4;
-
-                        float result = c1 + c2 + c3 + c4;
+                        float c1 = castU16(row1[x1 * components + c]);
+                        float c2 = castU16(row1[x2 * components + c]);
+                        float c3 = castU16(row2[x1 * components + c]);
+                        float c4 = castU16(row2[x2 * components + c]);
+                        float result = blerp(c1, c2, c3, c4, dx, dy);
                         dst16[x * components + c] = half(result).data_;
                     }
                 }
@@ -577,21 +560,11 @@ namespace coder::HWY_NAMESPACE {
                     VI4 xi2 = Min(Add(xi1, addOne), maxWidth);
                     VI4 yi2 = Min(Add(yi1, addOne), maxHeight);
 
-                    VI4 idx = Max(Sub(xi2, xi1), iZeros);
-                    VI4 idy = Max(Sub(yi2, yi1), iZeros);
+                    VF4 dx = Max(Sub(currentXVF, ConvertTo(dfx4, xi1)), vfZeros);
+                    VF4 dy = Max(Sub(currentYVF, ConvertTo(dfx4, yi1)), vfZeros);
 
                     VI4 row1Add = Mul(yi1, srcStrideV);
                     VI4 row2Add = Mul(yi2, srcStrideV);
-
-                    VF4 dx = ConvertTo(dfx4, idx);
-                    VF4 dy = ConvertTo(dfx4, idy);
-                    VF4 invertDx = Sub(fOneV, dx);
-                    VF4 invertDy = Sub(fOneV, dy);
-
-                    VF4 pf1 = Mul(invertDx, invertDy);
-                    VF4 pf2 = Mul(dx, invertDy);
-                    VF4 pf3 = Mul(invertDx, dy);
-                    VF4 pf4 = Mul(dx, dy);
 
                     for (int i = 0; i < 4; i++) {
                         auto row1 = reinterpret_cast<const uint8_t *>(src8 +
@@ -601,21 +574,22 @@ namespace coder::HWY_NAMESPACE {
 
                         VU8x4 lane = LoadU(du8x4, reinterpret_cast<const uint8_t *>(&row1[
                                 ExtractLane(xi1, i) * components]));
-                        VF4 c1 = Mul(ConvertTo(dfx4, PromoteTo(dux4, lane)), pf1);
+                        VF4 c1 = ConvertTo(dfx4, PromoteTo(dux4, lane));
                         lane = LoadU(du8x4,
                                      reinterpret_cast<const uint8_t *>(&row1[ExtractLane(xi2, i) *
                                                                              components]));
-                        VF4 c2 = Mul(ConvertTo(dfx4, PromoteTo(dux4, lane)), pf2);
+                        VF4 c2 = ConvertTo(dfx4, PromoteTo(dux4, lane));
                         lane = LoadU(du8x4,
                                      reinterpret_cast<const uint8_t *>(&row2[ExtractLane(xi1, i) *
                                                                              components]));
-                        VF4 c3 = Mul(ConvertTo(dfx4, PromoteTo(dux4, lane)), pf3);
+                        VF4 c3 = ConvertTo(dfx4, PromoteTo(dux4, lane));
                         lane = LoadU(du8x4,
                                      reinterpret_cast<const uint8_t *>(&row2[ExtractLane(xi2, i) *
                                                                              components]));
-                        VF4 c4 = Mul(ConvertTo(dfx4, PromoteTo(dux4, lane)), pf4);
-                        VF4 sum = Max(Min(Round(Add(Add(Add(c1, c2), c3), c4)), maxColorsV),
-                                      vfZeros);
+                        VF4 c4 = ConvertTo(dfx4, PromoteTo(dux4, lane));
+                        VF4 value = Blerp(dfx4, c1, c2, c3, c4, Set(dfx4, ExtractLane(dx, i)),
+                                          Set(dfx4, ExtractLane(dy, i)));
+                        VF4 sum = ClampRound(dfx4, value, vfZeros, maxColorsV);
                         VU8x4 pixel = DemoteTo(du8x4, ConvertTo(dux4, sum));
                         auto u8Store = &dst[ExtractLane(currentXV, i) * components];
                         StoreU(pixel, du8x4, u8Store);
@@ -627,25 +601,18 @@ namespace coder::HWY_NAMESPACE {
                         int x2 = min(x1 + 1, inputWidth - 1);
                         int y2 = min(y1 + 1, inputHeight - 1);
 
-                        float dx = max((float) x2 - (float) x1, 0.0f);
-                        float dy = max((float) y2 - (float) y1, 0.0f);
+                        float dx = max((float) srcX - (float) x1, 0.0f);
+                        float dy = max((float) srcY - (float) y1, 0.0f);
 
                         auto row1 = reinterpret_cast<const uint8_t *>(src8 + y1 * srcStride);
                         auto row2 = reinterpret_cast<const uint8_t *>(src8 + y2 * srcStride);
 
-                        float invertDx = float(1.0f) - dx;
-                        float invertDy = float(1.0f) - dy;
+                        float c1 = static_cast<float>(row1[x1 * components + c]);
+                        float c2 = static_cast<float>(row1[x2 * components + c]);
+                        float c3 = static_cast<float>(row2[x1 * components + c]);
+                        float c4 = static_cast<float>(row2[x2 * components + c]);
 
-                        float pf1 = invertDx * invertDy;
-                        float pf2 = dx * invertDy;
-                        float pf3 = invertDx * dy;
-                        float pf4 = dx * dy;
-                        float c1 = static_cast<float>(row1[x1 * components + c]) * pf1;
-                        float c2 = static_cast<float>(row1[x2 * components + c]) * pf2;
-                        float c3 = static_cast<float>(row2[x1 * components + c]) * pf3;
-                        float c4 = static_cast<float>(row2[x2 * components + c]) * pf4;
-
-                        float result = (c1 + c2 + c3 + c4);
+                        float result = blerp(c1, c2, c3, c4, dx, dy);
                         float f = result;
                         f = clamp(round(f), 0.0f, maxColors);
                         dst[x * components + c] = static_cast<uint8_t>(f);

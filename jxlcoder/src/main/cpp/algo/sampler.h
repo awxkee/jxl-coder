@@ -71,7 +71,8 @@ static inline float BCSpline(T x, const T B, const T C) {
     const T tp = dp * x;
 
     if (x < 1.0f)
-        return ((12 - 9 * B - 6 * C) * tp + (-18 + 12 * B + 6 * C) * dp + (6 - 2 * B)) * (T(1) / T(6));
+        return ((12 - 9 * B - 6 * C) * tp + (-18 + 12 * B + 6 * C) * dp + (6 - 2 * B)) *
+               (T(1) / T(6));
     else if (x < 2.0f)
         return ((-B - 6 * C) * tp + (6 * B + 30 * C) * dp + (-12 * B - 48 * C) * x +
                 (8 * B + 24 * C)) * (T(1) / T(6));
@@ -81,12 +82,12 @@ static inline float BCSpline(T x, const T B, const T C) {
 
 template<typename T>
 static inline T SimpleCubic(T x) {
-    if ( x < 0.0f ) x = -x;
+    if (x < 0.0f) x = -x;
 
     if (x < 1.0f)
-        return (4.0f + x*x*(3.0f*x - 6.0f))/6.0f;
+        return (4.0f + x * x * (3.0f * x - 6.0f)) / 6.0f;
     else if (x < 2.0f)
-        return (8.0f + x*(-12.0f + x*(6.0f - x)))/6.0f;
+        return (8.0f + x * (-12.0f + x * (6.0f - x))) / 6.0f;
 
     return (0.0f);
 }
@@ -155,7 +156,7 @@ static inline T CatmullRom(T x) {
 }
 
 template<typename T>
-inline T HannWindow(const T n, const T length) {
+static inline T HannWindow(const T n, const T length) {
     const T size = length * 2;
     const T part = M_PI / size;
     if (abs(n) > length) {
@@ -164,6 +165,11 @@ inline T HannWindow(const T n, const T length) {
     T r = cos(n * part);
     r = r * r;
     return r / size;
+}
+
+template<typename T>
+static inline T blerp(T c00, T c10, T c01, T c11, T tx, T ty) {
+    return lerp(lerp(c00, c10, tx), lerp(c01, c11, tx), ty);
 }
 
 #endif //JXLCODER_SAMPLER_H

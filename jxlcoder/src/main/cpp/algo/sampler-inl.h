@@ -197,6 +197,13 @@ HWY_MATH_INLINE T CatmullRomV(const D df, T d) {
     return BCSpline<D, T>(df, d, B, C);
 }
 
+using hwy::HWY_NAMESPACE::Lerp;
+
+template<class D, typename T = Vec<D>>
+HWY_MATH_INLINE T Blerp(const D df, T c00, T c10, T c01, T c11, T tx, T ty) {
+    return Lerp(df, Lerp(df, c00, c10, tx), Lerp(df, c01, c11, tx), ty);
+}
+
 template<class D, typename T = Vec<D>>
 HWY_MATH_INLINE T HannWindow(const D df, const T n, const float length) {
     const float size = length * 2;
