@@ -25,12 +25,13 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlEncoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
         icc/cmsgmt.c icc/cmshalf.c icc/cmsintrp.c icc/cmsio0.c icc/cmsio1.c icc/cmslut.c icc/cmsmd5.c icc/cmsmtrx.c icc/cmsnamed.c
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
-        icc/cmswtpnt.c icc/cmsxform.c colorspace.cpp HalfFloats.cpp JniExceptions.cpp JxlEncoding.cpp
+        icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp HalfFloats.cpp JniExceptions.cpp JxlEncoding.cpp
         JxlDecoding.cpp JniDecoding.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp
         F32ToRGB1010102.cpp Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
         Support.cpp ReformatBitmap.cpp Rgb565.cpp Rgb1010102.cpp F32toU8.cpp Rgba8ToF16.cpp CopyUnaligned.cpp
         XScaler.cpp RgbaF16bitNBitU8.cpp RGBAlpha.cpp JxlAnimatedDecoder.cpp JxlAnimatedEncoder.cpp
-        JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp BitmapScaler.cpp)
+        JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp BitmapScaler.cpp colorspaces/CoderCms.cpp
+        colorspaces/HDRTransferAdapter.cpp)
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
 
@@ -60,21 +61,21 @@ endif ()
 if (ANDROID_ABI STREQUAL x86)
     target_compile_options(jxlcoder PRIVATE "-msse2")
 
-    if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
-    endif()
+    endif ()
 endif ()
 
 if (ANDROID_ABI STREQUAL x86-64)
     set_target_properties(jxlcoder PROPERTIES COMPILE_FLAGS "-march=i686")
 
-    if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+    if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
-    endif()
+    endif ()
 endif ()
 
 

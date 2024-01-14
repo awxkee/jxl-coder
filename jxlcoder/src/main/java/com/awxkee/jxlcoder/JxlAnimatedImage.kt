@@ -49,6 +49,7 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
+        javaToneMapper: Int,
     ): Long
 
     private external fun createCoordinatorByteArray(
@@ -56,6 +57,7 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
+        javaToneMapper: Int,
     ): Long
 
     @Keep
@@ -64,12 +66,14 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
+        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
         coordinator = createCoordinator(
             byteBuffer,
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
+            toneMapper.value,
         )
     }
 
@@ -79,12 +83,14 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
+        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
         coordinator = createCoordinatorByteArray(
             byteArray,
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
+            toneMapper.value,
         )
     }
 

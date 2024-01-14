@@ -66,24 +66,21 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                 std::vector<uint8_t> rgba8888Data(dstStride * imageHeight);
                 coder::RGBAF16BitToNBitU8(reinterpret_cast<const uint16_t *>(imageData.data()),
                                           *stride, rgba8888Data.data(), dstStride, imageWidth,
-                                          imageHeight, 8);
+                                          imageHeight, 8, !alphaPremultiplied);
                 *stride = dstStride;
                 *useFloats = false;
                 imageConfig = "ARGB_8888";
                 imageData = rgba8888Data;
+            } else {
+                if (!alphaPremultiplied) {
+                    coder::PremultiplyRGBA(imageData.data(), *stride, imageData.data(), *stride,
+                                           imageWidth,
+                                           imageHeight);
+                }
             }
-
-            if (!alphaPremultiplied) {
-                coder::PremultiplyRGBA(imageData.data(), *stride, imageData.data(), *stride,
-                                       imageWidth,
-                                       imageHeight);
-            }
-
             break;
         case Rgba_F16:
             if (*useFloats) {
-                int dstStride = imageWidth * 4 * (int) sizeof(uint16_t);
-                *stride = dstStride;
                 *useFloats = true;
                 imageConfig = "RGBA_F16";
                 break;
@@ -174,52 +171,41 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                                        imageHeight);
             }
 
-            AHardwareBuffer *hardwareBuffer = nullptr;
+            AHardwareBuffer *hdBuffer = nullptr;
 
-            int status = AHardwareBuffer_allocate_compat(&bufferDesc, &hardwareBuffer);
+            int status = AHardwareBuffer_allocate_compat(&bufferDesc, &hdBuffer);
             if (status != 0) {
                 return;
             }
+            std::shared_ptr<AHardwareBuffer> hardwareBuffer(hdBuffer, [](AHardwareBuffer *hdBuffer) {
+                AHardwareBuffer_release_compat(hdBuffer);
+            });
             ARect rect = {0, 0, imageWidth, imageHeight};
             uint8_t *buffer;
 
-            status = AHardwareBuffer_lock_compat(hardwareBuffer,
+            status = AHardwareBuffer_lock_compat(hardwareBuffer.get(),
                                                  AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1,
                                                  &rect, reinterpret_cast<void **>(&buffer));
             if (status != 0) {
-                AHardwareBuffer_release_compat(hardwareBuffer);
                 return;
             }
 
-            AHardwareBuffer_describe_compat(hardwareBuffer, &bufferDesc);
+            AHardwareBuffer_describe_compat(hardwareBuffer.get(), &bufferDesc);
 
             int pixelSize = (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t);
 
-            if (*useFloats) {
-                int dstStride = imageWidth * 4 * (int) sizeof(uint16_t);
-                coder::CopyUnaligned(imageData.data(), dstStride, buffer,
-                                     (int) bufferDesc.stride * 4 * pixelSize,
-                                     (int) bufferDesc.width * 4,
-                                     (int) bufferDesc.height,
-                                     (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
-            } else {
-                coder::CopyUnaligned(imageData.data(), *stride, buffer,
-                                     (int) bufferDesc.stride * 4 * pixelSize,
-                                     (int) bufferDesc.width * 4,
-                                     (int) bufferDesc.height,
-                                     (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
-            }
+            coder::CopyUnaligned(imageData.data(), *stride, buffer,
+                                 (int) bufferDesc.stride * 4 * pixelSize,
+                                 (int) bufferDesc.width * 4,
+                                 (int) bufferDesc.height,
+                                 (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
 
-            status = AHardwareBuffer_unlock_compat(hardwareBuffer, nullptr);
+            status = AHardwareBuffer_unlock_compat(hardwareBuffer.get(), nullptr);
             if (status != 0) {
-                AHardwareBuffer_release_compat(hardwareBuffer);
                 return;
             }
 
-            jobject buf = AHardwareBuffer_toHardwareBuffer_compat(env, hardwareBuffer);
-
-            AHardwareBuffer_release_compat(hardwareBuffer);
-
+            jobject buf = AHardwareBuffer_toHardwareBuffer_compat(env, hardwareBuffer.get());
             *hwBuffer = buf;
             imageConfig = "HARDWARE";
         }

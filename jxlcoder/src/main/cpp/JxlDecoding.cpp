@@ -35,9 +35,11 @@
 bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
                          size_t *ysize, std::vector<uint8_t> *iccProfile,
-                         bool *useFloats, int* bitDepth,
+                         bool *useFloats, int *bitDepth,
                          bool *alphaPremultiplied, bool allowedFloats,
-                         JxlOrientation* jxlOrientation) {
+                         JxlOrientation *jxlOrientation,
+                         bool* preferEncoding,
+                         JxlColorEncoding* colorEncoding) {
     // Multi-threaded parallel runner.
     auto runner = JxlResizableParallelRunnerMake(nullptr);
 
@@ -62,6 +64,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
     JxlDecoderCloseInput(dec.get());
 
     bool useBitmapHalfFloats = false;
+    *preferEncoding = false;
 
     for (;;) {
         JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
@@ -77,7 +80,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
             *xsize = info.xsize;
             *ysize = info.ysize;
             *alphaPremultiplied = info.alpha_premultiplied;
-            *bitDepth = (int)info.bits_per_sample;
+            *bitDepth = (int) info.bits_per_sample;
             *jxlOrientation = info.orientation;
             if (info.bits_per_sample > 8 && allowedFloats) {
                 *useFloats = true;
@@ -98,11 +101,24 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                                             &iccSize)) {
                 return false;
             }
-            iccProfile->resize(iccSize);
-            if (JXL_DEC_SUCCESS != JxlDecoderGetColorAsICCProfile(
-                    dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
-                    iccProfile->data(), iccProfile->size())) {
-                return false;
+            JxlColorEncoding clr;
+            if (JXL_DEC_SUCCESS ==
+                JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
+                                                   &clr)) {
+                *colorEncoding = clr;
+                if (clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG || clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
+                    *preferEncoding = true;
+                }
+            }
+            if (!(*preferEncoding)) {
+                iccProfile->resize(iccSize);
+                if (JXL_DEC_SUCCESS != JxlDecoderGetColorAsICCProfile(
+                        dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
+                        iccProfile->data(), iccProfile->size())) {
+                    return false;
+                }
+            } else {
+                iccProfile->clear();
             }
         } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
             size_t bufferSize;
@@ -110,7 +126,8 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                 JxlDecoderImageOutBufferSize(dec.get(), &format, &bufferSize)) {
                 return false;
             }
-            int stride = (int)*xsize * 4 * (int)(useBitmapHalfFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+            int stride = (int) *xsize * 4 *
+                         (int) (useBitmapHalfFloats ? sizeof(uint16_t) : sizeof(uint8_t));
             if (bufferSize != stride * (*ysize)) {
                 return false;
             }

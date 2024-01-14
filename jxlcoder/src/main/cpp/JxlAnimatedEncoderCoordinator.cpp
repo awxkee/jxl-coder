@@ -259,7 +259,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                                           imageStride,
                                           reinterpret_cast<uint8_t *>(u8PixelsData.data()),
                                           b16Stride,
-                                          (int) info.width, (int) info.height, 8);
+                                          (int) info.width, (int) info.height, 8, true);
                 imageStride = b16Stride;
                 rgbaPixels = u8PixelsData;
             }

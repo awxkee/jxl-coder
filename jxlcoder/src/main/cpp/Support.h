@@ -32,6 +32,7 @@
 #include <jni.h>
 #include "SizeScaler.h"
 #include "XScaler.h"
+#include "colorspaces/HDRTransferAdapter.h"
 
 enum PreferredColorConfig {
     Default = 1,
@@ -44,6 +45,6 @@ enum PreferredColorConfig {
 
 bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorConfig *config,
                               jint javaScaleMode, ScaleMode *scaleMode, jint javaSampler,
-                              XSampler *sampler);
+                              XSampler *sampler, jint javaToneMapper, CurveToneMapper* toneMapper);
 
 #endif //AVIF_SUPPORT_H

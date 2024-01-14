@@ -39,7 +39,8 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
 
     JxlDecoderRewind(dec.get());
     if (JXL_DEC_SUCCESS !=
-        JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_FULL_IMAGE | JXL_DEC_FRAME)) {
+        JxlDecoderSubscribeEvents(dec.get(),
+                                  JXL_DEC_FULL_IMAGE | JXL_DEC_FRAME | JXL_DEC_COLOR_ENCODING)) {
         std::string str = "Cannot subscribe to events";
         throw AnimatedDecoderError(str);
     }
@@ -57,6 +58,8 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
 
     int frameTime = 0;
     std::vector<uint8_t> pixels;
+    JxlColorEncoding clr;
+    bool useColorEncoding = false;
     JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
     for (;;) {
         JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
@@ -95,6 +98,15 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
                 std::string str = "Cannot decoder buffer info";
                 throw AnimatedDecoderError(str);
             }
+        } else if (status == JXL_DEC_COLOR_ENCODING) {
+            if (JXL_DEC_SUCCESS ==
+                JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
+                                                   &clr)) {
+                if (clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
+                    useColorEncoding = true;
+                }
+            }
         } else if (status == JXL_DEC_FULL_IMAGE || status == JXL_DEC_SUCCESS) {
             // All decoding successfully finished, we are at the end of the file.
             // We must rewind the decoder to get a new frame.
@@ -105,7 +117,13 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
 
             std::vector<uint8_t> iccCopy;
             iccCopy = iccProfile;
-            JxlFrame frame = {.pixels = pixels, .iccProfile = iccCopy, .duration = frameTime};
+
+
+            JxlFrame frame = {.pixels = pixels,
+                    .iccProfile = iccCopy,
+                    .colorEncoding = clr,
+                    .preferColorEncoding = useColorEncoding,
+                    .duration = frameTime};
             return frame;
         } else {
             std::string str = "Error event has received";

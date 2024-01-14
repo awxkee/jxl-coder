@@ -163,7 +163,7 @@ class MainActivity : ComponentActivity() {
 //                                    imagesArray.add(scaledBitmap)
 //                                }
 //                            }
-                            val assets = (this@MainActivity.assets.list("") ?: return@launch).takeLast(5)
+                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
                             for (asset in assets) {
                                 try {
                                     val buffer4 = this@MainActivity.assets.open(asset).source().buffer().readByteArray()
@@ -173,9 +173,10 @@ class MainActivity : ComponentActivity() {
                                             buffer4,
                                             largeImageSize.width / 2,
                                             largeImageSize.height / 2,
-                                            preferredColorConfig = PreferredColorConfig.DEFAULT,
+                                            preferredColorConfig = PreferredColorConfig.RGBA_1010102,
                                             com.awxkee.jxlcoder.ScaleMode.FIT,
-                                            JxlResizeFilter.BILINEAR,
+                                            JxlResizeFilter.MITCHELL_NETRAVALI,
+                                            toneMapper = JxlToneMapper.LOGARITHMIC,
                                         )
                                         lifecycleScope.launch(Dispatchers.Main) {
                                             imagesArray.add(image)

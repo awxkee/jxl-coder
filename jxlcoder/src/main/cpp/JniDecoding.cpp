@@ -30,7 +30,7 @@
 #include <vector>
 #include "JxlDecoding.h"
 #include "JniExceptions.h"
-#include "colorspace.h"
+#include "colorspaces/colorspace.h"
 #include "HalfFloats.h"
 #include <libyuv.h>
 #include "android/bitmap.h"
@@ -41,16 +41,20 @@
 #include "ReformatBitmap.h"
 #include "CopyUnaligned.h"
 #include "XScaler.h"
+#include "colorspaces/ColorSpaceProfile.h"
+#include "colorspaces/HDRTransferAdapter.h"
 
 jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
                                jint scaledHeight,
                                jint javaPreferredColorConfig,
-                               jint javaScaleMode, jint javaResizeFilter) {
+                               jint javaScaleMode, jint javaResizeFilter, jint javaToneMapper) {
     ScaleMode scaleMode;
     PreferredColorConfig preferredColorConfig;
     XSampler sampler;
+    CurveToneMapper toneMapper;
     if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                  javaScaleMode, &scaleMode, javaResizeFilter, &sampler)) {
+                                  javaScaleMode, &scaleMode, javaResizeFilter, &sampler,
+                                  javaToneMapper, &toneMapper)) {
         return nullptr;
     }
 
@@ -62,12 +66,15 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     int osVersion = androidOSVersion();
     int bitDepth = 8;
     JxlOrientation jxlOrientation = JXL_ORIENT_IDENTITY;
+    JxlColorEncoding colorEncoding;
+    bool preferEncoding = false;
     if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
                              &rgbaPixels,
                              &xsize, &ysize,
                              &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
                              osVersion >= 26,
-                             &jxlOrientation)) {
+                             &jxlOrientation,
+                             &preferEncoding, &colorEncoding)) {
         throwInvalidJXLException(env);
         return nullptr;
     }
@@ -109,6 +116,49 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
         if (!scaleResult) {
             return nullptr;
         }
+    }
+
+    if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
+                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG)) {
+        ColorSpaceProfile *destProfile = rec709Profile;
+        ColorSpaceProfile *srcProfile;
+        HDRTransferFunction function = PQ;
+        GammaCurve gammaCurve = NONE;
+        if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
+            function = HLG;
+        }
+        if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
+            srcProfile = new ColorSpaceProfile(Rec2020Primaries, IlluminantD65,
+                                               Rec2020LumaPrimaries,
+                                               Rec2020WhitePointNits);
+            gammaCurve = Rec2020;
+        } else if (colorEncoding.primaries == JXL_PRIMARIES_P3) {
+            srcProfile = new ColorSpaceProfile(DisplayP3Primaries,
+                                               IlluminantD65,
+                                               DisplayP3LumaPrimaries,
+                                               DisplayP3WhitePointNits);
+            gammaCurve = DCIP3;
+        } else {
+            float primaries[3][2] = {{static_cast<float>(colorEncoding.primaries_red_xy[0]),
+                                             static_cast<float>(colorEncoding.primaries_red_xy[1])},
+                                     {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
+                                             static_cast<float>(colorEncoding.primaries_blue_xy[1])},
+                                     {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
+                                             static_cast<float>(colorEncoding.primaries_blue_xy[1])}};
+            float whitePoint[2] = {static_cast<float>(colorEncoding.white_point_xy[0]),
+                                   static_cast<float>(colorEncoding.white_point_xy[1])};
+            srcProfile = new ColorSpaceProfile(primaries, whitePoint, Rec2020LumaPrimaries,
+                                               DisplayP3WhitePointNits);
+        }
+
+        HDRTransferAdapter adapter(rgbaPixels.data(), stride,
+                                   finalWidth, finalHeight,
+                                   useBitmapFloats, useBitmapFloats ? 16 : 8,
+                                   gammaCurve, function,
+                                   toneMapper, srcProfile, destProfile);
+        adapter.transfer();
+
+        delete srcProfile;
     }
 
     std::string bitmapPixelConfig = useBitmapFloats ? "RGBA_F16" : "ARGB_8888";
@@ -185,14 +235,16 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     jint scaledHeight,
                                                     jint javaPreferredColorConfig,
                                                     jint javaScaleMode,
-                                                    jint resizeSampler) {
+                                                    jint resizeSampler,
+                                                    jint javaToneMapper) {
     try {
         auto totalLength = env->GetArrayLength(byte_array);
         std::vector<uint8_t> srcBuffer(totalLength);
         env->GetByteArrayRegion(byte_array, 0, totalLength,
                                 reinterpret_cast<jbyte *>(srcBuffer.data()));
         return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
-                                      javaPreferredColorConfig, javaScaleMode, resizeSampler);
+                                      javaPreferredColorConfig, javaScaleMode,
+                                      resizeSampler, javaToneMapper);
     } catch (std::bad_alloc &err) {
         std::string errorString = "Not enough memory to decode this image";
         throwException(env, errorString);
@@ -207,7 +259,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
                                                               jint scaledHeight,
                                                               jint preferredColorConfig,
                                                               jint scaleMode,
-                                                              jint resizeSampler) {
+                                                              jint resizeSampler,
+                                                              jint javaToneMapper) {
     try {
         auto bufferAddress = reinterpret_cast<uint8_t *>(env->GetDirectBufferAddress(byteBuffer));
         int length = (int) env->GetDirectBufferCapacity(byteBuffer);
@@ -219,7 +272,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
         std::vector<uint8_t> srcBuffer(length);
         std::copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
         return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
-                                      preferredColorConfig, scaleMode, resizeSampler);
+                                      preferredColorConfig, scaleMode,
+                                      resizeSampler, javaToneMapper);
     } catch (std::bad_alloc &err) {
         std::string errorString = "Not enough memory to decode this image";
         throwException(env, errorString);

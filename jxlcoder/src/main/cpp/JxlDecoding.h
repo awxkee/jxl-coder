@@ -31,13 +31,16 @@
 
 #include <vector>
 #include "codestream_header.h"
+#include "color_encoding.h"
 
 bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
                          size_t *ysize, std::vector<uint8_t> *iccProfile,
-                         bool *useFloats, int* bitDepth,
+                         bool *useFloats, int *bitDepth,
                          bool *alphaPremultiplied, bool allowedFloats,
-                         JxlOrientation* jxlOrientation);
+                         JxlOrientation *jxlOrientation,
+                         bool *preferEncoding,
+                         JxlColorEncoding *colorEncoding);
 
 bool DecodeBasicInfo(const uint8_t *jxl, size_t size, size_t *xsize, size_t *ysize);
 

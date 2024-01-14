@@ -41,6 +41,7 @@ using namespace half_float;
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
 #include "algo/math-inl.h"
+#include "imagebit/attenuate-inl.h"
 
 HWY_BEFORE_NAMESPACE();
 
@@ -50,24 +51,28 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::FixedTag;
     using hwy::HWY_NAMESPACE::Vec;
     using hwy::HWY_NAMESPACE::Mul;
-    using hwy::HWY_NAMESPACE::ClampRound;
+    using hwy::HWY_NAMESPACE::Max;
+    using hwy::HWY_NAMESPACE::Min;
     using hwy::HWY_NAMESPACE::Zero;
     using hwy::HWY_NAMESPACE::BitCast;
     using hwy::HWY_NAMESPACE::ConvertTo;
     using hwy::HWY_NAMESPACE::PromoteTo;
     using hwy::HWY_NAMESPACE::DemoteTo;
     using hwy::HWY_NAMESPACE::Combine;
-    using hwy::HWY_NAMESPACE::Round;
     using hwy::HWY_NAMESPACE::Rebind;
     using hwy::HWY_NAMESPACE::LowerHalf;
     using hwy::HWY_NAMESPACE::UpperHalf;
     using hwy::HWY_NAMESPACE::LoadInterleaved4;
     using hwy::HWY_NAMESPACE::StoreInterleaved4;
+    using hwy::HWY_NAMESPACE::Load;
+    using hwy::HWY_NAMESPACE::Round;
+    using hwy::HWY_NAMESPACE::Store;
+    using hwy::HWY_NAMESPACE::Rebind;
     using hwy::float16_t;
     using hwy::float32_t;
 
     inline __attribute__((flatten)) Vec<FixedTag<uint8_t, 8>>
-    ConvertRow(Vec<FixedTag<uint16_t, 8>> v, float maxColors) {
+    ConvertRow(Vec<FixedTag<uint16_t, 8>> v, const float maxColors) {
         FixedTag<float16_t, 4> df16;
         FixedTag<uint16_t, 4> dfu416;
         FixedTag<uint8_t, 8> du8;
@@ -86,33 +91,31 @@ namespace coder::HWY_NAMESPACE {
                                                      vMaxColors), minColors, vMaxColors)
         ));
         auto upper = DemoteTo(ru8, ConvertTo(ri32,
-                                             ClampRound(rf32, Mul(PromoteTo(rf32,
-                                                                            BitCast(df16,
-                                                                                    UpperHalf(
-                                                                                            dfu416,
-                                                                                            v))),
-                                                                  vMaxColors), minColors,
-                                                        vMaxColors)
+                                             ClampRound(rf32, Mul(
+                                                     PromoteTo(rf32,
+                                                               BitCast(df16, UpperHalf(dfu416, v))),
+                                                     vMaxColors), minColors, vMaxColors)
         ));
         return Combine(du8, upper, lower);
     }
 
     void
-    RGBAF16BitToNBitRowU8(const uint16_t *source, uint8_t *destination, int width, float scale,
-                          float maxColors) {
+    RGBAF16BitToNBitRowU8(const uint16_t *source, uint8_t *destination, const int width,
+                          const float scale,
+                          const float maxColors, const bool attenuateAlpha) {
         const FixedTag<uint16_t, 8> du16;
         const FixedTag<uint8_t, 8> du8;
+        const FixedTag<float16_t, 4> df16x4;
         const FixedTag<float32_t, 4> df32x4;
         using VU16 = Vec<decltype(du16)>;
-        using VU8 = Vec<decltype(du8)>;
         using VF32 = Vec<decltype(df32x4)>;
+        using VU8 = Vec<decltype(du8)>;
 
         int x = 0;
         int pixels = 8;
 
         auto src = reinterpret_cast<const uint16_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
-
         for (; x + pixels < width; x += pixels) {
             VU16 ru16Row;
             VU16 gu16Row;
@@ -128,6 +131,12 @@ namespace coder::HWY_NAMESPACE {
             auto b16Row = ConvertRow(bu16Row, maxColors);
             auto a16Row = ConvertRow(au16Row, maxColors);
 
+            if (attenuateAlpha) {
+                r16Row = AttenuateVec(du8, r16Row, a16Row);
+                g16Row = AttenuateVec(du8, g16Row, a16Row);
+                b16Row = AttenuateVec(du8, b16Row, a16Row);
+            }
+
             StoreInterleaved4(r16Row, g16Row, b16Row, a16Row, du8, dst);
 
             src += 4 * pixels;
@@ -139,6 +148,12 @@ namespace coder::HWY_NAMESPACE {
             auto tmpG = (uint8_t) clamp(round(half_to_float(src[1]) * maxColors), 0.0f, maxColors);
             auto tmpB = (uint8_t) clamp(round(half_to_float(src[2]) * maxColors), 0.0f, maxColors);
             auto tmpA = (uint8_t) clamp(round(half_to_float(src[3]) * maxColors), 0.0f, maxColors);
+
+            if (attenuateAlpha) {
+                tmpR = (tmpR * tmpA + 127) / 255;
+                tmpG = (tmpG * tmpA + 127) / 255;
+                tmpB = (tmpB * tmpA + 127) / 255;
+            }
 
             dst[0] = tmpR;
             dst[1] = tmpG;
@@ -152,7 +167,8 @@ namespace coder::HWY_NAMESPACE {
 
     void RGBAF16BitToNBitU8(const uint16_t *sourceData, int srcStride,
                             uint8_t *dst, int dstStride, int width,
-                            int height, int bitDepth) {
+                            int height, int bitDepth, const bool attenuateAlpha) {
+
         float maxColors = powf(2, (float) bitDepth) - 1;
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
@@ -160,8 +176,8 @@ namespace coder::HWY_NAMESPACE {
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
+        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                    height * width / (256 * 256)), 1, 12);
         vector<thread> workers;
 
         int segmentHeight = height / threadCount;
@@ -172,16 +188,15 @@ namespace coder::HWY_NAMESPACE {
             if (i == threadCount - 1) {
                 end = height;
             }
-            workers.emplace_back([start, end, mSrc, srcStride, mDst, width, scale,
-                                         maxColors, dstStride]() {
-                for (int y = start; y < end; ++y) {
-                    auto src = mSrc + y * srcStride;
-                    auto dst = mDst + y * dstStride;
-                    RGBAF16BitToNBitRowU8(reinterpret_cast<const uint16_t *>(src),
-                                          reinterpret_cast<uint8_t *>(dst), width, scale,
-                                          maxColors);
-                }
-            });
+            workers.emplace_back(
+                    [start, end, mSrc, dstStride, mDst, maxColors, srcStride, width, scale, attenuateAlpha]() {
+                        for (int y = start; y < end; ++y) {
+                            RGBAF16BitToNBitRowU8(
+                                    reinterpret_cast<const uint16_t *>(mSrc + y * srcStride),
+                                    reinterpret_cast<uint8_t *>(mDst + y * dstStride), width, scale,
+                                    maxColors, attenuateAlpha);
+                        }
+                    });
         }
 
         for (std::thread &thread: workers) {
@@ -197,9 +212,9 @@ namespace coder {
     HWY_EXPORT(RGBAF16BitToNBitU8);
     HWY_DLLEXPORT void RGBAF16BitToNBitU8(const uint16_t *sourceData, int srcStride,
                                           uint8_t *dst, int dstStride, int width,
-                                          int height, int bitDepth) {
+                                          int height, int bitDepth, const bool attenuateAlpha) {
         HWY_DYNAMIC_DISPATCH(RGBAF16BitToNBitU8)(sourceData, srcStride, dst, dstStride, width,
-                                                 height, bitDepth);
+                                                 height, bitDepth, attenuateAlpha);
     }
 }
 #endif

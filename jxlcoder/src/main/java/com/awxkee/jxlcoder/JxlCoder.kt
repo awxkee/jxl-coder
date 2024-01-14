@@ -45,6 +45,7 @@ class JxlCoder {
         byteArray: ByteArray,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
+        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
@@ -52,7 +53,8 @@ class JxlCoder {
             -1,
             preferredColorConfig.value,
             scaleMode.value,
-            JxlResizeFilter.CATMULL_ROM.value
+            JxlResizeFilter.CATMULL_ROM.value,
+            jxlToneMapper = toneMapper.value,
         )
     }
 
@@ -66,6 +68,7 @@ class JxlCoder {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
+        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
@@ -74,6 +77,7 @@ class JxlCoder {
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
+            jxlToneMapper = toneMapper.value,
         )
     }
 
@@ -87,6 +91,7 @@ class JxlCoder {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
+        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ): Bitmap {
         return decodeByteBufferSampledImpl(
             byteArray,
@@ -95,6 +100,7 @@ class JxlCoder {
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
+            jxlToneMapper = toneMapper.value,
         )
     }
 
@@ -147,6 +153,7 @@ class JxlCoder {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
+        jxlToneMapper: Int,
     ): Bitmap
 
     private external fun decodeByteBufferSampledImpl(
@@ -156,6 +163,7 @@ class JxlCoder {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
+        jxlToneMapper: Int,
     ): Bitmap
 
     private external fun encodeImpl(

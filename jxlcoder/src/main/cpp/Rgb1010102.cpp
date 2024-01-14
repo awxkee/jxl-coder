@@ -255,7 +255,6 @@ namespace coder::HWY_NAMESPACE {
     template<typename D, typename R, typename T = Vec<D>, typename I = Vec<R>>
     inline __attribute__((flatten)) Vec<D>
     ConvertPixelsTo(D d, R rd, I r, I g, I b, I a, const int *permuteMap) {
-        using RD = Vec<R>;
         const T MulBy4Const = Set(d, 4);
         const T MulBy3Const = Set(d, 3);
         const T O127Const = Set(d, 127);

@@ -32,7 +32,7 @@
 #include "JniExceptions.h"
 #include <jni.h>
 #include "JxlAnimatedDecoder.hpp"
-#include "colorspace.h"
+#include "colorspaces/colorspace.h"
 #include "android/bitmap.h"
 #include "ReformatBitmap.h"
 #include "CopyUnaligned.h"
@@ -45,12 +45,15 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject
                                                             jobject byteBuffer,
                                                             jint javaPreferredColorConfig,
                                                             jint javaScaleMode,
-                                                            jint javaJxlResizeSampler) {
+                                                            jint javaJxlResizeSampler,
+                                                            jint javaToneMapper) {
     ScaleMode scaleMode;
     PreferredColorConfig preferredColorConfig;
     XSampler sampler;
+    CurveToneMapper toneMapper;
     if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                  javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler)) {
+                                  javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler,
+                                  javaToneMapper, &toneMapper)) {
         return 0;
     }
 
@@ -73,7 +76,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject
         copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
         JxlAnimatedDecoder *decoder = new JxlAnimatedDecoder(srcBuffer);
         JxlAnimatedDecoderCoordinator *coordinator = new JxlAnimatedDecoderCoordinator(
-                decoder, scaleMode, preferredColorConfig, sampler
+                decoder, scaleMode, preferredColorConfig, sampler, toneMapper
         );
         return reinterpret_cast<jlong >(coordinator);
     } catch (AnimatedDecoderError &err) {
@@ -93,22 +96,18 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
                                                                      jbyteArray byteArray,
                                                                      jint javaPreferredColorConfig,
                                                                      jint javaScaleMode,
-                                                                     jint javaJxlResizeSampler) {
+                                                                     jint javaJxlResizeSampler,
+                                                                     jint javaToneMapper) {
     ScaleMode scaleMode;
     PreferredColorConfig preferredColorConfig;
     XSampler sampler;
+    CurveToneMapper toneMapper;
     if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                  javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler)) {
+                                  javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler,
+                                  javaToneMapper, &toneMapper)) {
         return 0;
     }
 
-//    if (scaleWidth < 1 || scaleHeight < 1) {
-//        std::string errorString =
-//                "Invalid size provided, all sizes must be more than 0! Width: " +
-//                std::to_string(scaleWidth) + ", height: " + std::to_string(scaleHeight);
-//        throwException(env, errorString);
-//        return 0;
-//    }
     try {
         auto length = env->GetArrayLength(byteArray);
         vector<uint8_t> srcBuffer(length);
@@ -116,7 +115,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
                                 reinterpret_cast<jbyte *>(srcBuffer.data()));
         JxlAnimatedDecoder *decoder = new JxlAnimatedDecoder(srcBuffer);
         JxlAnimatedDecoderCoordinator *coordinator = new JxlAnimatedDecoderCoordinator(
-                decoder, scaleMode, preferredColorConfig, sampler
+                decoder, scaleMode, preferredColorConfig, sampler, toneMapper
         );
         return reinterpret_cast<jlong >(coordinator);
     } catch (AnimatedDecoderError &err) {
@@ -176,9 +175,58 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
         bool useFloat16 = false;
         const int depth = 8;
         const bool alphaPremultiplied = coordinator->isAlphaAttenuated();
-        if (!iccProfile.empty()) {
-            int stride = (int) coordinator->getWidth() * 4 *
-                         (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
+
+        auto preferEncoding = frame.preferColorEncoding;
+        auto colorEncoding = frame.colorEncoding;
+
+        int stride = (int) coordinator->getWidth() * 4 *
+                     (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
+
+        if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
+                               colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG)) {
+            ColorSpaceProfile *destProfile = rec709Profile;
+            ColorSpaceProfile *srcProfile;
+            HDRTransferFunction function = PQ;
+            GammaCurve gammaCurve = NONE;
+            if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
+                function = HLG;
+            }
+            if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
+                srcProfile = new ColorSpaceProfile(Rec2020Primaries, IlluminantD65,
+                                                   Rec2020LumaPrimaries,
+                                                   Rec2020WhitePointNits);
+                gammaCurve = Rec2020;
+            } else if (colorEncoding.primaries == JXL_PRIMARIES_P3) {
+                srcProfile = new ColorSpaceProfile(DisplayP3Primaries,
+                                                   IlluminantD65,
+                                                   DisplayP3LumaPrimaries,
+                                                   DisplayP3WhitePointNits);
+                gammaCurve = DCIP3;
+            } else {
+                float primaries[3][2] = {{static_cast<float>(colorEncoding.primaries_red_xy[0]),
+                                                 static_cast<float>(colorEncoding.primaries_red_xy[1])},
+                                         {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
+                                                 static_cast<float>(colorEncoding.primaries_blue_xy[1])},
+                                         {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
+                                                 static_cast<float>(colorEncoding.primaries_blue_xy[1])}};
+                float whitePoint[2] = {static_cast<float>(colorEncoding.white_point_xy[0]),
+                                       static_cast<float>(colorEncoding.white_point_xy[1])};
+                srcProfile = new ColorSpaceProfile(primaries, whitePoint, Rec2020LumaPrimaries,
+                                                   DisplayP3WhitePointNits);
+            }
+
+            HDRTransferAdapter adapter(rgbaPixels.data(), stride,
+                                       (int) coordinator->getWidth(),
+                                       (int) coordinator->getHeight(),
+                                       useFloat16, useFloat16 ? 16 : 8,
+                                       gammaCurve, function,
+                                       coordinator->getToneMapper(), srcProfile, destProfile);
+            adapter.transfer();
+
+            delete srcProfile;
+        }
+
+        if (!iccProfile.empty() && !frame.preferColorEncoding) {
             convertUseDefinedColorSpace(rgbaPixels,
                                         stride,
                                         (int) coordinator->getWidth(),
@@ -193,7 +241,6 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
 
         int finalWidth = (int) coordinator->getWidth();
         int finalHeight = (int) coordinator->getHeight();
-        int stride = finalWidth * 4 * (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
 
         if (useSampler && scaledHeight > 0 && scaledWidth > 0) {
             auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useFloat16,

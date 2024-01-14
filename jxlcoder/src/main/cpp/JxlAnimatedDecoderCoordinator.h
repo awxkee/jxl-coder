@@ -42,9 +42,10 @@ public:
     JxlAnimatedDecoderCoordinator(JxlAnimatedDecoder *decoder,
                                   ScaleMode scaleMode,
                                   PreferredColorConfig preferredColorConfig,
-                                  XSampler sample) : decoder(decoder), scaleMode(scaleMode),
+                                  XSampler sample, CurveToneMapper curveToneMapper) :
+                                  decoder(decoder), scaleMode(scaleMode),
                                                      preferredColorConfig(preferredColorConfig),
-                                                     sampler(sample) {
+                                                     sampler(sample), toneMapper(curveToneMapper) {
 
     }
 
@@ -66,6 +67,10 @@ public:
 
     JxlFrame nextFrame() {
         return decoder->nextFrame();
+    }
+
+    CurveToneMapper getToneMapper() {
+        return toneMapper;
     }
 
     ~JxlAnimatedDecoderCoordinator() {
@@ -104,6 +109,7 @@ private:
     ScaleMode scaleMode;
     PreferredColorConfig preferredColorConfig;
     XSampler sampler;
+    CurveToneMapper toneMapper;
 };
 
 #endif //JXLCODER_JXLANIMATEDDECODERCOORDINATOR_H

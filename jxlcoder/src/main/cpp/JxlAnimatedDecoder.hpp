@@ -52,6 +52,8 @@ private:
 struct JxlFrame {
     std::vector<uint8_t> pixels;
     std::vector<uint8_t> iccProfile;
+    JxlColorEncoding colorEncoding;
+    bool preferColorEncoding;
     int duration;
 };
 
