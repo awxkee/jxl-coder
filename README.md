@@ -3,7 +3,7 @@
 The JPEG XL Codec for Android is a versatile and efficient library that allows you to decode and
 encode JPEG XL (JXL) images within your Android applications. With this library, you can seamlessly
 integrate support for the next-generation image format, providing both decoding and encoding
-capabilities to enhance your app's image handling capabilities.
+capabilities to enhance your app's image handling capabilities. Simple and convenient interface for kotlin
 
 ICC profiles supported. Supports animations as well
 
