@@ -42,6 +42,7 @@ namespace coder::HWY_NAMESPACE {
     static const float alphaRec2020 = 1.09929682680944f;
 
     using hwy::EnableIf;
+    using hwy::HWY_NAMESPACE::MulSub;
     using hwy::IsFloat;
 
     HWY_FAST_MATH_INLINE float bt2020GammaCorrection(float linear) {
@@ -111,7 +112,7 @@ namespace coder::HWY_NAMESPACE {
     }
 
     template<class D, typename V = Vec<D>, HWY_IF_FLOAT(TFromD<D>)>
-    V bt2020GammaCorrection(const D d, V color) {
+    HWY_FAST_MATH_INLINE V bt2020GammaCorrection(const D d, V color) {
         const V bt2020 = Set(d, betaRec2020);
         const V alpha2020 = Set(d, alphaRec2020);
         using T = hwy::HWY_NAMESPACE::TFromD<D>;
@@ -126,7 +127,70 @@ namespace coder::HWY_NAMESPACE {
         return IfThenElse(cmp, branch1, branch2);
     }
 
-    inline __attribute__((flatten)) float HLGEotf(float v) {
+    template<class D, typename V = Vec<D>, HWY_IF_FLOAT(TFromD<D>)>
+    HWY_FAST_MATH_INLINE V LinearITUR709ToITUR709(const D df, V value) {
+        const auto minCurve = Set(df, static_cast<TFromD<D>>(0.018f));
+        const auto minPowValue = Set(df, static_cast<TFromD<D>>(4.5f));
+        const auto minLane = Mul(value, minPowValue);
+        const auto subValue = Set(df, static_cast<TFromD<D>>(0.099f));
+        const auto scalePower = Set(df, static_cast<TFromD<D>>(1.099f));
+        const auto pwrValue = Set(df, static_cast<TFromD<D>>(0.45f));
+        const auto maxLane = MulSub(coder::HWY_NAMESPACE::Pow(df, value, pwrValue), scalePower,
+                                    subValue);
+        return IfThenElse(value < minCurve, minLane, maxLane);
+    }
+
+    HWY_FAST_MATH_INLINE float LinearSRGBTosRGB(const float linear) {
+        if (linear <= 0.0031308f) {
+            return 12.92f * linear;
+        } else {
+            return 1.055f * pow(linear, 1.0f / 2.4f) - 0.055f;
+        }
+    }
+
+    template<class D, typename V = Vec<D>, HWY_IF_FLOAT(TFromD<D>)>
+    HWY_FAST_MATH_INLINE V LinearSRGBTosRGB(const D df, V value) {
+        const auto minCurve = Set(df, static_cast<TFromD<D>>(0.0031308f));
+        const auto minPowValue = Set(df, static_cast<TFromD<D>>(12.92f));
+        const auto minLane = Mul(value, minPowValue);
+        const auto subValue = Set(df, static_cast<TFromD<D>>(0.055f));
+        const auto scalePower = Set(df, static_cast<TFromD<D>>(1.055f));
+        const auto pwrValue = Set(df, static_cast<TFromD<D>>(1.0f / 2.4f));
+        const auto maxLane = MulSub(coder::HWY_NAMESPACE::Pow(df, value, pwrValue), scalePower,
+                                    subValue);
+        return IfThenElse(value <= minCurve, minLane, maxLane);
+    }
+
+    HWY_FAST_MATH_INLINE float LinearITUR709ToITUR709(const float linear) {
+        if (linear <= 0.018f) {
+            return 4.5f * linear;
+        } else {
+            return 1.099f * pow(linear, 0.45f) - 0.099f;
+        }
+    }
+
+    template<class D, typename V = Vec<D>, HWY_IF_FLOAT(TFromD<D>)>
+    HWY_FAST_MATH_INLINE V SMPTE428Eotf(const D df, V value) {
+        const auto zeros = Zero(df);
+        const auto ones = Set(df, static_cast<TFromD<D>>(1.0f));
+        const auto scale = Set(df, static_cast<TFromD<D>>(52.37f / 48.0f));
+        auto mask = value < zeros;
+        auto result = IfThenElse(mask, ones, value);
+        const auto twoPoint6 = Set(df, static_cast<TFromD<D>>(2.6f));
+        result = Mul(coder::HWY_NAMESPACE::Pow(df, value, twoPoint6), scale);
+        result = IfThenElse(mask, zeros, result);
+        return result;
+    }
+
+    HWY_FAST_MATH_INLINE float SMPTE428Eotf(const float value) {
+        if (value < 0.0f) {
+            return 0.0f;
+        }
+        constexpr float scale = 52.37f / 48.0f;
+        return pow(value, 2.6f) * scale;
+    }
+
+    HWY_FAST_MATH_INLINE float HLGEotf(float v) {
         v = max(0.0f, v);
         constexpr float a = 0.17883277f;
         constexpr float b = 0.28466892f;
@@ -144,8 +208,18 @@ namespace coder::HWY_NAMESPACE {
         return coder::HWY_NAMESPACE::Pow(d, color, pw);
     }
 
+    template<class D, typename T = Vec<D>, HWY_IF_FLOAT(TFromD<D>)>
+    HWY_FAST_MATH_INLINE T gammaEotf(const D d, T color, TFromD<D> gamma) {
+        const auto pw = Set(d, 1 / gamma);
+        return coder::HWY_NAMESPACE::Pow(d, color, pw);
+    }
+
     HWY_FAST_MATH_INLINE float dciP3PQGammaCorrection(float linear) {
         return powf(linear, 1 / 2.6f);
+    }
+
+    HWY_FAST_MATH_INLINE float gammaEotf(float linear, const float gamma) {
+        return powf(linear, 1 / gamma);
     }
 
     using hwy::HWY_NAMESPACE::TFromD;
@@ -239,7 +313,7 @@ namespace coder::HWY_NAMESPACE {
         Rec2408PQToneMapper(const TFromD<D> contentMaxBrightness,
                             const TFromD<D> displayMaxBrightness,
                             const TFromD<D> whitePoint,
-                            const TFromD<D> lumaCoefficients[3]): ToneMapper<D>() {
+                            const TFromD<D> lumaCoefficients[3]) : ToneMapper<D>() {
             this->Ld = contentMaxBrightness / whitePoint;
             this->a = (displayMaxBrightness / whitePoint) / (Ld * Ld);
             this->b = 1.0f / (displayMaxBrightness / whitePoint);

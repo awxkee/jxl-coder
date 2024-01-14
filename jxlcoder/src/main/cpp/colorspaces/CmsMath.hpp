@@ -27,7 +27,7 @@ static vector<float> mul(const vector<float>& vec, const float scalar) {
     return result;
 }
 
-static std::vector<float> mul(const std::vector<std::vector<float>>& matrix, const std::vector<float>& vector) {
+static vector<float> mul(const vector<vector<float>>& matrix, const vector<float>& vector) {
     if (matrix.size() != 3 || matrix[0].size() != 3 || vector.size() != 3) {
         throw std::invalid_argument("Matrix must be 3x3 and vector must have size 3");
     }
@@ -43,7 +43,7 @@ static std::vector<float> mul(const std::vector<std::vector<float>>& matrix, con
     return result;
 }
 
-static std::vector<float> mul(const std::vector<float>& vector1, const std::vector<float>& vector2) {
+static vector<float> mul(const vector<float>& vector1, const vector<float>& vector2) {
     if (vector1.size() != 3 || vector2.size() != 3) {
         // Check for valid dimensions
         throw std::invalid_argument("Vectors must be of size 3.");
@@ -58,7 +58,7 @@ static std::vector<float> mul(const std::vector<float>& vector1, const std::vect
     return result;
 }
 
-static std::vector<std::vector<float>> mul(const std::vector<std::vector<float>>& matrix1, const std::vector<std::vector<float>>& matrix2) {
+static vector<vector<float>> mul(const vector<vector<float>>& matrix1, const vector<vector<float>>& matrix2) {
     auto rows1 = matrix1.size();
     auto cols1 = matrix1[0].size();
     auto rows2 = matrix2.size();

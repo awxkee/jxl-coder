@@ -103,7 +103,8 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
                 JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                                                    &clr)) {
                 if (clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
-                    clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
                     useColorEncoding = true;
                 }
             }
@@ -122,6 +123,7 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
             JxlFrame frame = {.pixels = pixels,
                     .iccProfile = iccCopy,
                     .colorEncoding = clr,
+                    .hasAlphaInOrigin = info.num_extra_channels > 0 && info.alpha_bits > 0,
                     .preferColorEncoding = useColorEncoding,
                     .duration = frameTime};
             return frame;

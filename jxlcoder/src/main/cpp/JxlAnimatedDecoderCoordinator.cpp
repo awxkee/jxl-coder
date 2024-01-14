@@ -183,14 +183,18 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                      (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
 
         if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
-                               colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG)) {
+                               colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
+                               colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI)) {
             ColorSpaceProfile *destProfile = rec709Profile;
             ColorSpaceProfile *srcProfile;
             HDRTransferFunction function = PQ;
             GammaCurve gammaCurve = NONE;
             if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
                 function = HLG;
+            } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
+                function = SMPTE428;
             }
+            float gamma = 2.2f;
             if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
                 srcProfile = new ColorSpaceProfile(Rec2020Primaries, IlluminantD65,
                                                    Rec2020LumaPrimaries,
@@ -202,17 +206,25 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                                                    DisplayP3LumaPrimaries,
                                                    DisplayP3WhitePointNits);
                 gammaCurve = DCIP3;
+            } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB) {
+                srcProfile = new ColorSpaceProfile(Rec709Primaries,
+                                                   IlluminantD65,
+                                                   Rec709LumaPrimaries,
+                                                   Rec709WhitePointNits);
+                gammaCurve = Rec709;
+
             } else {
                 float primaries[3][2] = {{static_cast<float>(colorEncoding.primaries_red_xy[0]),
                                                  static_cast<float>(colorEncoding.primaries_red_xy[1])},
-                                         {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
-                                                 static_cast<float>(colorEncoding.primaries_blue_xy[1])},
+                                         {static_cast<float>(colorEncoding.primaries_green_xy[0]),
+                                                 static_cast<float>(colorEncoding.primaries_green_xy[1])},
                                          {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
                                                  static_cast<float>(colorEncoding.primaries_blue_xy[1])}};
                 float whitePoint[2] = {static_cast<float>(colorEncoding.white_point_xy[0]),
                                        static_cast<float>(colorEncoding.white_point_xy[1])};
-                srcProfile = new ColorSpaceProfile(primaries, whitePoint, Rec2020LumaPrimaries,
+                srcProfile = new ColorSpaceProfile(primaries, whitePoint, Rec709LumaPrimaries,
                                                    DisplayP3WhitePointNits);
+                gammaCurve = GAMMA;
             }
 
             HDRTransferAdapter adapter(rgbaPixels.data(), stride,
@@ -220,7 +232,8 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                                        (int) coordinator->getHeight(),
                                        useFloat16, useFloat16 ? 16 : 8,
                                        gammaCurve, function,
-                                       coordinator->getToneMapper(), srcProfile, destProfile);
+                                       coordinator->getToneMapper(), srcProfile, destProfile,
+                                       gamma);
             adapter.transfer();
 
             delete srcProfile;
@@ -259,7 +272,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
         ReformatColorConfig(env, rgbaPixels, bitmapPixelConfig,
                             coordinator->getPreferredColorConfig(), depth,
                             finalWidth, finalHeight, &stride, &useFloat16,
-                            &hwBuffer, alphaPremultiplied);
+                            &hwBuffer, alphaPremultiplied, frame.hasAlphaInOrigin);
 
         if (bitmapPixelConfig == "HARDWARE") {
             jclass bitmapClass = env->FindClass("android/graphics/Bitmap");

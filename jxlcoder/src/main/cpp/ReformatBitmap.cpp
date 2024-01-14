@@ -45,12 +45,12 @@ void
 ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &imageConfig,
                     PreferredColorConfig preferredColorConfig, int depth,
                     int imageWidth, int imageHeight, int *stride, bool *useFloats,
-                    jobject *hwBuffer, bool alphaPremultiplied) {
+                    jobject *hwBuffer, bool alphaPremultiplied, const bool hasAlphaInOrigin) {
     *hwBuffer = nullptr;
     if (preferredColorConfig == Default) {
         int osVersion = androidOSVersion();
         if (depth > 8 && osVersion >= 26) {
-            if (osVersion >= 33) {
+            if (osVersion >= 33 && !hasAlphaInOrigin) {
                 preferredColorConfig = Rgba_1010102;
             } else {
                 preferredColorConfig = Rgba_F16;
@@ -177,9 +177,11 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
             if (status != 0) {
                 return;
             }
-            std::shared_ptr<AHardwareBuffer> hardwareBuffer(hdBuffer, [](AHardwareBuffer *hdBuffer) {
-                AHardwareBuffer_release_compat(hdBuffer);
-            });
+            std::shared_ptr<AHardwareBuffer> hardwareBuffer(hdBuffer,
+                                                            [](AHardwareBuffer *hdBuffer) {
+                                                                AHardwareBuffer_release_compat(
+                                                                        hdBuffer);
+                                                            });
             ARect rect = {0, 0, imageWidth, imageHeight};
             uint8_t *buffer;
 

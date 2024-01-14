@@ -68,13 +68,15 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     JxlOrientation jxlOrientation = JXL_ORIENT_IDENTITY;
     JxlColorEncoding colorEncoding;
     bool preferEncoding = false;
+    bool hasAlphaInOrigin = true;
     if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
                              &rgbaPixels,
                              &xsize, &ysize,
                              &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
                              osVersion >= 26,
                              &jxlOrientation,
-                             &preferEncoding, &colorEncoding)) {
+                             &preferEncoding, &colorEncoding,
+                             &hasAlphaInOrigin)) {
         throwInvalidJXLException(env);
         return nullptr;
     }
@@ -119,14 +121,19 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     }
 
     if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
-                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG)) {
+                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
+                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI)) {
         ColorSpaceProfile *destProfile = rec709Profile;
         ColorSpaceProfile *srcProfile;
         HDRTransferFunction function = PQ;
         GammaCurve gammaCurve = NONE;
+        float gamma = 2.2f;
         if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
             function = HLG;
+        } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
+            function = SMPTE428;
         }
+
         if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
             srcProfile = new ColorSpaceProfile(Rec2020Primaries, IlluminantD65,
                                                Rec2020LumaPrimaries,
@@ -138,24 +145,32 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
                                                DisplayP3LumaPrimaries,
                                                DisplayP3WhitePointNits);
             gammaCurve = DCIP3;
+        } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB) {
+            srcProfile = new ColorSpaceProfile(Rec709Primaries,
+                                               IlluminantD65,
+                                               Rec709LumaPrimaries,
+                                               Rec709WhitePointNits);
+            gammaCurve = Rec709;
+
         } else {
             float primaries[3][2] = {{static_cast<float>(colorEncoding.primaries_red_xy[0]),
                                              static_cast<float>(colorEncoding.primaries_red_xy[1])},
-                                     {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
-                                             static_cast<float>(colorEncoding.primaries_blue_xy[1])},
+                                     {static_cast<float>(colorEncoding.primaries_green_xy[0]),
+                                             static_cast<float>(colorEncoding.primaries_green_xy[1])},
                                      {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
                                              static_cast<float>(colorEncoding.primaries_blue_xy[1])}};
             float whitePoint[2] = {static_cast<float>(colorEncoding.white_point_xy[0]),
                                    static_cast<float>(colorEncoding.white_point_xy[1])};
             srcProfile = new ColorSpaceProfile(primaries, whitePoint, Rec2020LumaPrimaries,
                                                DisplayP3WhitePointNits);
+            gammaCurve = sRGB;
         }
 
         HDRTransferAdapter adapter(rgbaPixels.data(), stride,
                                    finalWidth, finalHeight,
                                    useBitmapFloats, useBitmapFloats ? 16 : 8,
                                    gammaCurve, function,
-                                   toneMapper, srcProfile, destProfile);
+                                   toneMapper, srcProfile, destProfile, gamma);
         adapter.transfer();
 
         delete srcProfile;
@@ -165,7 +180,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     jobject hwBuffer = nullptr;
     ReformatColorConfig(env, rgbaPixels, bitmapPixelConfig, preferredColorConfig, bitDepth,
                         finalWidth, finalHeight, &stride, &useBitmapFloats,
-                        &hwBuffer, alphaPremultiplied);
+                        &hwBuffer, alphaPremultiplied, hasAlphaInOrigin);
 
     if (bitmapPixelConfig == "HARDWARE") {
         jclass bitmapClass = env->FindClass("android/graphics/Bitmap");

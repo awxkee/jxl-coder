@@ -38,8 +38,9 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          bool *useFloats, int *bitDepth,
                          bool *alphaPremultiplied, bool allowedFloats,
                          JxlOrientation *jxlOrientation,
-                         bool* preferEncoding,
-                         JxlColorEncoding* colorEncoding) {
+                         bool *preferEncoding,
+                         JxlColorEncoding *colorEncoding,
+                         bool *hasAlphaInOrigin) {
     // Multi-threaded parallel runner.
     auto runner = JxlResizableParallelRunnerMake(nullptr);
 
@@ -66,6 +67,8 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
     bool useBitmapHalfFloats = false;
     *preferEncoding = false;
 
+    *hasAlphaInOrigin = true;
+
     for (;;) {
         JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
 
@@ -90,6 +93,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                 *useFloats = false;
                 useBitmapHalfFloats = false;
             }
+            *hasAlphaInOrigin = info.num_extra_channels > 0 && info.alpha_bits > 0;
             JxlResizableParallelRunnerSetThreads(
                     runner.get(),
                     JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize));
@@ -106,7 +110,9 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                 JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                                                    &clr)) {
                 *colorEncoding = clr;
-                if (clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG || clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
+                if (clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
                     *preferEncoding = true;
                 }
             }

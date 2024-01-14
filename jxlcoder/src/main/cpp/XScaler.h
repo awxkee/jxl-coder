@@ -44,10 +44,10 @@ enum XSampler {
 };
 
 namespace coder {
-    void scaleImageFloat16(const uint16_t* input,
+    void scaleImageFloat16(const uint16_t *input,
                            int srcStride,
                            int inputWidth, int inputHeight,
-                           uint16_t* output,
+                           uint16_t *output,
                            int dstStride,
                            int outputWidth, int outputHeight,
                            int components,
