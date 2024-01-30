@@ -93,6 +93,20 @@ static inline T SimpleCubic(T x) {
 }
 
 template<typename T>
+static inline T BiCubicSpline(T x, const T a = -0.5) {
+    const T modulo = abs(x);
+    if (modulo >= 2) {
+        return 0;
+    }
+    const T doubled = modulo * modulo;
+    const T triplet = doubled * modulo;
+    if (modulo <= 1) {
+        return (a + T(2.0))*triplet - (a + T(3.0)) * doubled + T(1.0);
+    }
+    return a * triplet - T(5.0) * a * doubled + T(8.0) * a * modulo - T(4.0) * a;
+}
+
+template<typename T>
 static inline T CubicHermite(T x) {
     constexpr T C = T(0.0);
     constexpr T B = T(0.0);

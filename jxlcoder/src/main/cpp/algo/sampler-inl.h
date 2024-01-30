@@ -44,6 +44,7 @@ using hwy::HWY_NAMESPACE::Mul;
 using hwy::HWY_NAMESPACE::Div;
 using hwy::HWY_NAMESPACE::Max;
 using hwy::HWY_NAMESPACE::Min;
+using hwy::HWY_NAMESPACE::Add;
 using hwy::HWY_NAMESPACE::Zero;
 using hwy::HWY_NAMESPACE::BitCast;
 using hwy::HWY_NAMESPACE::ConvertTo;
@@ -138,18 +139,37 @@ HWY_MATH_INLINE T CubicBSplineV(const D df, T d) {
 }
 
 template<class D, typename T = Vec<D>>
+HWY_MATH_INLINE T BiCubicSplineV(const D df, T x, hwy::HWY_NAMESPACE::TFromD<D> a = -0.5) {
+    const T aVec = Set(df, a);
+    const T ones = Set(df, 1.0);
+    const T two = Set(df, 2.0);
+    const T three = Set(df, 3.0);
+    const T four = Set(df, 4.0);
+    const T five = Set(df, 5.0);
+    const T eight = Set(df, 8.0);
+    const T zeros = Zero(df);
+    x = Abs(x);
+    const auto zeroMask = x >= two;
+    const auto partOneMask = x < ones;
+    const T doubled = Mul(x, x);
+    const T triplet = Mul(doubled, x);
+
+    const T partOne = MulAdd(Add(two, aVec), triplet, NegMulAdd(Add(aVec, three), doubled, ones));
+    const T fourA = Mul(four, aVec);
+    const T eightA = Mul(eight, aVec);
+    const T fiveA = Mul(five, aVec);
+    const T partTwo = MulAdd(aVec, triplet,
+                             NegMulAdd(fiveA, doubled,
+                                       MulSub(eightA, x, fourA)));
+
+    x = IfThenElse(partOneMask, partOne, partTwo);
+    x = IfThenElse(zeroMask, zeros, x);
+
+    return x;
+}
+
+template<class D, typename T = Vec<D>>
 HWY_MATH_INLINE T SimpleCubicV(const D df, T x) {
-    /*
-     *     if ( x < 0.0f ) x = -x;
-
-    if (x < 1.0f)
-        return (4.0f + x*x*(3.0f*x - 6.0f))/6.0f;
-    else if (x < 2.0f)
-        return (8.0f + x*(-12.0f + x*(6.0f - x)))/6.0f;
-
-    return (0.0f);
-     */
-
     x = Abs(x);
     const T zeros = Zero(df);
     const T ones = Set(df, 1.0);

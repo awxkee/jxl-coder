@@ -86,7 +86,7 @@ namespace coder::HWY_NAMESPACE {
             case nearest:
                 break;
             case cubic:
-                return CubicHermite(value);
+                return SimpleCubic(value);
             case mitchell:
                 return MitchellNetravalli(value);
             case lanczos:
@@ -99,6 +99,8 @@ namespace coder::HWY_NAMESPACE {
                 return BSpline(value);
             case hann:
                 return HannWindow(value, float(3));
+            case bicubic:
+                return BiCubicSpline(value);
         }
         return 0;
     }
@@ -127,6 +129,8 @@ namespace coder::HWY_NAMESPACE {
             case hann: {
                 return HannWindow(df, x, 3.0);
             }
+            case bicubic:
+                return BiCubicSplineV(df, x);
         }
         return Zero(df);
     }
@@ -236,10 +240,10 @@ namespace coder::HWY_NAMESPACE {
                     }
                 }
             } else if (option == cubic || option == mitchell || option == bSpline ||
-                       option == catmullRom || option == hermite) {
+                       option == catmullRom || option == hermite || option == bicubic) {
                 if (components == 4 && x + 8 < outputWidth &&
                     (option == hermite || option == mitchell || option == catmullRom ||
-                     option == bSpline || option == cubic)) {
+                     option == bSpline || option == cubic || option == bicubic)) {
                     int a = 2;
                     float rgb[components];
                     fill(rgb, rgb + components, 0.0f);
@@ -619,10 +623,10 @@ namespace coder::HWY_NAMESPACE {
                     }
                 }
             } else if (option == cubic || option == mitchell || option == bSpline ||
-                       option == catmullRom || option == hermite) {
+                       option == catmullRom || option == hermite || option == bicubic) {
                 if (components == 4 && x + 8 < outputWidth &&
                     (option == hermite || option == mitchell || option == catmullRom ||
-                     option == bSpline || option == cubic)) {
+                     option == bSpline || option == cubic || option == bicubic)) {
                     // only kernel with size 3 is supported
                     constexpr int kernelSize = 2;
 

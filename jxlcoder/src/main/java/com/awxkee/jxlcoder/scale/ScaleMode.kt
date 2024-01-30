@@ -37,5 +37,6 @@ enum class BitmapScaleMode {
     CatmullRom,
     Hermite,
     BSpline,
-    Hann
+    Hann,
+    BiCubic
 }

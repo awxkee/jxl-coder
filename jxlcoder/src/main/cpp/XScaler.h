@@ -40,7 +40,8 @@ enum XSampler {
     catmullRom = 6,
     hermite = 7,
     bSpline = 8,
-    hann = 9
+    hann = 9,
+    bicubic = 10
 };
 
 namespace coder {

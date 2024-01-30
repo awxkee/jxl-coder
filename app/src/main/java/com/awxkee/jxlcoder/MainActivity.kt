@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                             largeImageSize.height / 2,
                                             preferredColorConfig = PreferredColorConfig.RGBA_F16,
                                             com.awxkee.jxlcoder.ScaleMode.FIT,
-                                            JxlResizeFilter.MITCHELL_NETRAVALI,
+                                            JxlResizeFilter.BICUBIC,
                                             toneMapper = JxlToneMapper.LOGARITHMIC,
                                         )
                                         lifecycleScope.launch(Dispatchers.Main) {
