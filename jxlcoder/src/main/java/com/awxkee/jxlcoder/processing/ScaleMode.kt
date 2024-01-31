@@ -26,38 +26,17 @@
  *
  */
 
-package com.awxkee.jxlcoder.scale
+package com.awxkee.jxlcoder.processing
 
-import android.graphics.Bitmap
-import android.os.Build
-import androidx.annotation.Keep
-
-@Keep
-object BitmapScaler {
-
-    fun scale(
-        bitmap: Bitmap,
-        dstWidth: Int,
-        dstHeight: Int,
-        scaleMode: BitmapScaleMode
-    ): Bitmap = scaleImpl(
-        bitmap = bitmap,
-        dstWidth = dstWidth,
-        dstHeight = dstHeight,
-        scaleMode = scaleMode.ordinal + 1
-    )
-
-    private external fun scaleImpl(
-        bitmap: Bitmap,
-        dstWidth: Int,
-        dstHeight: Int,
-        scaleMode: Int
-    ): Bitmap
-
-    init {
-        if (Build.VERSION.SDK_INT >= 21) {
-            System.loadLibrary("jxlcoder")
-        }
-    }
-
+enum class BitmapScaleMode {
+    Bilinear,
+    Nearest,
+    Cubic,
+    MitchellNetravali,
+    Lanczos,
+    CatmullRom,
+    Hermite,
+    BSpline,
+    Hann,
+    BiCubic
 }

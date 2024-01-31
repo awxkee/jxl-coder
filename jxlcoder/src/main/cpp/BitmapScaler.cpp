@@ -40,7 +40,7 @@ using namespace std;
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_com_awxkee_jxlcoder_scale_BitmapScaler_scaleImpl(JNIEnv *env, jobject thiz, jobject bitmap,
+Java_com_awxkee_jxlcoder_processing_BitmapProcessor_scaleImpl(JNIEnv *env, jobject thiz, jobject bitmap,
                                                       jint dst_width, jint dst_height,
                                                       jint scale_mode) {
     try {
