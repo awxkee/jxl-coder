@@ -80,6 +80,30 @@ object BitmapProcessor {
         return medianBlurImpl(bitmap, radius)
     }
 
+    fun tiltShift(
+        bitmap: Bitmap,
+        radius: Float,
+        sigma: Float,
+        anchorX: Float = 0.5f,
+        anchorY: Float = 0.5f,
+        tension: Float = 0.2f,
+    ): Bitmap {
+        if (radius < 0) throw InvalidParameterException("radius cannot be less than zero")
+        if (radius == 0.0f) {
+            return bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        }
+        return tiltShiftImpl(bitmap, radius, sigma, anchorX, anchorY, tension)
+    }
+
+    private external fun tiltShiftImpl(
+        bitmap: Bitmap,
+        radius: Float,
+        sigma: Float,
+        anchorX: Float = 0.5f,
+        anchorY: Float = 0.5f,
+        tiltRadius: Float = 0.2f,
+    ): Bitmap
+
     private external fun scaleImpl(
         bitmap: Bitmap,
         dstWidth: Int,

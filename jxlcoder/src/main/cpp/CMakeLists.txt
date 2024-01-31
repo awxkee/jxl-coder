@@ -32,7 +32,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         XScaler.cpp RgbaF16bitNBitU8.cpp RGBAlpha.cpp JxlAnimatedDecoder.cpp JxlAnimatedEncoder.cpp
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp BitmapScaler.cpp colorspaces/CoderCms.cpp
         colorspaces/HDRTransferAdapter.cpp BoxBlur.cpp processing/BoxBlur.cpp GaussBlur.cpp processing/GaussBlur.cpp
-        BilateralBlur.cpp processing/BilateralBlur.cpp MedianBlur.cpp processing/MedianBlur.cpp)
+        BilateralBlur.cpp processing/BilateralBlur.cpp MedianBlur.cpp processing/MedianBlur.cpp
+        TiltShift.cpp processing/TiltShift.cpp)
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
 

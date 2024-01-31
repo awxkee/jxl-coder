@@ -9,8 +9,8 @@
 using namespace std;
 
 inline __attribute__((flatten))
-uint8_t getMedian(const std::vector<uint8_t> &data) {
-    std::vector<uint8_t> copy = data;
+uint32_t getMedian(const std::vector<uint32_t> &data) {
+    std::vector<uint32_t> copy = data;
     std::nth_element(copy.begin(), copy.begin() + copy.size() / 2, copy.end());
     return copy[copy.size() / 2];
 }
@@ -18,32 +18,22 @@ uint8_t getMedian(const std::vector<uint8_t> &data) {
 void medianBlurU8Runner(std::vector<uint8_t> &transient, uint8_t *data, int stride, int width,
                         int y, int radius, int height) {
     const int size = radius * 2 + 1;
-    auto dst = reinterpret_cast<uint8_t *>(transient.data() + y * stride);
+    auto dst = reinterpret_cast<uint32_t *>(transient.data() + y * stride);
     for (int x = 0; x < width; ++x) {
 
-        std::vector<uint8_t> rStore;
-        std::vector<uint8_t> gStore;
-        std::vector<uint8_t> bStore;
-        std::vector<uint8_t> aStore;
+        std::vector<uint32_t> store;
 
         for (int j = -radius; j <= radius; ++j) {
             for (int i = -radius; i <= radius; ++i) {
-                auto src = reinterpret_cast<uint8_t *>(data +
-                                                       clamp(y + j, 0, height - 1) * stride);
-                int pos = clamp((x + i), 0, width - 1) * 4;
-                rStore.insert(rStore.end(), src[pos + 0]);
-                gStore.insert(gStore.end(), src[pos + 1]);
-                bStore.insert(bStore.end(), src[pos + 2]);
-                aStore.insert(aStore.end(), src[pos + 3]);
+                uint32_t *src = reinterpret_cast<uint32_t *>(data +
+                                                        clamp(y + j, 0, height - 1) * stride);
+                int pos = clamp((x + i), 0, width - 1);
+                store.insert(store.end(), src[pos]);
             }
         }
 
-        dst[0] = getMedian(rStore);
-        dst[1] = getMedian(gStore);
-        dst[2] = getMedian(bStore);
-        dst[3] = getMedian(aStore);
-
-        dst += 4;
+        dst[0] = getMedian(store);
+        dst += 1;
     }
 }
 

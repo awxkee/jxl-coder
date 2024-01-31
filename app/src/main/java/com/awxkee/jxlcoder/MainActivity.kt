@@ -5,6 +5,7 @@ import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -32,6 +33,7 @@ import okio.FileNotFoundException
 import okio.buffer
 import okio.source
 import java.util.UUID
+import kotlin.system.measureTimeMillis
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalGlideComposeApi::class)
@@ -157,16 +159,17 @@ class MainActivity : ComponentActivity() {
                                     val buffer4 = this@MainActivity.assets.open(asset).source().buffer().readByteArray()
                                     val largeImageSize = JxlCoder().getSize(buffer4)
                                     if (largeImageSize != null) {
-                                        var image = JxlCoder().decodeSampled(
+                                        var srcImage = JxlCoder().decodeSampled(
                                             buffer4,
                                             largeImageSize.width / 2,
                                             largeImageSize.height / 2,
-                                            preferredColorConfig = PreferredColorConfig.RGBA_F16,
+                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                             com.awxkee.jxlcoder.ScaleMode.FIT,
                                             JxlResizeFilter.BICUBIC,
                                             toneMapper = JxlToneMapper.LOGARITHMIC,
                                         )
-                                        image = BitmapProcessor.medianBlur(image, 3)
+                                        val image: Bitmap = BitmapProcessor.tiltShift(srcImage, 15f, 9f, tension = 0.3f)
+                                        var radius = 1
                                         lifecycleScope.launch(Dispatchers.Main) {
                                             imagesArray.add(image)
                                         }

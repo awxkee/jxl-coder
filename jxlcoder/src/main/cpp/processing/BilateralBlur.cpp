@@ -20,27 +20,6 @@ static vector<float> compute1DGaussianKernel(float width, float sigma) {
     return std::move(kernel);
 }
 
-static vector<vector<float>> compute2DGaussianKernel(int width, float sigma) {
-    int W = 5;
-    vector<vector<float>> kernel(width, vector<float>(width));
-    double mean = W / 2;
-    double sum = 0.0;
-    for (int x = 0; x < W; ++x)
-        for (int y = 0; y < W; ++y) {
-            kernel[x][y] =
-                    exp(-0.5 * (pow((x - mean) / sigma, 2.0f) + pow((y - mean) / sigma, 2.0f)))
-                    / (2 * M_PI * sigma * sigma);
-            sum += kernel[x][y];
-        }
-
-    if (sum != 0) {
-        for (int x = 0; x < W; ++x)
-            for (int y = 0; y < W; ++y)
-                kernel[x][y] /= sum;
-    }
-    return std::move(kernel);
-}
-
 inline __attribute__((flatten))
 int clamp(const int value, const int minValue, const int maxValue) {
     return (value < minValue) ? minValue : ((value > maxValue) ? maxValue : value);
@@ -104,8 +83,6 @@ void bilateralBlur(uint8_t *data, int stride, int width, int height, float radiu
                 auto src = reinterpret_cast<uint8_t *>(transient.data() + py * stride);
                 int px = clamp(x, 0, width - 1);
                 int pos = px * 4;
-
-                auto origSrc = reinterpret_cast<uint8_t *>(transient.data() + y * stride);
 
                 float dx = (float(px) - float(x))/(iRadius * 2 + 1);
                 float dy = (float(py) - float(y))/(iRadius * 2 + 1);
