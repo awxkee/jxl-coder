@@ -168,11 +168,19 @@ class MainActivity : ComponentActivity() {
                                             JxlResizeFilter.BICUBIC,
                                             toneMapper = JxlToneMapper.LOGARITHMIC,
                                         )
-                                        val image: Bitmap = BitmapProcessor.tiltShift(srcImage, 15f, 9f, tension = 0.3f)
-                                        var radius = 1
-                                        lifecycleScope.launch(Dispatchers.Main) {
-                                            imagesArray.add(image)
+                                        val cPlusPlusDoneIn = measureTimeMillis {
+                                            val image: Bitmap = srcImage.stackBlur(1.0f, 25)
+                                            lifecycleScope.launch(Dispatchers.Main) {
+                                                imagesArray.add(image)
+                                            }
                                         }
+                                        val gaussDoneIn = measureTimeMillis {
+                                            val image = BitmapProcessor.gaussBlur(srcImage, 25f, 12f)
+                                            lifecycleScope.launch(Dispatchers.Main) {
+                                                imagesArray.add(image)
+                                            }
+                                        }
+                                        Log.d("JxlCoder", "C++ StackBlur done in ${cPlusPlusDoneIn}ms, gauss ${gaussDoneIn}ms")
                                     }
                                 } catch (e: Exception) {
                                     if (e !is FileNotFoundException) {

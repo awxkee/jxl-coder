@@ -30,6 +30,7 @@ package com.awxkee.jxlcoder.processing
 
 import android.graphics.Bitmap
 import android.os.Build
+import androidx.annotation.IntRange
 import androidx.annotation.Keep
 import java.security.InvalidParameterException
 
@@ -80,6 +81,14 @@ object BitmapProcessor {
         return medianBlurImpl(bitmap, radius)
     }
 
+    fun stackBlur(
+        bitmap: Bitmap,
+        radius: Int,
+    ): Bitmap {
+        if (radius < 2) throw InvalidParameterException("radius cannot be less than 2")
+        return stackBlurImpl(bitmap, radius)
+    }
+
     fun tiltShift(
         bitmap: Bitmap,
         radius: Float,
@@ -118,6 +127,11 @@ object BitmapProcessor {
         radius: Float,
         sigma: Float,
         spatialSigma: Float
+    ): Bitmap
+
+    private external fun stackBlurImpl(
+        bitmap: Bitmap,
+        radius: Int,
     ): Bitmap
 
     private external fun boxBlurImpl(bitmap: Bitmap, radius: Int): Bitmap
