@@ -26,8 +26,8 @@ int clamp(const int value, const int minValue, const int maxValue) {
 }
 
 void bilateralBlur(uint8_t *data, int stride, int width, int height, float radius, float sigma, float spatialSigma) {
-    vector<float> kernel = compute1DGaussianKernel(radius * 2, sigma);
-    vector<float> spatialKernel = compute1DGaussianKernel(radius * 2, spatialSigma);
+    vector<float> kernel = compute1DGaussianKernel(radius * 2 + 1, sigma);
+    vector<float> spatialKernel = compute1DGaussianKernel(radius * 2 + 1, spatialSigma);
 
     float rStore = 0.f;
     float gStore = 0.f;

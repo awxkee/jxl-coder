@@ -7,6 +7,8 @@
 
 #include <cstdint>
 
-void boxBlurU8(uint8_t* data, int stride, int width, int height, int radius);
+namespace coder {
+    void boxBlurU8(uint8_t* data, int stride, int width, int height, int radius);
+}
 
 #endif //JXLCODER_BOXBLUR_H

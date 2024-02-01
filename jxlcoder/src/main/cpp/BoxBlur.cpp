@@ -106,7 +106,7 @@ Java_com_awxkee_jxlcoder_processing_BitmapProcessor_boxBlurImpl(JNIEnv *env, job
 
         imageStride = dstStride;
 
-        boxBlurU8(rgbPixels.data(), dstStride, info.width, info.height, radius);
+        coder::boxBlurU8(rgbPixels.data(), dstStride, info.width, info.height, radius);
 
         std::string bitmapPixelConfig = "ARGB_8888";
         jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");

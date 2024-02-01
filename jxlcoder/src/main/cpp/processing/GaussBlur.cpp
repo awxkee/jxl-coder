@@ -7,7 +7,7 @@
 #include <thread>
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "GaussBlur.cpp"
+#define HWY_TARGET_INCLUDE "processing/GaussBlur.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
@@ -54,6 +54,7 @@ namespace coder::HWY_NAMESPACE {
     using hwy::HWY_NAMESPACE::PromoteLowerTo;
     using hwy::HWY_NAMESPACE::PromoteUpperTo;
     using hwy::HWY_NAMESPACE::LowerHalf;
+    using hwy::HWY_NAMESPACE::ExtractLane;
     using hwy::HWY_NAMESPACE::UpperHalf;
 
     void
@@ -86,21 +87,25 @@ namespace coder::HWY_NAMESPACE {
 
             int r = -iRadius;
 
-            for (; r + 4 <= iRadius; r += 4) {
+            for (; r + 4 <= iRadius && x + 16 < width; r += 4) {
                 int pos = clamp((x + r), 0, width - 1) * 4;
                 VF weights = LoadU(dfx4, &kernelData[r + iRadius]);
+                auto v1 = Set(dfx4, ExtractLane(weights, 0));
+                auto v2 = Set(dfx4, ExtractLane(weights, 1));
+                auto v3 = Set(dfx4, ExtractLane(weights, 2));
+                auto v4 = Set(dfx4, ExtractLane(weights, 3));
                 VU8x16 pixels = LoadU(du8x16, &src[pos]);
-                store = Add(store, Mul(ConvertTo(dfx4, PromoteLowerTo(du32x4, LowerHalf(pixels))),
-                                       weights));
-                store = Add(store,
-                            Mul(ConvertTo(dfx4, PromoteLowerTo(du32x4, UpperHalf(du8x8, pixels))),
-                                weights));
-                store = Add(store,
-                            Mul(ConvertTo(dfx4, PromoteUpperTo(du32x4, PromoteTo(du16x8, LowerHalf(pixels)))),
-                                weights));
-                store = Add(store,
-                            Mul(ConvertTo(dfx4, PromoteUpperTo(du32x4, PromoteTo(du16x8, UpperHalf(du8x8, pixels)))),
-                                weights));
+                auto lowlow = ConvertTo(dfx4, PromoteLowerTo(du32x4, LowerHalf(pixels)));
+                store = Add(store, Mul(lowlow, v4));
+                auto lowup = ConvertTo(dfx4, PromoteLowerTo(du32x4, UpperHalf(du8x8, pixels)));
+                store = Add(store, Mul(v3, lowup));
+                auto upperlow = ConvertTo(dfx4, PromoteUpperTo(du32x4,
+                                                               PromoteTo(du16x8, LowerHalf(pixels))));
+                store = Add(store, Mul(v2, upperlow));
+                auto upperup = ConvertTo(dfx4, PromoteUpperTo(du32x4, PromoteTo(du16x8,
+                                                                                UpperHalf(du8x8,
+                                                                                          pixels))));
+                store = Add(store, Mul(upperup, v1));
             }
 
             for (; r <= iRadius; ++r) {
@@ -113,8 +118,8 @@ namespace coder::HWY_NAMESPACE {
 
             store = Max(Min(Round(store), max255), zeros);
             VU pixelU = DemoteTo(du8, ConvertTo(du32x4, store));
-
             StoreU(pixelU, du8, dst);
+
             dst += 4;
         }
     }
@@ -147,25 +152,31 @@ namespace coder::HWY_NAMESPACE {
 
             int r = -iRadius;
 
-            for (; r + 4 <= iRadius; r += 4) {
-                auto src = reinterpret_cast<uint8_t *>(transient.data() +
-                                                       clamp((r + y), 0, height - 1) * stride);
-                int pos = clamp(x, 0, width - 1) * 4;
+            for (; r + 4 <= iRadius && x + 4 < width; r += 4) {
+                int pos = x * 4;
                 VF weights = LoadU(dfx4, &kernelData[r + iRadius]);
-                VU8x16 pixels = LoadU(du8x16, &src[pos]);
-                store = Add(store, Mul(ConvertTo(dfx4, PromoteLowerTo(du32x4, LowerHalf(pixels))),
-                                       weights));
-                store = Add(store,
-                            Mul(ConvertTo(dfx4, PromoteLowerTo(du32x4, UpperHalf(du8x8, pixels))),
-                                weights));
-                store = Add(store,
-                            Mul(ConvertTo(dfx4, PromoteUpperTo(du32x4, PromoteTo(du16x8, LowerHalf(pixels)))),
-                                weights));
-                store = Add(store,
-                            Mul(ConvertTo(dfx4, PromoteUpperTo(du32x4, PromoteTo(du16x8, UpperHalf(du8x8, pixels)))),
-                                weights));
-            }
+                auto v1 = Set(dfx4, ExtractLane(weights, 0));
+                auto v2 = Set(dfx4, ExtractLane(weights, 1));
+                auto v3 = Set(dfx4, ExtractLane(weights, 2));
+                auto v4 = Set(dfx4, ExtractLane(weights, 3));
 
+                auto src1 = reinterpret_cast<uint8_t *>(transient.data() +
+                                                        clamp((r + y), 0, height - 1) * stride);
+                VU pixels = LoadU(du8, &src1[pos]);
+                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v1));
+                auto src2 = reinterpret_cast<uint8_t *>(transient.data() +
+                                                        clamp((r + 1 + y), 0, height - 1) * stride);
+                pixels = LoadU(du8, &src2[pos]);
+                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v2));
+                auto src3 = reinterpret_cast<uint8_t *>(transient.data() +
+                                                        clamp((r + 2 + y), 0, height - 1) * stride);
+                pixels = LoadU(du8, &src3[pos]);
+                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v3));
+                auto src4 = reinterpret_cast<uint8_t *>(transient.data() +
+                                                        clamp((r + 3 + y), 0, height - 1) * stride);
+                pixels = LoadU(du8, &src4[pos]);
+                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v4));
+            }
 
             for (; r <= iRadius; ++r) {
                 auto src = reinterpret_cast<uint8_t *>(transient.data() +
@@ -189,14 +200,12 @@ namespace coder::HWY_NAMESPACE {
 
     void
     gaussBlurTear(uint8_t *data, int stride, int width, int height, float radius, float sigma) {
-        vector<float> kernel = compute1DGaussianKernel(radius * 2, sigma);
+        vector<float> kernel = compute1DGaussianKernel(radius * 2 + 1, sigma);
 
         std::vector<uint8_t> transient(stride * height);
         int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
                                     height * width / (256 * 256)), 1, 12);
         vector<thread> workers;
-
-        auto transientData = transient.data();
 
         int segmentHeight = height / threadCount;
 

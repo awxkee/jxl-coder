@@ -1,6 +1,7 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.os.Build
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.toLowerCase
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
 import com.awxkee.jxlcoder.processing.BitmapProcessor
@@ -154,34 +156,53 @@ class MainActivity : ComponentActivity() {
 //                                }
 //                            }
                             val assets = (this@MainActivity.assets.list("") ?: return@launch)
+                                .filter { it == "0000ResizedImage_2024-02-01_12-37-42_1822.jpg" }
                             for (asset in assets) {
                                 try {
-                                    val buffer4 = this@MainActivity.assets.open(asset).source().buffer().readByteArray()
-                                    val largeImageSize = JxlCoder().getSize(buffer4)
-                                    if (largeImageSize != null) {
-                                        var srcImage = JxlCoder().decodeSampled(
-                                            buffer4,
-                                            largeImageSize.width / 2,
-                                            largeImageSize.height / 2,
-                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
-                                            com.awxkee.jxlcoder.ScaleMode.FIT,
-                                            JxlResizeFilter.BICUBIC,
-                                            toneMapper = JxlToneMapper.LOGARITHMIC,
-                                        )
-                                        val cPlusPlusDoneIn = measureTimeMillis {
-                                            val image: Bitmap = srcImage.stackBlur(1.0f, 25)
-                                            lifecycleScope.launch(Dispatchers.Main) {
-                                                imagesArray.add(image)
+                                    val buffer4 =
+                                        this@MainActivity.assets.open(asset).source().buffer()
+                                            .readByteArray()
+
+//                                    val largeImageSize = JxlCoder().getSize(buffer4)
+//                                    if (largeImageSize != null) {
+//                                        var srcImage = JxlCoder().decodeSampled(
+//                                            buffer4,
+//                                            largeImageSize.width / 2,
+//                                            largeImageSize.height / 2,
+//                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
+//                                            com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                            JxlResizeFilter.BICUBIC,
+//                                            toneMapper = JxlToneMapper.LOGARITHMIC,
+//                                        )
+                                        val srcImage = BitmapFactory.decodeByteArray(buffer4, 0, buffer4.size)
+                                        var radius = 5
+                                        repeat(25) {
+                                            val cPlusPlusDoneIn = measureTimeMillis {
+                                                val image: Bitmap = srcImage.stackBlur(1.0f, radius)
+                                                lifecycleScope.launch(Dispatchers.Main) {
+                                                    imagesArray.add(image)
+                                                }
                                             }
+//                                            val gaussDoneIn = measureTimeMillis {
+//                                                val image =
+//                                                    BitmapProcessor.gaussBlur(srcImage, radius.toFloat(), 3f)
+//                                                lifecycleScope.launch(Dispatchers.Main) {
+//                                                    imagesArray.add(image)
+//                                                }
+//                                            }
+//                                            val boxBlurDoneIn = measureTimeMillis {
+//                                                val image = BitmapProcessor.boxBlur(srcImage, radius)
+//                                                lifecycleScope.launch(Dispatchers.Main) {
+//                                                    imagesArray.add(image)
+//                                                }
+//                                            }
+                                            radius += 1
+//                                            Log.d(
+//                                                "JxlCoder",
+//                                                "C++ Radius ${radius} StackBlur done in ${cPlusPlusDoneIn}ms, gauss ${gaussDoneIn}ms, box blur done in ${boxBlurDoneIn}"
+//                                            )
                                         }
-                                        val gaussDoneIn = measureTimeMillis {
-                                            val image = BitmapProcessor.gaussBlur(srcImage, 25f, 12f)
-                                            lifecycleScope.launch(Dispatchers.Main) {
-                                                imagesArray.add(image)
-                                            }
-                                        }
-                                        Log.d("JxlCoder", "C++ StackBlur done in ${cPlusPlusDoneIn}ms, gauss ${gaussDoneIn}ms")
-                                    }
+//                                    }
                                 } catch (e: Exception) {
                                     if (e !is FileNotFoundException) {
                                         throw e
