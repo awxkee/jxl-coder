@@ -107,7 +107,7 @@ Java_com_awxkee_jxlcoder_processing_BitmapProcessor_gaussBlurImpl(JNIEnv *env, j
 
         imageStride = dstStride;
 
-        gaussBlur(rgbPixels.data(), dstStride, info.width, info.height, radius, sigma);
+        coder::gaussBlur(rgbPixels.data(), dstStride, info.width, info.height, radius, sigma);
 
         std::string bitmapPixelConfig = "ARGB_8888";
         jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");

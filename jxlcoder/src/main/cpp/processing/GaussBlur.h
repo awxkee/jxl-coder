@@ -7,6 +7,8 @@
 
 #include <cstdint>
 
-void gaussBlur(uint8_t* data, int stride, int width, int height, float radius, float sigma);
+namespace coder {
+    void gaussBlur(uint8_t *data, int stride, int width, int height, float radius, float sigma);
+}
 
 #endif //JXLCODER_GAUSSBLUR_H

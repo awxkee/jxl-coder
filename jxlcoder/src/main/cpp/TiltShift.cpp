@@ -113,7 +113,7 @@ Java_com_awxkee_jxlcoder_processing_BitmapProcessor_tiltShiftImpl(JNIEnv *env, j
         std::vector<uint8_t> finalTexture(rgbPixels.size());
         std::copy(rgbPixels.begin(), rgbPixels.end(), blurTexture.begin());
 
-        gaussBlur(blurTexture.data(), dstStride, info.width, info.height, radius, sigma);
+        coder::gaussBlur(blurTexture.data(), dstStride, info.width, info.height, radius, sigma);
         tiltShift(finalTexture.data(), rgbPixels.data(), blurTexture, dstStride, info.width,
                   info.height, anchorX, anchorY, tiltRadius);
         rgbPixels = finalTexture;
