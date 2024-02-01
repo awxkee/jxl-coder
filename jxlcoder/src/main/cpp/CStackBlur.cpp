@@ -1,8 +1,9 @@
+
 //
-// Created by Radzivon Bartoshyk on 31/01/2024.
+// Created by Radzivon Bartoshyk on 01/02/2024.
 //
 
-#include "processing/StackBlur.h"
+#include "processing/ShgStackBlur.h"
 #include <jni.h>
 #include <android/bitmap.h>
 #include <vector>
@@ -18,8 +19,8 @@ using namespace std;
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_com_awxkee_jxlcoder_processing_BitmapProcessor_stackBlurImpl(JNIEnv *env, jobject thiz,
-                                                                  jobject bitmap, jint radius) {
+Java_com_awxkee_jxlcoder_processing_BitmapProcessor_cstackBlurImpl(JNIEnv *env, jobject thiz,
+                                                                   jobject bitmap, jint radius) {
     try {
         AndroidBitmapInfo info;
         if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) {
@@ -107,7 +108,7 @@ Java_com_awxkee_jxlcoder_processing_BitmapProcessor_stackBlurImpl(JNIEnv *env, j
 
         uint8_t *src = rgbPixels.data();
 
-        stackBlurU8(src, info.width, info.height, radius);
+        shgStackBlur(src, info.width, info.height, radius);
 
         std::string bitmapPixelConfig = "ARGB_8888";
         jclass bitmapConfig = env->FindClass("android/graphics/Bitmap$Config");

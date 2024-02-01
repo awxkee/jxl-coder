@@ -86,7 +86,7 @@ object BitmapProcessor {
         radius: Int,
     ): Bitmap {
         if (radius < 2) throw InvalidParameterException("radius cannot be less than 2")
-        return stackBlurImpl(bitmap, radius)
+        return cstackBlurImpl(bitmap, radius)
     }
 
     fun tiltShift(
@@ -130,6 +130,11 @@ object BitmapProcessor {
     ): Bitmap
 
     private external fun stackBlurImpl(
+        bitmap: Bitmap,
+        radius: Int,
+    ): Bitmap
+
+    private external fun cstackBlurImpl(
         bitmap: Bitmap,
         radius: Int,
     ): Bitmap

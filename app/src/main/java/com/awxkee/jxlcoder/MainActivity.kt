@@ -156,53 +156,58 @@ class MainActivity : ComponentActivity() {
 //                                }
 //                            }
                             val assets = (this@MainActivity.assets.list("") ?: return@launch)
-                                .filter { it == "0000ResizedImage_2024-02-01_12-37-42_1822.jpg" }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
                                         this@MainActivity.assets.open(asset).source().buffer()
                                             .readByteArray()
 
-//                                    val largeImageSize = JxlCoder().getSize(buffer4)
-//                                    if (largeImageSize != null) {
-//                                        var srcImage = JxlCoder().decodeSampled(
-//                                            buffer4,
-//                                            largeImageSize.width / 2,
-//                                            largeImageSize.height / 2,
-//                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
-//                                            com.awxkee.jxlcoder.ScaleMode.FIT,
-//                                            JxlResizeFilter.BICUBIC,
-//                                            toneMapper = JxlToneMapper.LOGARITHMIC,
-//                                        )
-                                        val srcImage = BitmapFactory.decodeByteArray(buffer4, 0, buffer4.size)
-                                        var radius = 5
-                                        repeat(25) {
+                                    val largeImageSize = JxlCoder().getSize(buffer4)
+                                    if (largeImageSize != null) {
+                                        var srcImage = JxlCoder().decodeSampled(
+                                            buffer4,
+                                            largeImageSize.width / 2,
+                                            largeImageSize.height / 2,
+                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
+                                            com.awxkee.jxlcoder.ScaleMode.FIT,
+                                            JxlResizeFilter.BICUBIC,
+                                            toneMapper = JxlToneMapper.LOGARITHMIC,
+                                        )
+//                                        val srcImage = BitmapFactory.decodeByteArray(buffer4, 0, buffer4.size)
+                                        var radius = 15
+                                        repeat(5) {
                                             val cPlusPlusDoneIn = measureTimeMillis {
-                                                val image: Bitmap = srcImage.stackBlur(1.0f, radius)
+                                                val image: Bitmap = BitmapProcessor.stackBlur(srcImage, radius)
                                                 lifecycleScope.launch(Dispatchers.Main) {
                                                     imagesArray.add(image)
                                                 }
                                             }
-//                                            val gaussDoneIn = measureTimeMillis {
-//                                                val image =
-//                                                    BitmapProcessor.gaussBlur(srcImage, radius.toFloat(), 3f)
-//                                                lifecycleScope.launch(Dispatchers.Main) {
-//                                                    imagesArray.add(image)
-//                                                }
-//                                            }
-//                                            val boxBlurDoneIn = measureTimeMillis {
-//                                                val image = BitmapProcessor.boxBlur(srcImage, radius)
-//                                                lifecycleScope.launch(Dispatchers.Main) {
-//                                                    imagesArray.add(image)
-//                                                }
-//                                            }
+                                            val ccPlusPlusDoneIn = measureTimeMillis {
+                                                val image: Bitmap = BitmapProcessor.stackBlur(srcImage, radius)
+                                                lifecycleScope.launch(Dispatchers.Main) {
+                                                    imagesArray.add(image)
+                                                }
+                                            }
+                                            val gaussDoneIn = measureTimeMillis {
+                                                val image =
+                                                    BitmapProcessor.gaussBlur(srcImage, radius.toFloat(), 3f)
+                                                lifecycleScope.launch(Dispatchers.Main) {
+                                                    imagesArray.add(image)
+                                                }
+                                            }
+                                            val boxBlurDoneIn = measureTimeMillis {
+                                                val image = BitmapProcessor.boxBlur(srcImage, radius)
+                                                lifecycleScope.launch(Dispatchers.Main) {
+                                                    imagesArray.add(image)
+                                                }
+                                            }
                                             radius += 1
-//                                            Log.d(
-//                                                "JxlCoder",
-//                                                "C++ Radius ${radius} StackBlur done in ${cPlusPlusDoneIn}ms, gauss ${gaussDoneIn}ms, box blur done in ${boxBlurDoneIn}"
-//                                            )
+                                            Log.d(
+                                                "JxlCoder",
+                                                "C++ Radius ${radius} StackBlur done in ${cPlusPlusDoneIn}ms, gauss ${gaussDoneIn}ms, box blur done in ${boxBlurDoneIn}"
+                                            )
                                         }
-//                                    }
+                                    }
                                 } catch (e: Exception) {
                                     if (e !is FileNotFoundException) {
                                         throw e

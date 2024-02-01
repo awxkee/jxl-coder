@@ -87,27 +87,6 @@ namespace coder::HWY_NAMESPACE {
 
             int r = -iRadius;
 
-            for (; r + 4 <= iRadius && x + 16 < width; r += 4) {
-                int pos = clamp((x + r), 0, width - 1) * 4;
-                VF weights = LoadU(dfx4, &kernelData[r + iRadius]);
-                auto v1 = Set(dfx4, ExtractLane(weights, 0));
-                auto v2 = Set(dfx4, ExtractLane(weights, 1));
-                auto v3 = Set(dfx4, ExtractLane(weights, 2));
-                auto v4 = Set(dfx4, ExtractLane(weights, 3));
-                VU8x16 pixels = LoadU(du8x16, &src[pos]);
-                auto lowlow = ConvertTo(dfx4, PromoteLowerTo(du32x4, LowerHalf(pixels)));
-                store = Add(store, Mul(lowlow, v4));
-                auto lowup = ConvertTo(dfx4, PromoteLowerTo(du32x4, UpperHalf(du8x8, pixels)));
-                store = Add(store, Mul(v3, lowup));
-                auto upperlow = ConvertTo(dfx4, PromoteUpperTo(du32x4,
-                                                               PromoteTo(du16x8, LowerHalf(pixels))));
-                store = Add(store, Mul(v2, upperlow));
-                auto upperup = ConvertTo(dfx4, PromoteUpperTo(du32x4, PromoteTo(du16x8,
-                                                                                UpperHalf(du8x8,
-                                                                                          pixels))));
-                store = Add(store, Mul(upperup, v1));
-            }
-
             for (; r <= iRadius; ++r) {
                 int pos = clamp((x + r), 0, width - 1) * 4;
                 float weight = kernel[r + iRadius];
@@ -151,32 +130,6 @@ namespace coder::HWY_NAMESPACE {
             VF store = zeros;
 
             int r = -iRadius;
-
-            for (; r + 4 <= iRadius && x + 4 < width; r += 4) {
-                int pos = x * 4;
-                VF weights = LoadU(dfx4, &kernelData[r + iRadius]);
-                auto v1 = Set(dfx4, ExtractLane(weights, 0));
-                auto v2 = Set(dfx4, ExtractLane(weights, 1));
-                auto v3 = Set(dfx4, ExtractLane(weights, 2));
-                auto v4 = Set(dfx4, ExtractLane(weights, 3));
-
-                auto src1 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + y), 0, height - 1) * stride);
-                VU pixels = LoadU(du8, &src1[pos]);
-                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v1));
-                auto src2 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + 1 + y), 0, height - 1) * stride);
-                pixels = LoadU(du8, &src2[pos]);
-                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v2));
-                auto src3 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + 2 + y), 0, height - 1) * stride);
-                pixels = LoadU(du8, &src3[pos]);
-                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v3));
-                auto src4 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + 3 + y), 0, height - 1) * stride);
-                pixels = LoadU(du8, &src4[pos]);
-                store = Add(store, Mul(ConvertTo(dfx4, PromoteTo(du32x4, pixels)), v4));
-            }
 
             for (; r <= iRadius; ++r) {
                 auto src = reinterpret_cast<uint8_t *>(transient.data() +

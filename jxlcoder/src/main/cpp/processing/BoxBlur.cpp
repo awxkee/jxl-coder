@@ -68,21 +68,6 @@ namespace coder::HWY_NAMESPACE {
 
             int r = -radius;
 
-            for (; r + 4 <= radius && x + 16 < width; r += 4) {
-                int pos = clamp((x + r), 0, width - 1) * 4;
-                VU8x16 pixels = LoadU(du8x16, &src[pos]);
-                store = Add(store, ConvertTo(dfx4, PromoteLowerTo(du32x4, LowerHalf(pixels))));
-                store = Add(store,
-                            ConvertTo(dfx4, PromoteLowerTo(du32x4, UpperHalf(du8x8, pixels))));
-                store = Add(store,
-                            ConvertTo(dfx4, PromoteUpperTo(du32x4,
-                                                           PromoteTo(du16x8, LowerHalf(pixels)))));
-                store = Add(store,
-                            ConvertTo(dfx4, PromoteUpperTo(du32x4, PromoteTo(du16x8,
-                                                                             UpperHalf(du8x8,
-                                                                                       pixels)))));
-            }
-
             for (; r <= radius; ++r) {
                 int pos = clamp((x + r), 0, width - 1) * 4;
                 VU pixels = LoadU(du8, &src[pos]);
@@ -150,27 +135,6 @@ namespace coder::HWY_NAMESPACE {
             VF store = zeros;
 
             int r = -radius;
-
-            for (; r + 4 <= radius && x + 4 < width; r += 4) {
-                int pos = x * 4;
-
-                auto src1 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + y), 0, height - 1) * stride);
-                VU pixels = LoadU(du8, &src1[pos]);
-                store = Add(store, ConvertTo(dfx4, PromoteTo(du32x4, pixels)));
-                auto src2 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + 1 + y), 0, height - 1) * stride);
-                pixels = LoadU(du8, &src2[pos]);
-                store = Add(store, ConvertTo(dfx4, PromoteTo(du32x4, pixels)));
-                auto src3 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + 2 + y), 0, height - 1) * stride);
-                pixels = LoadU(du8, &src3[pos]);
-                store = Add(store, ConvertTo(dfx4, PromoteTo(du32x4, pixels)));
-                auto src4 = reinterpret_cast<uint8_t *>(transient.data() +
-                                                        clamp((r + 3 + y), 0, height - 1) * stride);
-                pixels = LoadU(du8, &src4[pos]);
-                store = Add(store, ConvertTo(dfx4, PromoteTo(du32x4, pixels)));
-            }
 
             for (; r <= radius; ++r) {
                 auto src = reinterpret_cast<uint8_t *>(transient.data() +
