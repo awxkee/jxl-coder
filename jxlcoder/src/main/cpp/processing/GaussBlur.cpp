@@ -150,7 +150,6 @@ namespace coder::HWY_NAMESPACE {
         }
     }
 
-
     void
     gaussBlurTear(uint8_t *data, int stride, int width, int height, float radius, float sigma) {
         vector<float> kernel = compute1DGaussianKernel(radius * 2 + 1, sigma);

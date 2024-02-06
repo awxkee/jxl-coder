@@ -50,8 +50,8 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       JxlColorPixelType colorspace, JxlCompressionOption compression_option,
                       JxlEncodingPixelDataFormat encodingDataFormat,
                       std::vector<uint8_t> &iccProfile, int effort, int quality,
-                      int decodingSpeed) {
-    auto enc = JxlEncoderMake(/*memory_manager=*/nullptr);
+                      int decodingSpeed, JxlColorEncoding& colorEncoding) {
+    auto enc = JxlEncoderMake(nullptr);
     auto runner = JxlThreadParallelRunnerMake(nullptr,
                                               JxlThreadParallelRunnerDefaultNumWorkerThreads());
     if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
@@ -120,10 +120,10 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
             return false;
         }
     } else {
-        JxlColorEncoding color_encoding = {};
-        JxlColorEncodingSetToSRGB(&color_encoding, pixelFormat.num_channels < 3);
+        JxlColorEncoding encoding;
+        memcpy(&encoding, &colorEncoding, sizeof (JxlColorEncoding));
         if (JXL_ENC_SUCCESS !=
-            JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
+            JxlEncoderSetColorEncoding(enc.get(), &colorEncoding)) {
             return false;
         }
     }

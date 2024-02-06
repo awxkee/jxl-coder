@@ -23,19 +23,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.toLowerCase
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
-import com.awxkee.jxlcoder.processing.BitmapProcessor
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import okio.FileNotFoundException
 import okio.buffer
 import okio.source
 import java.util.UUID
-import kotlin.system.measureTimeMillis
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalGlideComposeApi::class)
@@ -112,108 +108,42 @@ class MainActivity : ComponentActivity() {
                     }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
-                            val buffer4 =
-                                this@MainActivity.assets.open("Screenshot.png").source().buffer()
-                                    .readByteArray()
-                            val magickBuffer =
-                                this@MainActivity.assets.open("magick_x2.png").source().buffer()
-                                    .readByteArray()
-                            val bitmap =
-                                ImageDecoder.decodeBitmap(ImageDecoder.createSource(buffer4))
+                            val bitmap1 =
+                                ImageDecoder.decodeBitmap(ImageDecoder.createSource(assets.open("lin.png").source().buffer()
+                                    .readByteArray()))
                                     .copy(Bitmap.Config.ARGB_8888, true)
 
-                            // originals
-//                            val job = lifecycleScope.launch(Dispatchers.Main) {
-//                                imagesArray.add(bitmap)
-//                                imagesArray.add(
-//                                    ImageDecoder.decodeBitmap(
-//                                        ImageDecoder.createSource(
-//                                            magickBuffer
-//                                        )
-//                                    )
-//                                )
-//                                imagesArray.add(
-//                                    ImageDecoder.decodeBitmap(
-//                                        ImageDecoder.createSource(
-//                                            this@MainActivity.assets.open("magick_x2_catmull.png").source()
-//                                                .buffer()
-//                                                .readByteArray()
-//                                        )
-//                                    )
-//                                )
-//                            }
-//                            job.join()
+                            imagesArray.add(bitmap1)
+                            val encoded1 = JxlCoder().encode(bitmap1, colorSpace = JxlColorSpace.RGBA)
+                            val decoded1 = JxlCoder().decode(encoded1)
+                            imagesArray.add(decoded1)
 
-//                            BitmapScaleMode.values().forEach { scaleMode ->
-//                                val scaledBitmap = BitmapScaler.scale(
-//                                    bitmap,
-//                                    bitmap.width * 2,
-//                                    bitmap.height * 2,
-//                                    scaleMode,
-//                                )
-//                                lifecycleScope.launch {
-//                                    imagesArray.add(scaledBitmap)
+//                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
+//                            for (asset in assets) {
+//                                try {
+//                                    val buffer4 =
+//                                        this@MainActivity.assets.open(asset).source().buffer()
+//                                            .readByteArray()
+//
+//                                    val largeImageSize = JxlCoder().getSize(buffer4)
+//                                    if (largeImageSize != null) {
+//                                        var srcImage = JxlCoder().decodeSampled(
+//                                            buffer4,
+//                                            largeImageSize.width / 2,
+//                                            largeImageSize.height / 2,
+//                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
+//                                            com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                            JxlResizeFilter.BICUBIC,
+//                                            toneMapper = JxlToneMapper.LOGARITHMIC,
+//                                        )
+////                                        val srcImage = BitmapFactory.decodeByteArray(buffer4, 0, buffer4.size)
+//                                    }
+//                                } catch (e: Exception) {
+//                                    if (e !is FileNotFoundException) {
+//                                        throw e
+//                                    }
 //                                }
 //                            }
-                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
-                            for (asset in assets) {
-                                try {
-                                    val buffer4 =
-                                        this@MainActivity.assets.open(asset).source().buffer()
-                                            .readByteArray()
-
-                                    val largeImageSize = JxlCoder().getSize(buffer4)
-                                    if (largeImageSize != null) {
-                                        var srcImage = JxlCoder().decodeSampled(
-                                            buffer4,
-                                            largeImageSize.width / 2,
-                                            largeImageSize.height / 2,
-                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
-                                            com.awxkee.jxlcoder.ScaleMode.FIT,
-                                            JxlResizeFilter.BICUBIC,
-                                            toneMapper = JxlToneMapper.LOGARITHMIC,
-                                        )
-//                                        val srcImage = BitmapFactory.decodeByteArray(buffer4, 0, buffer4.size)
-                                        var radius = 15
-                                        repeat(5) {
-                                            val cPlusPlusDoneIn = measureTimeMillis {
-                                                val image: Bitmap = BitmapProcessor.stackBlur(srcImage, radius)
-                                                lifecycleScope.launch(Dispatchers.Main) {
-                                                    imagesArray.add(image)
-                                                }
-                                            }
-                                            val ccPlusPlusDoneIn = measureTimeMillis {
-                                                val image: Bitmap = BitmapProcessor.stackBlur(srcImage, radius)
-                                                lifecycleScope.launch(Dispatchers.Main) {
-                                                    imagesArray.add(image)
-                                                }
-                                            }
-                                            val gaussDoneIn = measureTimeMillis {
-                                                val image =
-                                                    BitmapProcessor.gaussBlur(srcImage, radius.toFloat(), 3f)
-                                                lifecycleScope.launch(Dispatchers.Main) {
-                                                    imagesArray.add(image)
-                                                }
-                                            }
-                                            val boxBlurDoneIn = measureTimeMillis {
-                                                val image = BitmapProcessor.boxBlur(srcImage, radius)
-                                                lifecycleScope.launch(Dispatchers.Main) {
-                                                    imagesArray.add(image)
-                                                }
-                                            }
-                                            radius += 1
-                                            Log.d(
-                                                "JxlCoder",
-                                                "C++ Radius ${radius} StackBlur done in ${cPlusPlusDoneIn}ms, gauss ${gaussDoneIn}ms, box blur done in ${boxBlurDoneIn}"
-                                            )
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    if (e !is FileNotFoundException) {
-                                        throw e
-                                    }
-                                }
-                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme

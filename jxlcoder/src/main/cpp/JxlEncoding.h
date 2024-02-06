@@ -31,6 +31,7 @@
 
 #include <vector>
 #include "JxlDefinitions.h"
+#include <jxl/encode.h>
 
 /**
  * Compresses the provided pixels.
@@ -45,6 +46,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       JxlColorPixelType colorspace, JxlCompressionOption compression_option,
                       JxlEncodingPixelDataFormat encodingPixelDataFormat,
                       std::vector<uint8_t>& iccProfile,
-                      int effort, int quality, int decodingSpeed);
+                      int effort, int quality, int decodingSpeed,
+                      JxlColorEncoding& colorEncoding);
 
 #endif //JXLCODER_JXLENCODING_H

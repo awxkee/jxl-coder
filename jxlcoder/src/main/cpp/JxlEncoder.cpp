@@ -37,19 +37,13 @@
 #include "JxlEncoding.h"
 #include "Rgba2Rgb.h"
 #include "Rgb1010102toF16.h"
-#include "colorspaces/bt709_colorspace.h"
-#include "colorspaces/bt2020_colorspace.h"
-#include "colorspaces/displayP3_HLG.h"
-#include "colorspaces/linear_extended_bt2020.h"
 #include <android/data_space.h>
-#include "colorspaces/adobeRGB1998.h"
-#include "colorspaces/dcip3.h"
-#include "colorspaces/itur2020_HLG.h"
-#include "colorspaces/bt2020_pq_colorspace.h"
 #include "RGBAlpha.h"
 #include "CopyUnaligned.h"
 #include "JxlDefinitions.h"
 #include "Rgb565.h"
+#include <jxl/encode.h>
+#include "colorspaces/ColorSpaceProfile.h"
 
 using namespace std;
 
@@ -195,56 +189,145 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
         std::vector<uint8_t> compressedVector;
 
-        std::vector<uint8_t> iccProfile;
+        JxlColorEncoding colorEncoding = {};
 
-        if (bitmapColorProfile) {
+        if (bitmapColorProfile || dataSpace != -1) {
             const char *utf8String = env->GetStringUTFChars(bitmapColorProfile, nullptr);
             std::string stdString(utf8String);
             env->ReleaseStringUTFChars(bitmapColorProfile, utf8String);
 
             if (stdString == "Rec. ITU-R BT.709-5" || dataSpace == ADataSpace::ADATASPACE_BT709) {
-                iccProfile.resize(sizeof(bt709));
-                std::copy(&bt709[0], &bt709[0] + sizeof(bt709), iccProfile.begin());
+                auto matrix = getRec709Primaries();
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .primaries = JXL_PRIMARIES_SRGB,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_709,
+                };
             } else if (stdString == "Rec. ITU-R BT.2020-1" ||
                        dataSpace == ADataSpace::ADATASPACE_BT2020) {
-                iccProfile.resize(sizeof(bt2020));
-                std::copy(&bt2020[0], &bt2020[0] + sizeof(bt2020), iccProfile.begin());
+                auto matrix = getRec2020Primaries();
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .primaries = JXL_PRIMARIES_2100,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_709,
+                };
             } else if (stdString == "Display P3" ||
                        dataSpace == ADataSpace::ADATASPACE_DISPLAY_P3) {
-                iccProfile.resize(sizeof(displayP3_HLG));
-                std::copy(&displayP3_HLG[0], &displayP3_HLG[0] + sizeof(displayP3_HLG),
-                          iccProfile.begin());
+                auto matrix = getDisplayP3Primaries();
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .primaries = JXL_PRIMARIES_CUSTOM,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_SRGB,
+                        .gamma = 1/2.6
+                };
             } else if (stdString == "sRGB IEC61966-2.1 (Linear)" ||
                        dataSpace == ADataSpace::ADATASPACE_SCRGB_LINEAR) {
-                iccProfile.resize(sizeof(linearExtendedBT2020));
-                std::copy(&linearExtendedBT2020[0],
-                          &linearExtendedBT2020[0] + sizeof(linearExtendedBT2020),
-                          iccProfile.begin());
+                auto matrix = getRec709Primaries();
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .primaries = JXL_PRIMARIES_SRGB,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_LINEAR
+                };
             } else if (stdString == "Perceptual Quantizer encoding" ||
-                       dataSpace == ADataSpace::ADATASPACE_BT2020_ITU_PQ) {
-                iccProfile.resize(sizeof(bt2020PQ));
-                std::copy(&bt2020PQ[0], &bt2020PQ[0] + sizeof(bt2020PQ),
-                          iccProfile.begin());
+                       (dataSpace == ADataSpace::ADATASPACE_BT2020_ITU_PQ ||
+                        dataSpace == ADataSpace::ADATASPACE_BT2020_HLG ||
+                        dataSpace == ADataSpace::ADATASPACE_BT2020_ITU_HLG)) {
+                auto matrix = getRec2020Primaries();
+                JxlTransferFunction function = JXL_TRANSFER_FUNCTION_PQ;
+                if (dataSpace == ADataSpace::ADATASPACE_BT2020_HLG ||
+                    dataSpace == ADataSpace::ADATASPACE_BT2020_ITU_HLG) {
+                    function = JXL_TRANSFER_FUNCTION_HLG;
+                }
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .primaries = JXL_PRIMARIES_2100,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = function,
+                };
             } else if (stdString == "Adobe RGB (1998)" ||
                        dataSpace == ADataSpace::ADATASPACE_ADOBE_RGB) {
-                iccProfile.resize(sizeof(adobeRGB1998));
-                std::copy(&adobeRGB1998[0], &adobeRGB1998[0] + sizeof(adobeRGB1998),
-                          iccProfile.begin());
+                auto matrix = getAdobeRGBPrimaries();
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .primaries = JXL_PRIMARIES_CUSTOM,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_GAMMA,
+                        .gamma = 256.0 / 563.0
+                };
             } else if (stdString == "SMPTE RP 431-2-2007 DCI (P3)" ||
                        dataSpace == ADataSpace::ADATASPACE_DCI_P3) {
-                iccProfile.resize(sizeof(dcip3));
-                std::copy(&dcip3[0], &dcip3[0] + sizeof(dcip3),
-                          iccProfile.begin());
+                auto matrix = getDCIP3Primaries();
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantDCI().x(), getIlluminantDCI().y()},
+                        .primaries = JXL_PRIMARIES_CUSTOM,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_SRGB,
+                };
+            } else if (dataSpace == ADataSpace::ADATASPACE_BT601_525 ||
+                       dataSpace == ADataSpace::ADATASPACE_BT601_625 ||
+                       dataSpace == ADataSpace::ADATASPACE_JFIF) {
+                auto matrix = getBT601_525Primaries();
+                if (dataSpace == ADataSpace::ADATASPACE_BT601_625 || dataSpace == ADataSpace::ADATASPACE_JFIF) {
+                    matrix = getBT601_625Primaries();
+                }
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_D65,
+                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .primaries = JXL_PRIMARIES_CUSTOM,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_709
+                };
+            } else {
+                JxlColorEncodingSetToSRGB(&colorEncoding, JXL_FALSE);
             }
+        } else {
+            JxlColorEncodingSetToSRGB(&colorEncoding, JXL_FALSE);
         }
 
         JxlEncodingPixelDataFormat dataPixelFormat = useFloat16 ? BINARY_16 : UNSIGNED_8;
+        std::vector<uint8_t > iccProfile;
 
         if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
                               &compressedVector, colorspace,
                               compressionOption, dataPixelFormat,
                               ref(iccProfile),
-                              effort, (int) jQuality, (int) decodingSpeed)) {
+                              effort, (int) jQuality, (int) decodingSpeed,
+                              colorEncoding)) {
             throwCantCompressImage(env);
             return static_cast<jbyteArray>(nullptr);
         }
