@@ -104,10 +104,7 @@ static Eigen::Vector2f getIlluminantC() {
 
 static Eigen::Matrix<float, 3, 2> getSRGBPrimaries() {
     Eigen::Matrix<float, 3, 2> m;
-    Eigen::Vector2f rPrimary = {0.640f, 0.330f};
-    Eigen::Vector2f gPrimary = {0.300f, 0.600f};
-    Eigen::Vector2f bPrimary = {0.150f, 0.060f};
-    m << rPrimary, gPrimary, bPrimary;
+    m << 0.640f, 0.330f, 0.300f, 0.600f, 0.150f, 0.060f;
     return m;
 }
 

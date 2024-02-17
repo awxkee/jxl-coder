@@ -120,8 +120,8 @@ class MainActivity : ComponentActivity() {
                                     if (largeImageSize != null) {
                                         var srcImage = JxlCoder().decodeSampled(
                                             buffer4,
-                                            largeImageSize.width / 2,
-                                            largeImageSize.height / 2,
+                                            largeImageSize.width / 5,
+                                            largeImageSize.height / 5,
                                             preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                             com.awxkee.jxlcoder.ScaleMode.FIT,
                                             JxlResizeFilter.BICUBIC,
