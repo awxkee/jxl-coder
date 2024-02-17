@@ -112,7 +112,10 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                 *colorEncoding = clr;
                 if (clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
                     clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
-                    clr.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_DCI ||
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_709 ||
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_SRGB ||
+                    clr.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
                     *preferEncoding = true;
                 }
             }

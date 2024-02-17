@@ -43,6 +43,7 @@
 #include "XScaler.h"
 #include "colorspaces/ColorSpaceProfile.h"
 #include "colorspaces/HDRTransferAdapter.h"
+#include "colorspaces/ColorSpaceProfile.h"
 
 jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
                                jint scaledHeight,
@@ -122,58 +123,68 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
 
     if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
                            colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
-                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI)) {
-        ColorSpaceProfile *destProfile = rec709Profile;
-        ColorSpaceProfile *srcProfile;
+                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI ||
+                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709 ||
+                           colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA)) {
+        Eigen::Matrix3f sourceProfile;
         HDRTransferFunction function = PQ;
         GammaCurve gammaCurve = NONE;
+        bool useChromaticAdaptation = false;
         float gamma = 2.2f;
         if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
             function = HLG;
         } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
             function = SMPTE428;
+        } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
+            function = PQ;
         }
 
         if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
-            srcProfile = new ColorSpaceProfile(Rec2020Primaries, IlluminantD65,
-                                               Rec2020LumaPrimaries,
-                                               Rec2020WhitePointNits);
+            sourceProfile = GamutRgbToXYZ(getRec2020Primaries(), getIlluminantD65());
             gammaCurve = Rec2020;
         } else if (colorEncoding.primaries == JXL_PRIMARIES_P3) {
-            srcProfile = new ColorSpaceProfile(DisplayP3Primaries,
-                                               IlluminantD65,
-                                               DisplayP3LumaPrimaries,
-                                               DisplayP3WhitePointNits);
+            sourceProfile = GamutRgbToXYZ(getDisplayP3Primaries(), getIlluminantDCI());
+            useChromaticAdaptation = true;
             gammaCurve = DCIP3;
         } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB) {
-            srcProfile = new ColorSpaceProfile(Rec709Primaries,
-                                               IlluminantD65,
-                                               Rec709LumaPrimaries,
-                                               Rec709WhitePointNits);
+            sourceProfile = GamutRgbToXYZ(getSRGBPrimaries(), getIlluminantD65());
             gammaCurve = Rec709;
-
         } else {
-            float primaries[3][2] = {{static_cast<float>(colorEncoding.primaries_red_xy[0]),
-                                             static_cast<float>(colorEncoding.primaries_red_xy[1])},
-                                     {static_cast<float>(colorEncoding.primaries_green_xy[0]),
-                                             static_cast<float>(colorEncoding.primaries_green_xy[1])},
-                                     {static_cast<float>(colorEncoding.primaries_blue_xy[0]),
-                                             static_cast<float>(colorEncoding.primaries_blue_xy[1])}};
-            float whitePoint[2] = {static_cast<float>(colorEncoding.white_point_xy[0]),
-                                   static_cast<float>(colorEncoding.white_point_xy[1])};
-            srcProfile = new ColorSpaceProfile(primaries, whitePoint, Rec2020LumaPrimaries,
-                                               DisplayP3WhitePointNits);
+            Eigen::Matrix<float, 3, 2> primaries;
+            primaries << static_cast<float>(colorEncoding.primaries_red_xy[0]),
+                    static_cast<float>(colorEncoding.primaries_red_xy[1]),
+                    static_cast<float>(colorEncoding.primaries_green_xy[0]),
+                    static_cast<float>(colorEncoding.primaries_green_xy[1]),
+                    static_cast<float>(colorEncoding.primaries_blue_xy[0]),
+                    static_cast<float>(colorEncoding.primaries_blue_xy[1]);
+            Eigen::Vector2f whitePoint = {static_cast<float>(colorEncoding.white_point_xy[0]),
+                                          static_cast<float>(colorEncoding.white_point_xy[1])};
+            if (whitePoint != getIlluminantD65()) {
+                useChromaticAdaptation = true;
+            }
+            sourceProfile = GamutRgbToXYZ(primaries, whitePoint);
             gammaCurve = sRGB;
         }
+
+        if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
+            gammaCurve = Rec709;
+        } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
+            gammaCurve = sRGB;
+        } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
+            gammaCurve = GAMMA;
+            gamma = colorEncoding.gamma;
+        }
+
+        Eigen::Matrix3f dstProfile = GamutRgbToXYZ(getRec709Primaries(), getIlluminantD65());
+        Eigen::Matrix3f conversion = sourceProfile.inverse() * dstProfile;
 
         HDRTransferAdapter adapter(rgbaPixels.data(), stride,
                                    finalWidth, finalHeight,
                                    useBitmapFloats, useBitmapFloats ? 16 : 8,
                                    gammaCurve, function,
-                                   toneMapper, srcProfile, destProfile, gamma);
+                                   toneMapper, &conversion, gamma,
+                                   useChromaticAdaptation);
         adapter.transfer();
-
-        delete srcProfile;
     }
 
     std::string bitmapPixelConfig = useBitmapFloats ? "RGBA_F16" : "ARGB_8888";

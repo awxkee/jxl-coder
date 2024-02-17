@@ -32,13 +32,14 @@
 
 #include <cstdint>
 #include "ColorSpaceProfile.h"
+#include "Eigen/Eigen"
 
 enum GammaCurve {
     Rec2020, DCIP3, GAMMA, Rec709, sRGB, NONE
 };
 
 enum HDRTransferFunction {
-    PQ, HLG, SMPTE428
+    SKIP, PQ, HLG, SMPTE428
 };
 
 enum CurveToneMapper {
@@ -50,19 +51,19 @@ public:
     HDRTransferAdapter(uint8_t *rgbaData, int stride, int width, int height,
                        bool halfFloats, int bitDepth, GammaCurve gammaCorrection,
                        HDRTransferFunction function, CurveToneMapper toneMapper,
-                       ColorSpaceProfile *srcProfile, ColorSpaceProfile *dstProfile, float gamma)
-            : function(
-            function), gammaCorrection(gammaCorrection), bitDepth(bitDepth), halfFloats(halfFloats),
-              rgbaData(
-                      rgbaData),
+                       Eigen::Matrix3f *conversion,
+                       float gamma,
+                       bool useChromaticAdaptation)
+            : function(function),
+              gammaCorrection(gammaCorrection), bitDepth(bitDepth), halfFloats(halfFloats),
+              rgbaData(rgbaData),
               stride(stride),
               width(width),
               height(height),
-              toneMapper(
-                      toneMapper),
-              srcProfile(srcProfile),
-              dstProfile(dstProfile),
-              gamma(gamma) {
+              toneMapper(toneMapper),
+              mColorProfileConversion(conversion),
+              gamma(gamma),
+              useChromaticAdaptation(useChromaticAdaptation) {
     }
 
     void transfer();
@@ -77,9 +78,9 @@ private:
     uint8_t *rgbaData;
     const GammaCurve gammaCorrection;
     const CurveToneMapper toneMapper;
-    ColorSpaceProfile *srcProfile;
-    ColorSpaceProfile *dstProfile;
+    Eigen::Matrix3f *mColorProfileConversion;
     const float gamma;
+    bool useChromaticAdaptation;
 protected:
 };
 

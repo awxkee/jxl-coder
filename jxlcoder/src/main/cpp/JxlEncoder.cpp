@@ -198,10 +198,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
 
             if (stdString == "Rec. ITU-R BT.709-5" || dataSpace == ADataSpace::ADATASPACE_BT709) {
                 auto matrix = getRec709Primaries();
+                auto illuminant = getIlluminantD65();
                 colorEncoding = {
                         .color_space = JXL_COLOR_SPACE_RGB,
                         .white_point = JXL_WHITE_POINT_D65,
-                        .white_point_xy = {getIlluminantD65().x(), getIlluminantD65().y()},
+                        .white_point_xy = {illuminant.x(), illuminant.y()},
                         .primaries = JXL_PRIMARIES_SRGB,
                         .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
                         .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
@@ -233,7 +234,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                         .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
                         .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
                         .transfer_function = JXL_TRANSFER_FUNCTION_SRGB,
-                        .gamma = 1/2.6
+                        .gamma = 1 / 2.6
                 };
             } else if (stdString == "sRGB IEC61966-2.1 (Linear)" ||
                        dataSpace == ADataSpace::ADATASPACE_SCRGB_LINEAR) {
@@ -299,7 +300,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                        dataSpace == ADataSpace::ADATASPACE_BT601_625 ||
                        dataSpace == ADataSpace::ADATASPACE_JFIF) {
                 auto matrix = getBT601_525Primaries();
-                if (dataSpace == ADataSpace::ADATASPACE_BT601_625 || dataSpace == ADataSpace::ADATASPACE_JFIF) {
+                if (dataSpace == ADataSpace::ADATASPACE_BT601_625 ||
+                    dataSpace == ADataSpace::ADATASPACE_JFIF) {
                     matrix = getBT601_625Primaries();
                 }
                 colorEncoding = {
@@ -312,6 +314,19 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                         .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
                         .transfer_function = JXL_TRANSFER_FUNCTION_709
                 };
+            } else if (dataSpace & ADataSpace::STANDARD_BT470M) {
+                auto matrix = getBT470MPrimaries();
+                colorEncoding = {
+                        .color_space = JXL_COLOR_SPACE_RGB,
+                        .white_point = JXL_WHITE_POINT_CUSTOM,
+                        .white_point_xy = {getIlluminantC().x(), getIlluminantC().y()},
+                        .primaries = JXL_PRIMARIES_CUSTOM,
+                        .primaries_red_xy = {matrix(0, 0), matrix(0, 1)},
+                        .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
+                        .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
+                        .transfer_function = JXL_TRANSFER_FUNCTION_GAMMA,
+                        .gamma = 0.45f
+                };
             } else {
                 JxlColorEncodingSetToSRGB(&colorEncoding, JXL_FALSE);
             }
@@ -320,7 +335,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         }
 
         JxlEncodingPixelDataFormat dataPixelFormat = useFloat16 ? BINARY_16 : UNSIGNED_8;
-        std::vector<uint8_t > iccProfile;
+        std::vector<uint8_t> iccProfile;
 
         if (!EncodeJxlOneshot(rgbPixels, info.width, info.height,
                               &compressedVector, colorspace,

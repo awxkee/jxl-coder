@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okio.buffer
 import okio.source
+import java.io.FileNotFoundException
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -108,42 +109,34 @@ class MainActivity : ComponentActivity() {
                     }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
-                            val bitmap1 =
-                                ImageDecoder.decodeBitmap(ImageDecoder.createSource(assets.open("lin.png").source().buffer()
-                                    .readByteArray()))
-                                    .copy(Bitmap.Config.ARGB_8888, true)
+                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
+                            for (asset in assets) {
+                                try {
+                                    val buffer4 =
+                                        this@MainActivity.assets.open(asset).source().buffer()
+                                            .readByteArray()
 
-                            imagesArray.add(bitmap1)
-                            val encoded1 = JxlCoder().encode(bitmap1, colorSpace = JxlColorSpace.RGBA)
-                            val decoded1 = JxlCoder().decode(encoded1)
-                            imagesArray.add(decoded1)
-
-//                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
-//                            for (asset in assets) {
-//                                try {
-//                                    val buffer4 =
-//                                        this@MainActivity.assets.open(asset).source().buffer()
-//                                            .readByteArray()
-//
-//                                    val largeImageSize = JxlCoder().getSize(buffer4)
-//                                    if (largeImageSize != null) {
-//                                        var srcImage = JxlCoder().decodeSampled(
-//                                            buffer4,
-//                                            largeImageSize.width / 2,
-//                                            largeImageSize.height / 2,
-//                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
-//                                            com.awxkee.jxlcoder.ScaleMode.FIT,
-//                                            JxlResizeFilter.BICUBIC,
-//                                            toneMapper = JxlToneMapper.LOGARITHMIC,
-//                                        )
-////                                        val srcImage = BitmapFactory.decodeByteArray(buffer4, 0, buffer4.size)
-//                                    }
-//                                } catch (e: Exception) {
-//                                    if (e !is FileNotFoundException) {
-//                                        throw e
-//                                    }
-//                                }
-//                            }
+                                    val largeImageSize = JxlCoder().getSize(buffer4)
+                                    if (largeImageSize != null) {
+                                        var srcImage = JxlCoder().decodeSampled(
+                                            buffer4,
+                                            largeImageSize.width / 2,
+                                            largeImageSize.height / 2,
+                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
+                                            com.awxkee.jxlcoder.ScaleMode.FIT,
+                                            JxlResizeFilter.BICUBIC,
+                                            toneMapper = JxlToneMapper.LOGARITHMIC,
+                                        )
+                                        lifecycleScope.launch {
+                                            imagesArray.add(srcImage)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    if (e !is FileNotFoundException) {
+                                        throw e
+                                    }
+                                }
+                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme
