@@ -1,4 +1,6 @@
-# JXL (JPEG XL) Coder for Android 21+
+# JXL (JPEG XL) Coder
+
+Supports version from Android 5.0 (API Level 21)
 
 The JPEG XL Codec for Android is a versatile and efficient library that allows you to decode and
 encode JPEG XL (JXL) images within your Android applications. With this library, you can seamlessly
