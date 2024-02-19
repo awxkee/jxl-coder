@@ -74,28 +74,10 @@ namespace coder::HWY_NAMESPACE {
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
 
-        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        vector<thread> workers;
-
-        int segmentHeight = height / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back([start, end, src, srcStride, dstStride, width, dst]() {
-                for (int y = start; y < end; ++y) {
-                    CopyRGBA16RowHWY(reinterpret_cast<const uint16_t *>(src + srcStride * y),
-                                     reinterpret_cast<uint16_t *>(dst + dstStride * y), width);
-                }
-            });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            CopyRGBA16RowHWY(reinterpret_cast<const uint16_t *>(src + srcStride * y),
+                             reinterpret_cast<uint16_t *>(dst + dstStride * y), width);
         }
     }
 

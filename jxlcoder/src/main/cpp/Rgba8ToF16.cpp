@@ -188,33 +188,13 @@ namespace coder::HWY_NAMESPACE {
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        vector<thread> workers;
-
-        int segmentHeight = height / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back(
-                    [start, end, mSrc, srcStride, dstStride, width, mDst, scale, attenuateAlpha, permuteMap]() {
-                        for (int y = start; y < end; ++y) {
-                            Rgba8ToF16HWYRow(
-                                    reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
-                                    reinterpret_cast<uint16_t *>(mDst + dstStride * y), width,
-                                    scale, permuteMap, attenuateAlpha);
-                        }
-                    });
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            Rgba8ToF16HWYRow(
+                    reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
+                    reinterpret_cast<uint16_t *>(mDst + dstStride * y), width,
+                    scale, permuteMap, attenuateAlpha);
         }
-
-        for (std::thread &thread: workers) {
-            thread.join();
-        }
-
     }
 }
 

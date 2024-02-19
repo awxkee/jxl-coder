@@ -141,31 +141,12 @@ namespace coder::HWY_NAMESPACE {
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        vector<thread> workers;
-
-        int segmentHeight = height / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back(
-                    [start, end, mSrc, mDst, srcStride, dstStride, width, scale, maxColors]() {
-                        for (int y = start; y < end; ++y) {
-                            RGBAF32BitToNBitRowU8(
-                                    reinterpret_cast<const float *>(mSrc + srcStride * y),
-                                    reinterpret_cast<uint8_t *>(mDst + dstStride * y),
-                                    width, scale, maxColors);
-                        }
-                    });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            RGBAF32BitToNBitRowU8(
+                    reinterpret_cast<const float *>(mSrc + srcStride * y),
+                    reinterpret_cast<uint8_t *>(mDst + dstStride * y),
+                    width, scale, maxColors);
         }
     }
 }

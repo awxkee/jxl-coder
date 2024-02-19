@@ -387,31 +387,12 @@ namespace coder::HWY_NAMESPACE {
 
         auto src = reinterpret_cast<const uint8_t *>(source);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        vector<thread> workers;
-
-        int segmentHeight = height / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back(
-                    [start, end, src, destination, srcStride, dstStride, width, permuteMap, attenuateAlpha]() {
-                        for (int y = start; y < end; ++y) {
-                            Rgba8ToRGBA1010102HWYRow(
-                                    reinterpret_cast<const uint8_t *>(src + srcStride * y),
-                                    reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                                    width, &permuteMap[0], attenuateAlpha);
-                        }
-                    });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            Rgba8ToRGBA1010102HWYRow(
+                    reinterpret_cast<const uint8_t *>(src + srcStride * y),
+                    reinterpret_cast<uint32_t *>(destination + dstStride * y),
+                    width, &permuteMap[0], attenuateAlpha);
         }
     }
 
@@ -425,31 +406,12 @@ namespace coder::HWY_NAMESPACE {
         int permuteMap[4] = {3, 2, 1, 0};
         auto src = reinterpret_cast<const uint8_t *>(source);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
-
-        int segmentHeight = height / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back(
-                    [start, end, src, destination, srcStride, dstStride, width, permuteMap]() {
-                        for (int y = start; y < end; ++y) {
-                            F16ToRGBA1010102HWYRow(
-                                    reinterpret_cast<const uint16_t *>(src + srcStride * y),
-                                    reinterpret_cast<uint32_t *>(destination + dstStride * y),
-                                    width, &permuteMap[0]);
-                        }
-                    });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            F16ToRGBA1010102HWYRow(
+                    reinterpret_cast<const uint16_t *>(src + srcStride * y),
+                    reinterpret_cast<uint32_t *>(destination + dstStride * y),
+                    width, &permuteMap[0]);
         }
     }
 
@@ -464,31 +426,12 @@ namespace coder::HWY_NAMESPACE {
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
 
-        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        vector<thread> workers;
-
-        int segmentHeight = height / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back(
-                    [start, end, src, dst, srcStride, dstStride, width, permuteMap]() {
-                        for (int y = start; y < end; ++y) {
-                            F32ToRGBA1010102HWYRow(
-                                    reinterpret_cast<const float *>(src + srcStride * y),
-                                    reinterpret_cast<uint32_t *>(dst + dstStride * y),
-                                    width, &permuteMap[0]);
-                        }
-                    });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            F32ToRGBA1010102HWYRow(
+                    reinterpret_cast<const float *>(src + srcStride * y),
+                    reinterpret_cast<uint32_t *>(dst + dstStride * y),
+                    width, &permuteMap[0]);
         }
     }
 
@@ -524,6 +467,7 @@ void convertRGBA1010102ToU8_NEON(const uint8_t *src, int srcStride, uint8_t *dst
     auto m8Bit = vdupq_n_u32(255);
     const uint32_t scalarMask = (1u << 10u) - 1u;
 
+    #pragma omp parallel for num_threads(3) schedule(dynamic)
     for (int y = 0; y < height; ++y) {
         const uint8_t *srcPointer = src;
         uint8_t *dstPointer = dstPtr;
@@ -730,6 +674,7 @@ void convertRGBA1010102ToU16_C(const uint8_t *src, int srcStride, uint16_t *dst,
         littleEndian = false;
     }
 
+#pragma omp parallel for num_threads(3) schedule(dynamic)
     for (int y = 0; y < height; ++y) {
 
         auto dstPointer = reinterpret_cast<uint8_t *>(mDstPointer);
@@ -793,6 +738,7 @@ void convertRGBA1010102ToU8_C(const uint8_t *src, int srcStride, uint8_t *dst, i
 
     constexpr float valueScale = 255.0f / 1023.0;
 
+#pragma omp parallel for num_threads(3) schedule(dynamic)
     for (int y = 0; y < height; ++y) {
 
         auto dstPointer = reinterpret_cast<uint8_t *>(mDstPointer);

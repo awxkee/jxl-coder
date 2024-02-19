@@ -18,7 +18,6 @@ add_library(libjxl SHARED IMPORTED)
 add_library(libjxl_threads SHARED IMPORTED)
 add_library(libjxl_cms SHARED IMPORTED)
 add_library(libyuv STATIC IMPORTED)
-add_library(libhwy STATIC IMPORTED)
 add_library(libskcms STATIC IMPORTED)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
@@ -31,9 +30,10 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         Support.cpp ReformatBitmap.cpp Rgb565.cpp Rgb1010102.cpp F32toU8.cpp Rgba8ToF16.cpp CopyUnaligned.cpp
         XScaler.cpp RgbaF16bitNBitU8.cpp RGBAlpha.cpp JxlAnimatedDecoder.cpp JxlAnimatedEncoder.cpp
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp colorspaces/CoderCms.cpp
-        colorspaces/HDRTransferAdapter.cpp processing/BoxBlur.cpp processing/GaussBlur.cpp
-        processing/BilateralBlur.cpp processing/MedianBlur.cpp
-        processing/TiltShift.cpp processing/ShgStackBlur.cpp
+        colorspaces/HDRTransferAdapter.cpp
+        processing/ShgStackBlur.cpp
+        hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
+        hwy/timer.cc
 )
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/libyuv)
@@ -45,7 +45,6 @@ set_target_properties(jxlcoder libjxl PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURC
 set_target_properties(jxlcoder libjxl_threads PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_threads.so)
 set_target_properties(jxlcoder libjxl_cms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_cms.so)
 set_target_properties(jxlcoder libyuv PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libyuv.a)
-set_target_properties(jxlcoder libhwy PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libhwy.a)
 set_target_properties(jxlcoder libskcms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libskcms.a)
 
 add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)
@@ -102,11 +101,11 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         libbrotlicommon
         libbrotlidec
         libbrotlienc
-        libhwy
         libjxl
         libjxl_threads
         libjxl_cms
         libskcms
         -ljnigraphics
         libyuv
+        -static-openmp
         log)

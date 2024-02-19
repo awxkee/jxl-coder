@@ -38,8 +38,9 @@ enum GammaCurve {
     Rec2020, DCIP3, GAMMA, Rec709, sRGB, NONE
 };
 
-enum HDRTransferFunction {
-    SKIP, PQ, HLG, SMPTE428
+enum GamutTransferFunction {
+    SKIP, PQ, HLG, SMPTE428, EOTF_GAMMA, EOTF_BT601, EOTF_BT709, EOTF_SMPTE240,
+    EOTF_LOG100, EOTF_LOG100SRT10, EOTF_IEC_61966, EOTF_BT1361, EOTF_SRGB
 };
 
 enum CurveToneMapper {
@@ -50,7 +51,7 @@ class HDRTransferAdapter {
 public:
     HDRTransferAdapter(uint8_t *rgbaData, int stride, int width, int height,
                        bool halfFloats, int bitDepth, GammaCurve gammaCorrection,
-                       HDRTransferFunction function, CurveToneMapper toneMapper,
+                       GamutTransferFunction function, CurveToneMapper toneMapper,
                        Eigen::Matrix3f *conversion,
                        float gamma,
                        bool useChromaticAdaptation)
@@ -74,7 +75,7 @@ private:
     const int bitDepth;
     const int width;
     const int height;
-    const HDRTransferFunction function;
+    const GamutTransferFunction function;
     uint8_t *rgbaData;
     const GammaCurve gammaCorrection;
     const CurveToneMapper toneMapper;

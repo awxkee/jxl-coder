@@ -480,31 +480,11 @@ namespace coder::HWY_NAMESPACE {
 
         auto src8 = reinterpret_cast<const uint8_t *>(input);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
-                                    outputHeight * outputWidth / (256 * 256)), 1, 12);
-        std::vector<std::thread> workers;
-
-        int segmentHeight = outputHeight / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = outputHeight;
-            }
-            workers.emplace_back([start, end, src8, srcStride, dstStride, inputWidth, inputHeight,
-                                         output, outputWidth,
-                                         xScale, option, yScale, components]() {
-                for (int y = start; y < end; ++y) {
-                    scaleRowF16(src8, srcStride, dstStride, inputWidth, inputHeight,
-                                output, outputWidth,
-                                xScale, option, yScale, y, components);
-                }
-            });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(6) schedule(dynamic)
+        for (int y = 0; y < outputHeight; ++y) {
+            scaleRowF16(src8, srcStride, dstStride, inputWidth, inputHeight,
+                        output, outputWidth,
+                        xScale, option, yScale, y, components);
         }
     }
 
@@ -900,33 +880,12 @@ namespace coder::HWY_NAMESPACE {
 
         float maxColors = pow(2.0f, (float) depth) - 1.0f;
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
-                                    outputHeight * outputWidth / (256 * 256)), 1, 12);
-        vector<std::thread> workers;
-
-        int segmentHeight = outputHeight / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = outputHeight;
-            }
-            workers.emplace_back([start, end, src8, srcStride, inputWidth, inputHeight, output,
-                                         dstStride, outputWidth, components,
-                                         option,
-                                         xScale, yScale, maxColors]() {
-                for (int y = start; y < end; ++y) {
-                    ScaleRowU8(src8, srcStride, inputWidth, inputHeight, output,
-                               dstStride, outputWidth, components,
-                               option,
-                               xScale, yScale, maxColors, y);
-                }
-            });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(6) schedule(dynamic)
+        for (int y = 0; y < outputHeight; ++y) {
+            ScaleRowU8(src8, srcStride, inputWidth, inputHeight, output,
+                       dstStride, outputWidth, components,
+                       option,
+                       xScale, yScale, maxColors, y);
         }
     }
 }

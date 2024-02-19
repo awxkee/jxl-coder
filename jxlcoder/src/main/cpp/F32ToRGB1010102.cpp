@@ -137,36 +137,16 @@ namespace coder::HWY_NAMESPACE {
         vector<uint8_t> newData(newStride * height);
         int permuteMap[4] = {3, 2, 1, 0};
 
-        int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        vector<thread> workers;
-
-        int segmentHeight = height / threadCount;
-
         auto src = data.data();
         auto dst = newData.data();
 
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back(
-                    [start, end, src, dst, srcStride, dstStride, width, permuteMap]() {
-                        for (int y = start; y < end; ++y) {
-                            F32ToRGBA1010102RowC(
-                                    reinterpret_cast<const float *>(src + srcStride * y),
-                                    reinterpret_cast<uint8_t *>(dst + (*dstStride) * y),
-                                    width, &permuteMap[0]);
-                        }
-                    });
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            F32ToRGBA1010102RowC(
+                    reinterpret_cast<const float *>(src + srcStride * y),
+                    reinterpret_cast<uint8_t *>(dst + (*dstStride) * y),
+                    width, &permuteMap[0]);
         }
-
-        for (std::thread &thread: workers) {
-            thread.join();
-        }
-
         data = newData;
     }
 

@@ -87,28 +87,10 @@ namespace coder::HWY_NAMESPACE {
         auto rgbaData = reinterpret_cast<const uint8_t *>(src);
         auto rgbData = reinterpret_cast<uint8_t *>(dst);
 
-        int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
-                                    width * height / (256 * 256)), 1, 12);
-        vector<thread> workers;
-
-        int segmentHeight = height / threadCount;
-
-        for (int i = 0; i < threadCount; i++) {
-            int start = i * segmentHeight;
-            int end = (i + 1) * segmentHeight;
-            if (i == threadCount - 1) {
-                end = height;
-            }
-            workers.emplace_back([start, end, rgbaData, srcStride, dstStride, width, rgbData]() {
-                for (int y = start; y < end; ++y) {
-                    Rgba16bitToRGBC(reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
-                                    reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
-                }
-            });
-        }
-
-        for (std::thread &thread: workers) {
-            thread.join();
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+        for (int y = 0; y < height; ++y) {
+            Rgba16bitToRGBC(reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
+                            reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
         }
     }
 

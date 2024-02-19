@@ -186,10 +186,11 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                                colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
                                colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI ||
                                colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709 ||
-                               colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA)) {
+                               colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA ||
+                               colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)) {
             Eigen::Matrix3f sourceProfile;
-            HDRTransferFunction function = SKIP;
-            GammaCurve gammaCurve = NONE;
+            GamutTransferFunction function = SKIP;
+            GammaCurve gammaCurve = sRGB;
             bool useChromaticAdaptation = false;
             float gamma = 2.2f;
             if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
@@ -198,18 +199,22 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                 function = SMPTE428;
             } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
                 function = PQ;
+            } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
+                function = EOTF_GAMMA;
+                gamma = colorEncoding.gamma;
+            } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
+                function = EOTF_BT709;
+            } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
+                function = EOTF_SRGB;
             }
 
             if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
                 sourceProfile = GamutRgbToXYZ(getRec2020Primaries(), getIlluminantD65());
-                gammaCurve = Rec2020;
             } else if (colorEncoding.primaries == JXL_PRIMARIES_P3) {
                 sourceProfile = GamutRgbToXYZ(getDisplayP3Primaries(), getIlluminantDCI());
                 useChromaticAdaptation = true;
-                gammaCurve = DCIP3;
             } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB) {
                 sourceProfile = GamutRgbToXYZ(getSRGBPrimaries(), getIlluminantD65());
-                gammaCurve = Rec709;
             } else {
                 Eigen::Matrix<float, 3, 2> primaries;
                 primaries << static_cast<float>(colorEncoding.primaries_red_xy[0]),
@@ -224,16 +229,6 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                 if (whitePoint != getIlluminantD65()) {
                     useChromaticAdaptation = true;
                 }
-                gammaCurve = GAMMA;
-            }
-
-            if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
-                gammaCurve = Rec709;
-            } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
-                gammaCurve = sRGB;
-            } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
-                gammaCurve = GAMMA;
-                gamma = colorEncoding.gamma;
             }
 
             Eigen::Matrix3f dstProfile = GamutRgbToXYZ(getRec709Primaries(), getIlluminantD65());

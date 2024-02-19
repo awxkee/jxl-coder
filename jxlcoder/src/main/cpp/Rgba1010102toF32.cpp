@@ -154,31 +154,12 @@ namespace coder::HWY_NAMESPACE {
                 littleEndian = false;
             }
 
-            int threadCount = clamp(min(static_cast<int>(thread::hardware_concurrency()),
-                                        width * height / (256 * 256)), 1, 12);
-            vector<thread> workers;
-
-            int segmentHeight = height / threadCount;
-
-            for (int i = 0; i < threadCount; i++) {
-                int start = i * segmentHeight;
-                int end = (i + 1) * segmentHeight;
-                if (i == threadCount - 1) {
-                    end = height;
-                }
-                workers.emplace_back(
-                        [start, end, mSrcPointer, mDstPointer, srcStride, dstStride, width, littleEndian]() {
-                            for (int y = start; y < end; ++y) {
-                                ConvertRGBA1010102toF32HWYRow(
-                                        reinterpret_cast<const uint8_t *>(mSrcPointer + srcStride * y),
-                                        reinterpret_cast<float *>(mDstPointer + dstStride * y),
-                                        width, littleEndian);
-                            }
-                        });
-            }
-
-            for (std::thread &thread: workers) {
-                thread.join();
+#pragma omp parallel for num_threads(3) schedule(dynamic)
+            for (int y = 0; y < height; ++y) {
+                ConvertRGBA1010102toF32HWYRow(
+                        reinterpret_cast<const uint8_t *>(mSrcPointer + srcStride * y),
+                        reinterpret_cast<float *>(mDstPointer + dstStride * y),
+                        width, littleEndian);
             }
         }
 

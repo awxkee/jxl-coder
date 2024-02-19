@@ -75,35 +75,19 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
 
     std::vector<uint8_t> iccARGB;
     iccARGB.resize(stride * height);
-    int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
-                                width * height / (256 * 256)), 1, 12);
-    std::vector<std::thread> workers;
 
-    int segmentHeight = height / threadCount;
     auto mSrcInput = vector.data();
     auto mDstARGB = iccARGB.data();
 
-    for (int i = 0; i < threadCount; i++) {
-        int start = i * segmentHeight;
-        int end = (i + 1) * segmentHeight;
-        if (i == threadCount - 1) {
-            end = height;
-        }
-        workers.emplace_back(
-                [start, end, ptrTransform, mSrcInput, stride, mDstARGB, width]() {
-                    for (int y = start; y < end; ++y) {
-                        cmsDoTransformLineStride(
-                                reinterpret_cast<void *>(ptrTransform.get()),
-                                reinterpret_cast<const void *>(mSrcInput + stride * y),
-                                reinterpret_cast<void *>(mDstARGB + stride * y),
-                                width, 1,
-                                stride, stride, 0, 0);
-                    }
-                });
+#pragma omp parallel for num_threads(6) schedule(dynamic)
+    for (int y = 0; y < height; ++y) {
+        cmsDoTransformLineStride(
+                reinterpret_cast<void *>(ptrTransform.get()),
+                reinterpret_cast<const void *>(mSrcInput + stride * y),
+                reinterpret_cast<void *>(mDstARGB + stride * y),
+                width, 1,
+                stride, stride, 0, 0);
     }
 
-    for (std::thread &thread: workers) {
-        thread.join();
-    }
     vector = iccARGB;
 }
