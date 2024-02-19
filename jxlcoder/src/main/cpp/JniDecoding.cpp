@@ -143,6 +143,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
             gamma = colorEncoding.gamma;
         } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
             function = EOTF_BT709;
+        } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
+            function = EOTF_SRGB;
         }
 
         if (colorEncoding.primaries == JXL_PRIMARIES_2100) {

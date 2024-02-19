@@ -63,9 +63,9 @@ namespace coder::HWY_NAMESPACE {
                           Eigen::Matrix3f *conversion,
                           const float gamma,
                           const bool useChromaticAdaptation) {
-        auto r = (float) half(data[0]);
-        auto g = (float) half(data[1]);
-        auto b = (float) half(data[2]);
+        float r = half_to_float(data[0]);
+        float g = half_to_float(data[1]);
+        float b = half_to_float(data[2]);
 
         const auto adopt = getBradfordAdaptation();
 
@@ -186,16 +186,17 @@ namespace coder::HWY_NAMESPACE {
     }
 
     HWY_FAST_MATH_INLINE void
-    TransferROWU8(uint8_t *data, const float maxColors,
+    TransferROWU8(uint8_t *data,
+                  const float maxColors,
                   const GammaCurve gammaCorrection,
                   const GamutTransferFunction function,
                   ToneMapper<FixedTag<float, 4>> *toneMapper,
                   Eigen::Matrix3f *conversion,
                   const float gamma,
                   bool useChromaticAdaptation) {
-        auto r = (float) data[0] / (float) maxColors;
-        auto g = (float) data[1] / (float) maxColors;
-        auto b = (float) data[2] / (float) maxColors;
+        float r = (float) data[0] / (float) maxColors;
+        float g = (float) data[1] / (float) maxColors;
+        float b = (float) data[2] / (float) maxColors;
 
         const auto adopt = getBradfordAdaptation();
 
@@ -287,40 +288,40 @@ namespace coder::HWY_NAMESPACE {
         }
 
         if (gammaCorrection == Rec2020) {
-            data[0] = (uint8_t) clamp((float) bt2020GammaCorrection(r * maxColors), 0.0f,
+            data[0] = (uint8_t) clamp((float) bt2020GammaCorrection(r) * maxColors, 0.0f,
                                       maxColors);
-            data[1] = (uint8_t) clamp((float) bt2020GammaCorrection(g * maxColors), 0.0f,
+            data[1] = (uint8_t) clamp((float) bt2020GammaCorrection(g) * maxColors, 0.0f,
                                       maxColors);
-            data[2] = (uint8_t) clamp((float) bt2020GammaCorrection(b * maxColors), 0.0f,
+            data[2] = (uint8_t) clamp((float) bt2020GammaCorrection(b) * maxColors, 0.0f,
                                       maxColors);
         } else if (gammaCorrection == DCIP3) {
-            data[0] = (uint8_t) clamp((float) dciP3PQGammaCorrection(r * maxColors), 0.0f,
+            data[0] = (uint8_t) clamp((float) dciP3PQGammaCorrection(r) * maxColors, 0.0f,
                                       maxColors);
-            data[1] = (uint8_t) clamp((float) dciP3PQGammaCorrection(g * maxColors), 0.0f,
+            data[1] = (uint8_t) clamp((float) dciP3PQGammaCorrection(g) * maxColors, 0.0f,
                                       maxColors);
-            data[2] = (uint8_t) clamp((float) dciP3PQGammaCorrection(b * maxColors), 0.0f,
+            data[2] = (uint8_t) clamp((float) dciP3PQGammaCorrection(b) * maxColors, 0.0f,
                                       maxColors);
         } else if (gammaCorrection == GAMMA) {
             const float gammaEval = 1.f / gamma;
-            data[0] = (uint8_t) clamp((float) gammaOtf(r * maxColors, gammaEval), 0.0f,
+            data[0] = (uint8_t) clamp((float) gammaOtf(r, gammaEval) * maxColors, 0.0f,
                                       maxColors);
-            data[1] = (uint8_t) clamp((float) gammaOtf(g * maxColors, gammaEval), 0.0f,
+            data[1] = (uint8_t) clamp((float) gammaOtf(g, gammaEval) * maxColors, 0.0f,
                                       maxColors);
-            data[2] = (uint8_t) clamp((float) gammaOtf(b * maxColors, gammaEval), 0.0f,
+            data[2] = (uint8_t) clamp((float) gammaOtf(b, gammaEval) * maxColors, 0.0f,
                                       maxColors);
         } else if (gammaCorrection == Rec709) {
-            data[0] = (uint8_t) clamp((float) LinearITUR709ToITUR709(r * maxColors), 0.0f,
+            data[0] = (uint8_t) clamp((float) LinearITUR709ToITUR709(r) * maxColors, 0.0f,
                                       maxColors);
-            data[1] = (uint8_t) clamp((float) LinearITUR709ToITUR709(g * maxColors), 0.0f,
+            data[1] = (uint8_t) clamp((float) LinearITUR709ToITUR709(g) * maxColors, 0.0f,
                                       maxColors);
-            data[2] = (uint8_t) clamp((float) LinearITUR709ToITUR709(b * maxColors), 0.0f,
+            data[2] = (uint8_t) clamp((float) LinearITUR709ToITUR709(b) * maxColors, 0.0f,
                                       maxColors);
         } else if (gammaCorrection == sRGB) {
-            data[0] = (uint8_t) clamp((float) LinearSRGBTosRGB(r * maxColors), 0.0f,
+            data[0] = (uint8_t) clamp((float) LinearSRGBTosRGB(r) * maxColors, 0.0f,
                                       maxColors);
-            data[1] = (uint8_t) clamp((float) LinearSRGBTosRGB(g * maxColors), 0.0f,
+            data[1] = (uint8_t) clamp((float) LinearSRGBTosRGB(g) * maxColors, 0.0f,
                                       maxColors);
-            data[2] = (uint8_t) clamp((float) LinearSRGBTosRGB(b * maxColors), 0.0f,
+            data[2] = (uint8_t) clamp((float) LinearSRGBTosRGB(b) * maxColors, 0.0f,
                                       maxColors);
         } else {
             data[0] = (uint8_t) clamp((float) r * maxColors, 0.0f, maxColors);
@@ -932,7 +933,7 @@ namespace coder {
 }
 
 void HDRTransferAdapter::transfer() {
-    auto maxColors = powf(2, (float) this->bitDepth) - 1;
+    auto maxColors = std::pow(2, (float) this->bitDepth) - 1;
     coder::ProcessCPUDispatcher(this->rgbaData, this->width, this->height, this->halfFloats,
                                 this->stride, maxColors, this->gammaCorrection,
                                 this->function, this->toneMapper,
