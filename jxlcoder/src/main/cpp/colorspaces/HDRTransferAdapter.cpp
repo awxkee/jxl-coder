@@ -31,6 +31,7 @@
 #include <thread>
 #include "half.hpp"
 #include "Eigen/Eigen"
+#include "concurrency.hpp"
 
 using namespace half_float;
 using namespace std;
@@ -144,7 +145,9 @@ namespace coder::HWY_NAMESPACE {
                 break;
         }
 
-        toneMapper->Execute(r, g, b);
+        if (toneMapper) {
+            toneMapper->Execute(r, g, b);
+        }
 
         if (conversion) {
             convertColorProfile(*conversion, r, g, b);
@@ -274,7 +277,9 @@ namespace coder::HWY_NAMESPACE {
                 break;
         }
 
-        toneMapper->Execute(r, g, b);
+        if (toneMapper) {
+            toneMapper->Execute(r, g, b);
+        }
 
         if (conversion) {
             convertColorProfile(*conversion, r, g, b);
@@ -354,7 +359,7 @@ namespace coder::HWY_NAMESPACE {
         unique_ptr<ToneMapper<FixedTag<float, 4>>> toneMapper;
         if (curveToneMapper == LOGARITHMIC) {
             toneMapper.reset(new LogarithmicToneMapper<FixedTag<float, 4>>(lumaPrimaries));
-        } else {
+        } else if (curveToneMapper == REC2408) {
             toneMapper.reset(new Rec2408PQToneMapper<FixedTag<float, 4>>(1000,
                                                                          250.0f, sdrReferencePoint,
                                                                          lumaPrimaries));
@@ -505,8 +510,10 @@ namespace coder::HWY_NAMESPACE {
                     pqHighB = bHigh32;
             }
 
-            toneMapper->Execute(pqLowR, pqLowG, pqLowB);
-            toneMapper->Execute(pqHighR, pqHighG, pqHighB);
+            if (toneMapper) {
+                toneMapper->Execute(pqLowR, pqLowG, pqLowB);
+                toneMapper->Execute(pqHighR, pqHighG, pqHighB);
+            }
 
             const auto adopt = getBradfordAdaptation();
 
@@ -599,128 +606,133 @@ namespace coder::HWY_NAMESPACE {
                        Eigen::Matrix3f *conversion,
                        const float gamma,
                        const bool useChromaticAdaptation) {
-        T pqR;
-        T pqG;
-        T pqB;
-
-        switch (function) {
-            case PQ:
-                pqR = ToLinearPQ(df32, R, sdrReferencePoint);
-                pqG = ToLinearPQ(df32, G, sdrReferencePoint);
-                pqB = ToLinearPQ(df32, B, sdrReferencePoint);
-                break;
-            case HLG:
-                pqR = HLGEotf(df32, R);
-                pqG = HLGEotf(df32, G);
-                pqB = HLGEotf(df32, B);
-                break;
-            case SMPTE428:
-                pqR = SMPTE428Eotf(df32, R);
-                pqG = SMPTE428Eotf(df32, G);
-                pqB = SMPTE428Eotf(df32, B);
-                break;
-            case EOTF_GAMMA: {
-                const float gammaValue = gamma;
-                pqR = gammaOtf(df32, R, gammaValue);
-                pqG = gammaOtf(df32, G, gammaValue);
-                pqB = gammaOtf(df32, B, gammaValue);
-            }
-                break;
-            case EOTF_BT601: {
-                pqR = Rec601Eotf(df32, R);
-                pqG = Rec601Eotf(df32, G);
-                pqB = Rec601Eotf(df32, B);
-            }
-                break;
-            case EOTF_BT709: {
-                pqR = Rec709Eotf(df32, R);
-                pqG = Rec709Eotf(df32, G);
-                pqB = Rec709Eotf(df32, B);
-            }
-                break;
-            case EOTF_SMPTE240: {
-                pqR = Smpte240Eotf(df32, R);
-                pqG = Smpte240Eotf(df32, G);
-                pqB = Smpte240Eotf(df32, B);
-            }
-                break;
-            case EOTF_LOG100: {
-                pqR = Log100Eotf(df32, R);
-                pqG = Log100Eotf(df32, G);
-                pqB = Log100Eotf(df32, B);
-            }
-                break;
-            case EOTF_LOG100SRT10: {
-                pqR = Log100Sqrt10Eotf(df32, R);
-                pqG = Log100Sqrt10Eotf(df32, G);
-                pqB = Log100Sqrt10Eotf(df32, B);
-            }
-                break;
-            case EOTF_IEC_61966: {
-                pqR = Iec61966Eotf(df32, R);
-                pqG = Iec61966Eotf(df32, G);
-                pqB = Iec61966Eotf(df32, B);
-            }
-                break;
-            case EOTF_BT1361: {
-                pqR = Bt1361Eotf(df32, R);
-                pqG = Bt1361Eotf(df32, G);
-                pqB = Bt1361Eotf(df32, B);
-            }
-                break;
-            case EOTF_SRGB: {
-                pqR = SRGBToLinear(df32, R);
-                pqG = SRGBToLinear(df32, G);
-                pqB = SRGBToLinear(df32, B);
-            }
-                break;
-            default:
-                pqR = R;
-                pqG = G;
-                pqB = B;
-        }
-
-        toneMapper->Execute(pqR, pqG, pqB);
-
-        const auto adopt = getBradfordAdaptation();
-
-        if (conversion) {
-            convertColorProfile(df32, *conversion, pqR, pqG, pqB);
-            if (useChromaticAdaptation) {
-                convertColorProfile(df32, adopt, pqR, pqG, pqB);
-            }
-        }
-
-        if (gammaCorrection == Rec2020) {
-            pqR = bt2020GammaCorrection(df32, pqR);
-            pqG = bt2020GammaCorrection(df32, pqG);
-            pqB = bt2020GammaCorrection(df32, pqB);
-        } else if (gammaCorrection == DCIP3) {
-            pqR = dciP3PQGammaCorrection(df32, pqR);
-            pqG = dciP3PQGammaCorrection(df32, pqG);
-            pqB = dciP3PQGammaCorrection(df32, pqB);
-        } else if (gammaCorrection == GAMMA) {
-            const float gammaEval = 1.0f / gamma;
-            pqR = gammaOtf(df32, pqR, gammaEval);
-            pqG = gammaOtf(df32, pqG, gammaEval);
-            pqB = gammaOtf(df32, pqB, gammaEval);
-        } else if (gammaCorrection == Rec709) {
-            pqR = LinearITUR709ToITUR709(df32, pqR);
-            pqG = LinearITUR709ToITUR709(df32, pqG);
-            pqB = LinearITUR709ToITUR709(df32, pqB);
-        } else if (gammaCorrection == sRGB) {
-            pqR = LinearSRGBTosRGB(df32, pqR);
-            pqG = LinearSRGBTosRGB(df32, pqG);
-            pqB = LinearSRGBTosRGB(df32, pqB);
-        }
-
-        pqR = Max(Min(Round(Mul(pqR, vColors)), vColors), zeros);
-        pqG = Max(Min(Round(Mul(pqG, vColors)), vColors), zeros);
-        pqB = Max(Min(Round(Mul(pqB, vColors)), vColors), zeros);
-
-        R = pqR;
-        G = pqG;
-        B = pqB;
+        R = Clamp(Round(Mul(R, vColors)), zeros, vColors);
+        G = Clamp(Round(Mul(G, vColors)), zeros, vColors);
+        B = Clamp(Round(Mul(B, vColors)), zeros, vColors);
+//        T pqR;
+//        T pqG;
+//        T pqB;
+//
+//        switch (function) {
+//            case PQ:
+//                pqR = ToLinearPQ(df32, R, sdrReferencePoint);
+//                pqG = ToLinearPQ(df32, G, sdrReferencePoint);
+//                pqB = ToLinearPQ(df32, B, sdrReferencePoint);
+//                break;
+//            case HLG:
+//                pqR = HLGEotf(df32, R);
+//                pqG = HLGEotf(df32, G);
+//                pqB = HLGEotf(df32, B);
+//                break;
+//            case SMPTE428:
+//                pqR = SMPTE428Eotf(df32, R);
+//                pqG = SMPTE428Eotf(df32, G);
+//                pqB = SMPTE428Eotf(df32, B);
+//                break;
+//            case EOTF_GAMMA: {
+//                const float gammaValue = gamma;
+//                pqR = gammaOtf(df32, R, gammaValue);
+//                pqG = gammaOtf(df32, G, gammaValue);
+//                pqB = gammaOtf(df32, B, gammaValue);
+//            }
+//                break;
+//            case EOTF_BT601: {
+//                pqR = Rec601Eotf(df32, R);
+//                pqG = Rec601Eotf(df32, G);
+//                pqB = Rec601Eotf(df32, B);
+//            }
+//                break;
+//            case EOTF_BT709: {
+//                pqR = Rec709Eotf(df32, R);
+//                pqG = Rec709Eotf(df32, G);
+//                pqB = Rec709Eotf(df32, B);
+//            }
+//                break;
+//            case EOTF_SMPTE240: {
+//                pqR = Smpte240Eotf(df32, R);
+//                pqG = Smpte240Eotf(df32, G);
+//                pqB = Smpte240Eotf(df32, B);
+//            }
+//                break;
+//            case EOTF_LOG100: {
+//                pqR = Log100Eotf(df32, R);
+//                pqG = Log100Eotf(df32, G);
+//                pqB = Log100Eotf(df32, B);
+//            }
+//                break;
+//            case EOTF_LOG100SRT10: {
+//                pqR = Log100Sqrt10Eotf(df32, R);
+//                pqG = Log100Sqrt10Eotf(df32, G);
+//                pqB = Log100Sqrt10Eotf(df32, B);
+//            }
+//                break;
+//            case EOTF_IEC_61966: {
+//                pqR = Iec61966Eotf(df32, R);
+//                pqG = Iec61966Eotf(df32, G);
+//                pqB = Iec61966Eotf(df32, B);
+//            }
+//                break;
+//            case EOTF_BT1361: {
+//                pqR = Bt1361Eotf(df32, R);
+//                pqG = Bt1361Eotf(df32, G);
+//                pqB = Bt1361Eotf(df32, B);
+//            }
+//                break;
+//            case EOTF_SRGB: {
+//                pqR = SRGBToLinear(df32, R);
+//                pqG = SRGBToLinear(df32, G);
+//                pqB = SRGBToLinear(df32, B);
+//            }
+//                break;
+//            default:
+//                pqR = R;
+//                pqG = G;
+//                pqB = B;
+//        }
+//
+//        if (toneMapper) {
+//            toneMapper->Execute(pqR, pqG, pqB);
+//        }
+//
+//        const auto adopt = getBradfordAdaptation();
+//
+//        if (conversion) {
+//            convertColorProfile(df32, *conversion, pqR, pqG, pqB);
+//            if (useChromaticAdaptation) {
+//                convertColorProfile(df32, adopt, pqR, pqG, pqB);
+//            }
+//        }
+//
+//        if (gammaCorrection == Rec2020) {
+//            pqR = bt2020GammaCorrection(df32, pqR);
+//            pqG = bt2020GammaCorrection(df32, pqG);
+//            pqB = bt2020GammaCorrection(df32, pqB);
+//        } else if (gammaCorrection == DCIP3) {
+//            pqR = dciP3PQGammaCorrection(df32, pqR);
+//            pqG = dciP3PQGammaCorrection(df32, pqG);
+//            pqB = dciP3PQGammaCorrection(df32, pqB);
+//        } else if (gammaCorrection == GAMMA) {
+//            const float gammaEval = 1.0f / gamma;
+//            pqR = gammaOtf(df32, pqR, gammaEval);
+//            pqG = gammaOtf(df32, pqG, gammaEval);
+//            pqB = gammaOtf(df32, pqB, gammaEval);
+//        } else if (gammaCorrection == Rec709) {
+//            pqR = LinearITUR709ToITUR709(df32, pqR);
+//            pqG = LinearITUR709ToITUR709(df32, pqG);
+//            pqB = LinearITUR709ToITUR709(df32, pqB);
+//        } else if (gammaCorrection == sRGB) {
+//            pqR = LinearSRGBTosRGB(df32, pqR);
+//            pqG = LinearSRGBTosRGB(df32, pqG);
+//            pqB = LinearSRGBTosRGB(df32, pqB);
+//        }
+//
+//        pqR = Clamp(Round(Mul(pqR, vColors)), zeros, vColors);
+//        pqG = Clamp(Round(Mul(pqG, vColors)), zeros, vColors);
+//        pqB = Clamp(Round(Mul(pqB, vColors)), zeros, vColors);
+//
+//        R = pqR;
+//        G = pqG;
+//        B = pqB;
     }
 
     void ProcessUSRow(uint8_t *HWY_RESTRICT data, const int width, const float maxColors,
@@ -733,34 +745,30 @@ namespace coder::HWY_NAMESPACE {
         const FixedTag<float32_t, 4> df32;
         FixedTag<uint8_t, 16> d;
         FixedTag<uint16_t, 8> du16;
+        FixedTag<uint16_t, 4> du16x4;
         FixedTag<uint8_t, 8> du8x8;
         FixedTag<uint32_t, 4> du32;
-
-        const Rebind<int32_t, decltype(df32)> floatToSigned;
-        const Rebind<uint16_t, FixedTag<float32_t, 4>> rebindOrigin;
 
         unique_ptr<ToneMapper<FixedTag<float, 4>>> toneMapper;
         const float lumaPrimaries[3] = {0.2627f, 0.6780f, 0.0593f};
         if (curveToneMapper == LOGARITHMIC) {
             toneMapper.reset(new LogarithmicToneMapper<FixedTag<float, 4>>(lumaPrimaries));
-        } else {
+        } else if (curveToneMapper == REC2408) {
             toneMapper.reset(new Rec2408PQToneMapper<FixedTag<float, 4>>(1000,
                                                                          250.0f, 203.0f,
                                                                          lumaPrimaries));
         }
-
-        const Rebind<float32_t, decltype(du32)> rebind32;
 
         using VU8 = Vec<decltype(d)>;
         using VF32 = Vec<decltype(df32)>;
 
         auto ptr16 = reinterpret_cast<uint8_t *>(data);
 
-        VF32 vColors = Set(df32, (float) maxColors);
-        VF32 recProcColors = ApproximateReciprocal(vColors);
+        const VF32 vColors = Set(df32, (float) maxColors);
+        const VF32 recProcColors = Set(df32, 1.f / maxColors);
         const VF32 vZeros = Zero(df32);
 
-        int pixels = 4 * 4;
+        const int pixels = 16;
 
         int x = 0;
         for (x = 0; x + pixels < width; x += pixels) {
@@ -773,11 +781,11 @@ namespace coder::HWY_NAMESPACE {
             auto lowG16 = PromoteLowerTo(du16, GURow);
             auto lowB16 = PromoteLowerTo(du16, BURow);
 
-            VF32 rLowerLow32 = Mul(ConvertTo(rebind32, PromoteLowerTo(du32, lowR16)),
+            VF32 rLowerLow32 = Mul(ConvertTo(df32, PromoteLowerTo(du32, lowR16)),
                                    recProcColors);
-            VF32 gLowerLow32 = Mul(ConvertTo(rebind32, PromoteLowerTo(du32, lowG16)),
+            VF32 gLowerLow32 = Mul(ConvertTo(df32, PromoteLowerTo(du32, lowG16)),
                                    recProcColors);
-            VF32 bLowerLow32 = Mul(ConvertTo(rebind32, PromoteLowerTo(du32, lowB16)),
+            VF32 bLowerLow32 = Mul(ConvertTo(df32, PromoteLowerTo(du32, lowB16)),
                                    recProcColors);
 
             TransferU8Row(df32, gammaCorrection, function, toneMapper.get(), rLowerLow32,
@@ -785,11 +793,11 @@ namespace coder::HWY_NAMESPACE {
                           bLowerLow32,
                           vColors, vZeros, conversion, gamma, useChromaticAdaptation);
 
-            VF32 rLowerHigh32 = Mul(ConvertTo(rebind32, PromoteUpperTo(du32, lowR16)),
+            VF32 rLowerHigh32 = Mul(ConvertTo(df32, PromoteUpperTo(du32, lowR16)),
                                     recProcColors);
-            VF32 gLowerHigh32 = Mul(ConvertTo(rebind32, PromoteUpperTo(du32, lowG16)),
+            VF32 gLowerHigh32 = Mul(ConvertTo(df32, PromoteUpperTo(du32, lowG16)),
                                     recProcColors);
-            VF32 bLowerHigh32 = Mul(ConvertTo(rebind32, PromoteUpperTo(du32, lowB16)),
+            VF32 bLowerHigh32 = Mul(ConvertTo(df32, PromoteUpperTo(du32, lowB16)),
                                     recProcColors);
 
             TransferU8Row(df32, gammaCorrection, function, toneMapper.get(), rLowerHigh32,
@@ -801,11 +809,11 @@ namespace coder::HWY_NAMESPACE {
             auto upperG16 = PromoteUpperTo(du16, GURow);
             auto upperB16 = PromoteUpperTo(du16, BURow);
 
-            VF32 rHigherLow32 = Mul(ConvertTo(rebind32, PromoteLowerTo(du32, upperR16)),
+            VF32 rHigherLow32 = Mul(ConvertTo(df32, PromoteLowerTo(du32, upperR16)),
                                     recProcColors);
-            VF32 gHigherLow32 = Mul(ConvertTo(rebind32, PromoteLowerTo(du32, upperG16)),
+            VF32 gHigherLow32 = Mul(ConvertTo(df32, PromoteLowerTo(du32, upperG16)),
                                     recProcColors);
-            VF32 bHigherLow32 = Mul(ConvertTo(rebind32, PromoteLowerTo(du32, lowB16)),
+            VF32 bHigherLow32 = Mul(ConvertTo(df32, PromoteLowerTo(du32, upperB16)),
                                     recProcColors);
 
             TransferU8Row(df32, gammaCorrection, function, toneMapper.get(), rHigherLow32,
@@ -813,11 +821,11 @@ namespace coder::HWY_NAMESPACE {
                           bHigherLow32,
                           vColors, vZeros, conversion, gamma, useChromaticAdaptation);
 
-            VF32 rHigherHigh32 = Mul(ConvertTo(rebind32, PromoteUpperTo(du32, upperR16)),
+            VF32 rHigherHigh32 = Mul(ConvertTo(df32, PromoteUpperTo(du32, upperR16)),
                                      recProcColors);
-            VF32 gHigherHigh32 = Mul(ConvertTo(rebind32, PromoteUpperTo(du32, upperG16)),
+            VF32 gHigherHigh32 = Mul(ConvertTo(df32, PromoteUpperTo(du32, upperG16)),
                                      recProcColors);
-            VF32 bHigherHigh32 = Mul(ConvertTo(rebind32, PromoteUpperTo(du32, upperB16)),
+            VF32 bHigherHigh32 = Mul(ConvertTo(df32, PromoteUpperTo(du32, upperB16)),
                                      recProcColors);
 
             TransferU8Row(df32, gammaCorrection, function, toneMapper.get(), rHigherHigh32,
@@ -825,25 +833,25 @@ namespace coder::HWY_NAMESPACE {
                           bHigherHigh32, vColors, vZeros, conversion, gamma,
                           useChromaticAdaptation);
 
-            auto rNew = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, rHigherHigh32));
-            auto gNew = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, gHigherHigh32));
-            auto bNew = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, bHigherHigh32));
+            auto rNew = DemoteTo(du16x4, ConvertTo(du32, rHigherHigh32));
+            auto gNew = DemoteTo(du16x4, ConvertTo(du32, gHigherHigh32));
+            auto bNew = DemoteTo(du16x4, ConvertTo(du32, bHigherHigh32));
 
-            auto r1New = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, rHigherLow32));
-            auto g1New = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, gHigherLow32));
-            auto b1New = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, bHigherLow32));
+            auto r1New = DemoteTo(du16x4, ConvertTo(du32, rHigherLow32));
+            auto g1New = DemoteTo(du16x4, ConvertTo(du32, gHigherLow32));
+            auto b1New = DemoteTo(du16x4, ConvertTo(du32, bHigherLow32));
 
             auto highR = Combine(du16, rNew, r1New);
             auto highG = Combine(du16, gNew, g1New);
             auto highB = Combine(du16, bNew, b1New);
 
-            rNew = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, rLowerHigh32));
-            gNew = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, gLowerHigh32));
-            bNew = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, bLowerHigh32));
+            rNew = DemoteTo(du16x4, ConvertTo(du32, rLowerHigh32));
+            gNew = DemoteTo(du16x4, ConvertTo(du32, gLowerHigh32));
+            bNew = DemoteTo(du16x4, ConvertTo(du32, bLowerHigh32));
 
-            r1New = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, rLowerLow32));
-            g1New = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, gLowerLow32));
-            b1New = DemoteTo(rebindOrigin, ConvertTo(floatToSigned, bLowerLow32));
+            r1New = DemoteTo(du16x4, ConvertTo(du32, rLowerLow32));
+            g1New = DemoteTo(du16x4, ConvertTo(du32, gLowerLow32));
+            b1New = DemoteTo(du16x4, ConvertTo(du32, bLowerLow32));
 
             auto lowR = Combine(du16, rNew, r1New);
             auto lowG = Combine(du16, gNew, g1New);
@@ -855,7 +863,7 @@ namespace coder::HWY_NAMESPACE {
 
             StoreInterleaved4(rU8x16, gU8x16, bU8x16, AURow, d,
                               reinterpret_cast<uint8_t *>(ptr16));
-            ptr16 += 4 * 16;
+            ptr16 += 4 * pixels;
         }
 
         for (; x < width; ++x) {
@@ -900,13 +908,12 @@ namespace coder::HWY_NAMESPACE {
                     Eigen::Matrix3f *conversion,
                     const float gamma,
                     const bool useChromaticAdaptation) {
-#pragma omp parallel for num_threads(7) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(7, height, [&](int y) {
             ProcessCPURowHWY(data, y, halfFloats,
                              stride, width, maxColors, gammaCorrection,
                              function, curveToneMapper, conversion, gamma,
                              useChromaticAdaptation);
-        }
+        });
     }
 }
 

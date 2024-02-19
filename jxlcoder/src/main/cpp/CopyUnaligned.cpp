@@ -29,6 +29,7 @@
 #include "CopyUnaligned.h"
 #include <cstdint>
 #include <thread>
+#include "concurrency.hpp"
 
 using namespace std;
 
@@ -79,8 +80,7 @@ namespace coder::HWY_NAMESPACE {
                       int width,
                       int height,
                       int pixelSize) {
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             if (pixelSize == 1) {
                 const ScalableTag<uint8_t> du8;
                 Copy1Row<decltype(du8), uint8_t>(du8,
@@ -111,7 +111,7 @@ namespace coder::HWY_NAMESPACE {
                                                            reinterpret_cast<uint8_t *>(dst) +
                                                            (y * dstStride)), width);
             }
-        }
+        });
     }
 }
 

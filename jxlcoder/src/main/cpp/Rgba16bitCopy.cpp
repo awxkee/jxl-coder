@@ -29,6 +29,7 @@
 #include "Rgba16bitCopy.h"
 #include <cstdint>
 #include <thread>
+#include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgba16bitCopy.cpp"
@@ -74,11 +75,10 @@ namespace coder::HWY_NAMESPACE {
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             CopyRGBA16RowHWY(reinterpret_cast<const uint16_t *>(src + srcStride * y),
                              reinterpret_cast<uint16_t *>(dst + dstStride * y), width);
-        }
+        });
     }
 
 }

@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <thread>
 #include "half.hpp"
+#include "concurrency.hpp"
 
 using namespace half_float;
 using namespace std;
@@ -158,14 +159,13 @@ namespace coder::HWY_NAMESPACE {
             littleEndian = false;
         }
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             ConvertRGBA1010102toF16HWYRow(
                     reinterpret_cast<const uint8_t *>(mSrcPointer + y * srcStride),
                     reinterpret_cast<uint16_t *>(mDstPointer + y * dstStride),
                     width,
                     littleEndian);
-        }
+        });
     }
 
 }

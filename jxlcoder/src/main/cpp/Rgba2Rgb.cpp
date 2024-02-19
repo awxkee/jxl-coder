@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <vector>
 #include <thread>
+#include "concurrency.hpp"
 
 using namespace std;
 
@@ -87,11 +88,10 @@ namespace coder::HWY_NAMESPACE {
         auto rgbaData = reinterpret_cast<const uint8_t *>(src);
         auto rgbData = reinterpret_cast<uint8_t *>(dst);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             Rgba16bitToRGBC(reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
                             reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
-        }
+        });
     }
 
 }

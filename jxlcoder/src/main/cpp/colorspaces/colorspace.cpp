@@ -31,6 +31,7 @@
 #include "icc/lcms2.h"
 #include <android/log.h>
 #include <thread>
+#include "concurrency.hpp"
 
 using namespace std;
 
@@ -79,15 +80,14 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
     auto mSrcInput = vector.data();
     auto mDstARGB = iccARGB.data();
 
-#pragma omp parallel for num_threads(6) schedule(dynamic)
-    for (int y = 0; y < height; ++y) {
+    concurrency::parallel_for(6, height, [&](int y) {
         cmsDoTransformLineStride(
                 reinterpret_cast<void *>(ptrTransform.get()),
                 reinterpret_cast<const void *>(mSrcInput + stride * y),
                 reinterpret_cast<void *>(mDstARGB + stride * y),
                 width, 1,
                 stride, stride, 0, 0);
-    }
+    });
 
     vector = iccARGB;
 }

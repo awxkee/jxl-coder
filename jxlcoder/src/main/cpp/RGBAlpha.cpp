@@ -3,6 +3,7 @@
 //
 
 #include "RGBAlpha.h"
+#include "concurrency.hpp"
 
 using namespace std;
 
@@ -64,8 +65,7 @@ namespace coder::HWY_NAMESPACE {
 
         VU16x8 mult255 = Set(du16x8, 255);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             auto mSrc = reinterpret_cast<const uint8_t *>(src + y * srcStride);
             auto mDst = reinterpret_cast<uint8_t *>(dst + y * dstStride);
 
@@ -119,7 +119,7 @@ namespace coder::HWY_NAMESPACE {
                 mSrc += 4;
                 mDst += 4;
             }
-        }
+        });
     }
 
     void PremultiplyRGBA_HWY(const uint8_t *src, int srcStride,
@@ -134,8 +134,7 @@ namespace coder::HWY_NAMESPACE {
 
         VU16x8 mult255d2 = Set(du16x8, 255 / 2);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             auto mSrc = reinterpret_cast<const uint8_t *>(src + y * srcStride);
             auto mDst = reinterpret_cast<uint8_t *>(dst + y * dstStride);
 
@@ -187,7 +186,7 @@ namespace coder::HWY_NAMESPACE {
                 mSrc += 4;
                 mDst += 4;
             }
-        }
+        });
     }
 }
 

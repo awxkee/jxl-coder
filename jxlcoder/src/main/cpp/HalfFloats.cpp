@@ -28,10 +28,10 @@
 
 #include "HalfFloats.h"
 #include <cstdint>
-#include <__threading_support>
 #include <vector>
 #include <thread>
 #include "half.hpp"
+#include "concurrency.hpp"
 
 using namespace std;
 
@@ -133,13 +133,11 @@ namespace coder::HWY_NAMESPACE {
         auto srcPixels = reinterpret_cast<const uint8_t *>(src);
         auto dstPixels = reinterpret_cast<uint8_t *>(dst);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
-            RGBAF32ToF16RowHWY(
-                    reinterpret_cast<const float *>(srcPixels + srcStride * y),
+        concurrency::parallel_for(2, height, [&](int y) {
+            RGBAF32ToF16RowHWY(reinterpret_cast<const float *>(srcPixels + srcStride * y),
                     reinterpret_cast<uint16_t *>(dstPixels + dstStride * y),
                     width);
-        }
+        });
     }
 }
 

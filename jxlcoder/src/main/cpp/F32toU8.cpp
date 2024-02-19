@@ -30,6 +30,7 @@
 #include "HalfFloats.h"
 #include <algorithm>
 #include <thread>
+#include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "F32ToU8.cpp"
@@ -134,20 +135,19 @@ namespace coder::HWY_NAMESPACE {
     void RGBAF32BitToNBitU8(const float *sourceData, int srcStride,
                             uint8_t *dst, int dstStride, int width,
                             int height, int bitDepth) {
-        float maxColors = powf(2, (float) bitDepth) - 1;
+        float maxColors = pow(2.f, (float) bitDepth) - 1;
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
         const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             RGBAF32BitToNBitRowU8(
                     reinterpret_cast<const float *>(mSrc + srcStride * y),
                     reinterpret_cast<uint8_t *>(mDst + dstStride * y),
                     width, scale, maxColors);
-        }
+        });
     }
 }
 

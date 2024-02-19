@@ -29,6 +29,7 @@
 #include "Rgb565.h"
 #include "HalfFloats.h"
 #include <thread>
+#include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Rgb565.cpp"
@@ -283,13 +284,11 @@ namespace coder::HWY_NAMESPACE {
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
-            Rgba8To565HWYRow(
-                    reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
-                    reinterpret_cast<uint16_t *>(mDst + dstStride * y),
-                    width, attenuateAlpha);
-        }
+        concurrency::parallel_for(2, height, [&](int y) {
+            Rgba8To565HWYRow(reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
+                             reinterpret_cast<uint16_t *>(mDst + dstStride * y),
+                             width, attenuateAlpha);
+        });
     }
 
     inline Vec<FixedTag<uint8_t, 8>>
@@ -463,13 +462,11 @@ namespace coder::HWY_NAMESPACE {
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
-            RGBAF16To565RowHWY(
-                    reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
-                    reinterpret_cast<uint16_t *>(mDst + dstStride * y),
-                    width, maxColors);
-        }
+        concurrency::parallel_for(2, height, [&](int y) {
+            RGBAF16To565RowHWY(reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
+                               reinterpret_cast<uint16_t *>(mDst + dstStride * y),
+                               width, maxColors);
+        });
     }
 
     void RGBAF32To565HWY(const float *sourceData, int srcStride,
@@ -480,13 +477,12 @@ namespace coder::HWY_NAMESPACE {
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             RGBAF32To565RowHWY(
                     reinterpret_cast<const float *>(mSrc + srcStride * y),
                     reinterpret_cast<uint16_t *>(mDst + dstStride * y),
                     width, maxColors);
-        }
+        });
     }
 
     void Rgb565ToF16HWY(const uint16_t *sourceData, int srcStride,
@@ -496,13 +492,12 @@ namespace coder::HWY_NAMESPACE {
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             Rgb565ToF16HWYRow(
                     reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
                     reinterpret_cast<uint16_t *>(mDst + dstStride * y),
                     width, permuteMap);
-        }
+        });
     }
 
     void Rgb565ToU8HWY(const uint16_t *sourceData, int srcStride,
@@ -512,13 +507,12 @@ namespace coder::HWY_NAMESPACE {
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             Rgb565ToU8HWYRow(
                     reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
                     reinterpret_cast<uint8_t *>(mDst + dstStride * y),
                     width, permuteMap, bgColor);
-        }
+        });
     }
 }
 

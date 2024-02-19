@@ -135,15 +135,19 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
         if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
             function = HLG;
         } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
+            toneMapper = NO_TONE_MAPPER;
             function = SMPTE428;
         } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
             function = PQ;
         } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
+            toneMapper = NO_TONE_MAPPER;
             function = EOTF_GAMMA;
             gamma = colorEncoding.gamma;
         } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
+            toneMapper = NO_TONE_MAPPER;
             function = EOTF_BT709;
         } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
+            toneMapper = NO_TONE_MAPPER;
             function = EOTF_SRGB;
         }
 

@@ -33,6 +33,7 @@
 #include <cmath>
 #include <algorithm>
 #include <thread>
+#include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "F32ToRGB1010102.cpp"
@@ -140,13 +141,13 @@ namespace coder::HWY_NAMESPACE {
         auto src = data.data();
         auto dst = newData.data();
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             F32ToRGBA1010102RowC(
                     reinterpret_cast<const float *>(src + srcStride * y),
                     reinterpret_cast<uint8_t *>(dst + (*dstStride) * y),
                     width, &permuteMap[0]);
-        }
+        });
+
         data = newData;
     }
 

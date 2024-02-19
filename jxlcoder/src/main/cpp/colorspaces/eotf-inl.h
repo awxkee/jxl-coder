@@ -148,6 +148,19 @@ namespace coder::HWY_NAMESPACE {
         }
     }
 
+    template<class D, HWY_IF_F32_D(D), typename T = TFromD<D>, typename V = VFromD<D>>
+    HWY_FAST_MATH_INLINE V SRGBToLinear(D d, V v) {
+        const auto lowerValueThreshold = Set(d, T(0.045f));
+        const auto lowValueDivider = Set(d, T(1.f / 12.92f));
+        const auto lowMask = v <= lowerValueThreshold;
+        const auto lowValue = Mul(v, lowValueDivider);
+        const auto powerStatic = Set(d, T(2.4f));
+        const auto addStatic = Set(d, T(0.055f));
+        const auto scaleStatic = Set(d, T(1.f / 1.055f));
+        const auto highValue = Pow(d, Mul(Add(v, addStatic), scaleStatic), powerStatic);
+        return IfThenElse(lowMask, lowValue, highValue);
+    }
+
     HWY_FAST_MATH_INLINE float Rec709Eotf(float v) {
         if (v < 0.f) {
             return 0.f;
@@ -168,19 +181,6 @@ namespace coder::HWY_NAMESPACE {
             return 1.09929682680944f * std::pow(linear, 0.45f) - 0.09929682680944f;
         }
         return 1.f;
-    }
-
-    template<class D, HWY_IF_F32_D(D), typename T = TFromD<D>, typename V = VFromD<D>>
-    HWY_FAST_MATH_INLINE V SRGBToLinear(D d, V v) {
-        const auto lowerValueThreshold = Set(d, T(0.045f));
-        const auto lowValueDivider = ApproximateReciprocal(Set(d, T(12.92f)));
-        const auto lowMask = v <= lowerValueThreshold;
-        const auto lowValue = Mul(v, lowValueDivider);
-        const auto powerStatic = Set(d, T(2.4f));
-        const auto addStatic = Set(d, T(0.055f));
-        const auto scaleStatic = ApproximateReciprocal(Set(d, T(1.055f)));
-        const auto highValue = Pow(d, Mul(Add(v, addStatic), scaleStatic), powerStatic);
-        return IfThenElse(lowMask, lowValue, highValue);
     }
 
     HWY_FAST_MATH_INLINE float LinearSRGBTosRGB(const float linear) {

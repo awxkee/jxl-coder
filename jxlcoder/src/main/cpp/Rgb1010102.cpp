@@ -31,6 +31,7 @@
 #include <algorithm>
 #include "HalfFloats.h"
 #include <thread>
+#include "concurrency.hpp"
 
 using namespace std;
 
@@ -387,13 +388,12 @@ namespace coder::HWY_NAMESPACE {
 
         auto src = reinterpret_cast<const uint8_t *>(source);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             Rgba8ToRGBA1010102HWYRow(
                     reinterpret_cast<const uint8_t *>(src + srcStride * y),
                     reinterpret_cast<uint32_t *>(destination + dstStride * y),
                     width, &permuteMap[0], attenuateAlpha);
-        }
+        });
     }
 
     void
@@ -406,13 +406,12 @@ namespace coder::HWY_NAMESPACE {
         int permuteMap[4] = {3, 2, 1, 0};
         auto src = reinterpret_cast<const uint8_t *>(source);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             F16ToRGBA1010102HWYRow(
                     reinterpret_cast<const uint16_t *>(src + srcStride * y),
                     reinterpret_cast<uint32_t *>(destination + dstStride * y),
                     width, &permuteMap[0]);
-        }
+        });
     }
 
     void
@@ -426,13 +425,12 @@ namespace coder::HWY_NAMESPACE {
         auto src = reinterpret_cast<const uint8_t *>(source);
         auto dst = reinterpret_cast<uint8_t *>(destination);
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-        for (int y = 0; y < height; ++y) {
+        concurrency::parallel_for(2, height, [&](int y) {
             F32ToRGBA1010102HWYRow(
                     reinterpret_cast<const float *>(src + srcStride * y),
                     reinterpret_cast<uint32_t *>(dst + dstStride * y),
                     width, &permuteMap[0]);
-        }
+        });
     }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
@@ -467,7 +465,6 @@ void convertRGBA1010102ToU8_NEON(const uint8_t *src, int srcStride, uint8_t *dst
     auto m8Bit = vdupq_n_u32(255);
     const uint32_t scalarMask = (1u << 10u) - 1u;
 
-    #pragma omp parallel for num_threads(3) schedule(dynamic)
     for (int y = 0; y < height; ++y) {
         const uint8_t *srcPointer = src;
         uint8_t *dstPointer = dstPtr;
@@ -674,9 +671,7 @@ void convertRGBA1010102ToU16_C(const uint8_t *src, int srcStride, uint16_t *dst,
         littleEndian = false;
     }
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-    for (int y = 0; y < height; ++y) {
-
+    concurrency::parallel_for(2, height, [&](int y) {
         auto dstPointer = reinterpret_cast<uint8_t *>(mDstPointer);
         auto srcPointer = reinterpret_cast<const uint8_t *>(mSrcPointer);
 
@@ -716,7 +711,7 @@ void convertRGBA1010102ToU16_C(const uint8_t *src, int srcStride, uint16_t *dst,
 
         mSrcPointer += srcStride;
         mDstPointer += dstStride;
-    }
+    });
 }
 
 void convertRGBA1010102ToU8_C(const uint8_t *src, int srcStride, uint8_t *dst, int dstStride,
@@ -738,9 +733,7 @@ void convertRGBA1010102ToU8_C(const uint8_t *src, int srcStride, uint8_t *dst, i
 
     constexpr float valueScale = 255.0f / 1023.0;
 
-#pragma omp parallel for num_threads(3) schedule(dynamic)
-    for (int y = 0; y < height; ++y) {
-
+    concurrency::parallel_for(2, height, [&](int y) {
         auto dstPointer = reinterpret_cast<uint8_t *>(mDstPointer);
         auto srcPointer = reinterpret_cast<const uint8_t *>(mSrcPointer);
 
@@ -782,7 +775,7 @@ void convertRGBA1010102ToU8_C(const uint8_t *src, int srcStride, uint8_t *dst, i
 
         mSrcPointer += srcStride;
         mDstPointer += dstStride;
-    }
+    });
 }
 
 void RGBA1010102ToU8(const uint8_t *src, int srcStride, uint8_t *dst, int dstStride,

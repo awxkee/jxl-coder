@@ -44,7 +44,7 @@ enum GamutTransferFunction {
 };
 
 enum CurveToneMapper {
-    REC2408 = 1, LOGARITHMIC = 2
+    REC2408 = 1, LOGARITHMIC = 2, NO_TONE_MAPPER = 3
 };
 
 class HDRTransferAdapter {
