@@ -333,7 +333,7 @@ namespace coder::HWY_NAMESPACE {
         Rebind<uint16_t, FixedTag<uint8_t, 8>> rdu16;
 
         int x = 0;
-        int pixels = 8;
+        const int pixels = 8;
 
         auto src = reinterpret_cast<const uint16_t *>(source);
         auto dst = reinterpret_cast<uint16_t *>(destination);
@@ -411,7 +411,7 @@ namespace coder::HWY_NAMESPACE {
         using VU8 = Vec<decltype(du8)>;
 
         int x = 0;
-        int pixels = 4;
+        const int pixels = 4;
 
         auto src = reinterpret_cast<const float *>(source);
         auto dst = reinterpret_cast<uint16_t *>(destination);

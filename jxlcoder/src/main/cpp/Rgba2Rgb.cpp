@@ -59,7 +59,7 @@ namespace coder::HWY_NAMESPACE {
         int x = 0;
         auto srcPixels = reinterpret_cast<const uint16_t *>(src);
         auto dstPixels = reinterpret_cast<uint16_t *>(dst);
-        int pixels = du16.MaxLanes();
+        const int pixels = du16.MaxLanes();
         for (; x + pixels < width; x += pixels) {
             V pixels1;
             V pixels2;
