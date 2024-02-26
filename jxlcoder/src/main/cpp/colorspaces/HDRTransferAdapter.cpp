@@ -606,133 +606,130 @@ namespace coder::HWY_NAMESPACE {
                        Eigen::Matrix3f *conversion,
                        const float gamma,
                        const bool useChromaticAdaptation) {
-        R = Clamp(Round(Mul(R, vColors)), zeros, vColors);
-        G = Clamp(Round(Mul(G, vColors)), zeros, vColors);
-        B = Clamp(Round(Mul(B, vColors)), zeros, vColors);
-//        T pqR;
-//        T pqG;
-//        T pqB;
-//
-//        switch (function) {
-//            case PQ:
-//                pqR = ToLinearPQ(df32, R, sdrReferencePoint);
-//                pqG = ToLinearPQ(df32, G, sdrReferencePoint);
-//                pqB = ToLinearPQ(df32, B, sdrReferencePoint);
-//                break;
-//            case HLG:
-//                pqR = HLGEotf(df32, R);
-//                pqG = HLGEotf(df32, G);
-//                pqB = HLGEotf(df32, B);
-//                break;
-//            case SMPTE428:
-//                pqR = SMPTE428Eotf(df32, R);
-//                pqG = SMPTE428Eotf(df32, G);
-//                pqB = SMPTE428Eotf(df32, B);
-//                break;
-//            case EOTF_GAMMA: {
-//                const float gammaValue = gamma;
-//                pqR = gammaOtf(df32, R, gammaValue);
-//                pqG = gammaOtf(df32, G, gammaValue);
-//                pqB = gammaOtf(df32, B, gammaValue);
-//            }
-//                break;
-//            case EOTF_BT601: {
-//                pqR = Rec601Eotf(df32, R);
-//                pqG = Rec601Eotf(df32, G);
-//                pqB = Rec601Eotf(df32, B);
-//            }
-//                break;
-//            case EOTF_BT709: {
-//                pqR = Rec709Eotf(df32, R);
-//                pqG = Rec709Eotf(df32, G);
-//                pqB = Rec709Eotf(df32, B);
-//            }
-//                break;
-//            case EOTF_SMPTE240: {
-//                pqR = Smpte240Eotf(df32, R);
-//                pqG = Smpte240Eotf(df32, G);
-//                pqB = Smpte240Eotf(df32, B);
-//            }
-//                break;
-//            case EOTF_LOG100: {
-//                pqR = Log100Eotf(df32, R);
-//                pqG = Log100Eotf(df32, G);
-//                pqB = Log100Eotf(df32, B);
-//            }
-//                break;
-//            case EOTF_LOG100SRT10: {
-//                pqR = Log100Sqrt10Eotf(df32, R);
-//                pqG = Log100Sqrt10Eotf(df32, G);
-//                pqB = Log100Sqrt10Eotf(df32, B);
-//            }
-//                break;
-//            case EOTF_IEC_61966: {
-//                pqR = Iec61966Eotf(df32, R);
-//                pqG = Iec61966Eotf(df32, G);
-//                pqB = Iec61966Eotf(df32, B);
-//            }
-//                break;
-//            case EOTF_BT1361: {
-//                pqR = Bt1361Eotf(df32, R);
-//                pqG = Bt1361Eotf(df32, G);
-//                pqB = Bt1361Eotf(df32, B);
-//            }
-//                break;
-//            case EOTF_SRGB: {
-//                pqR = SRGBToLinear(df32, R);
-//                pqG = SRGBToLinear(df32, G);
-//                pqB = SRGBToLinear(df32, B);
-//            }
-//                break;
-//            default:
-//                pqR = R;
-//                pqG = G;
-//                pqB = B;
-//        }
-//
-//        if (toneMapper) {
-//            toneMapper->Execute(pqR, pqG, pqB);
-//        }
-//
-//        const auto adopt = getBradfordAdaptation();
-//
-//        if (conversion) {
-//            convertColorProfile(df32, *conversion, pqR, pqG, pqB);
-//            if (useChromaticAdaptation) {
-//                convertColorProfile(df32, adopt, pqR, pqG, pqB);
-//            }
-//        }
-//
-//        if (gammaCorrection == Rec2020) {
-//            pqR = bt2020GammaCorrection(df32, pqR);
-//            pqG = bt2020GammaCorrection(df32, pqG);
-//            pqB = bt2020GammaCorrection(df32, pqB);
-//        } else if (gammaCorrection == DCIP3) {
-//            pqR = dciP3PQGammaCorrection(df32, pqR);
-//            pqG = dciP3PQGammaCorrection(df32, pqG);
-//            pqB = dciP3PQGammaCorrection(df32, pqB);
-//        } else if (gammaCorrection == GAMMA) {
-//            const float gammaEval = 1.0f / gamma;
-//            pqR = gammaOtf(df32, pqR, gammaEval);
-//            pqG = gammaOtf(df32, pqG, gammaEval);
-//            pqB = gammaOtf(df32, pqB, gammaEval);
-//        } else if (gammaCorrection == Rec709) {
-//            pqR = LinearITUR709ToITUR709(df32, pqR);
-//            pqG = LinearITUR709ToITUR709(df32, pqG);
-//            pqB = LinearITUR709ToITUR709(df32, pqB);
-//        } else if (gammaCorrection == sRGB) {
-//            pqR = LinearSRGBTosRGB(df32, pqR);
-//            pqG = LinearSRGBTosRGB(df32, pqG);
-//            pqB = LinearSRGBTosRGB(df32, pqB);
-//        }
-//
-//        pqR = Clamp(Round(Mul(pqR, vColors)), zeros, vColors);
-//        pqG = Clamp(Round(Mul(pqG, vColors)), zeros, vColors);
-//        pqB = Clamp(Round(Mul(pqB, vColors)), zeros, vColors);
-//
-//        R = pqR;
-//        G = pqG;
-//        B = pqB;
+        T pqR;
+        T pqG;
+        T pqB;
+
+        switch (function) {
+            case PQ:
+                pqR = ToLinearPQ(df32, R, sdrReferencePoint);
+                pqG = ToLinearPQ(df32, G, sdrReferencePoint);
+                pqB = ToLinearPQ(df32, B, sdrReferencePoint);
+                break;
+            case HLG:
+                pqR = HLGEotf(df32, R);
+                pqG = HLGEotf(df32, G);
+                pqB = HLGEotf(df32, B);
+                break;
+            case SMPTE428:
+                pqR = SMPTE428Eotf(df32, R);
+                pqG = SMPTE428Eotf(df32, G);
+                pqB = SMPTE428Eotf(df32, B);
+                break;
+            case EOTF_GAMMA: {
+                const float gammaValue = gamma;
+                pqR = gammaOtf(df32, R, gammaValue);
+                pqG = gammaOtf(df32, G, gammaValue);
+                pqB = gammaOtf(df32, B, gammaValue);
+            }
+                break;
+            case EOTF_BT601: {
+                pqR = Rec601Eotf(df32, R);
+                pqG = Rec601Eotf(df32, G);
+                pqB = Rec601Eotf(df32, B);
+            }
+                break;
+            case EOTF_BT709: {
+                pqR = Rec709Eotf(df32, R);
+                pqG = Rec709Eotf(df32, G);
+                pqB = Rec709Eotf(df32, B);
+            }
+                break;
+            case EOTF_SMPTE240: {
+                pqR = Smpte240Eotf(df32, R);
+                pqG = Smpte240Eotf(df32, G);
+                pqB = Smpte240Eotf(df32, B);
+            }
+                break;
+            case EOTF_LOG100: {
+                pqR = Log100Eotf(df32, R);
+                pqG = Log100Eotf(df32, G);
+                pqB = Log100Eotf(df32, B);
+            }
+                break;
+            case EOTF_LOG100SRT10: {
+                pqR = Log100Sqrt10Eotf(df32, R);
+                pqG = Log100Sqrt10Eotf(df32, G);
+                pqB = Log100Sqrt10Eotf(df32, B);
+            }
+                break;
+            case EOTF_IEC_61966: {
+                pqR = Iec61966Eotf(df32, R);
+                pqG = Iec61966Eotf(df32, G);
+                pqB = Iec61966Eotf(df32, B);
+            }
+                break;
+            case EOTF_BT1361: {
+                pqR = Bt1361Eotf(df32, R);
+                pqG = Bt1361Eotf(df32, G);
+                pqB = Bt1361Eotf(df32, B);
+            }
+                break;
+            case EOTF_SRGB: {
+                pqR = SRGBToLinear(df32, R);
+                pqG = SRGBToLinear(df32, G);
+                pqB = SRGBToLinear(df32, B);
+            }
+                break;
+            default:
+                pqR = R;
+                pqG = G;
+                pqB = B;
+        }
+
+        if (toneMapper) {
+            toneMapper->Execute(pqR, pqG, pqB);
+        }
+
+        const auto adopt = getBradfordAdaptation();
+
+        if (conversion) {
+            convertColorProfile(df32, *conversion, pqR, pqG, pqB);
+            if (useChromaticAdaptation) {
+                convertColorProfile(df32, adopt, pqR, pqG, pqB);
+            }
+        }
+
+        if (gammaCorrection == Rec2020) {
+            pqR = bt2020GammaCorrection(df32, pqR);
+            pqG = bt2020GammaCorrection(df32, pqG);
+            pqB = bt2020GammaCorrection(df32, pqB);
+        } else if (gammaCorrection == DCIP3) {
+            pqR = dciP3PQGammaCorrection(df32, pqR);
+            pqG = dciP3PQGammaCorrection(df32, pqG);
+            pqB = dciP3PQGammaCorrection(df32, pqB);
+        } else if (gammaCorrection == GAMMA) {
+            const float gammaEval = 1.0f / gamma;
+            pqR = gammaOtf(df32, pqR, gammaEval);
+            pqG = gammaOtf(df32, pqG, gammaEval);
+            pqB = gammaOtf(df32, pqB, gammaEval);
+        } else if (gammaCorrection == Rec709) {
+            pqR = LinearITUR709ToITUR709(df32, pqR);
+            pqG = LinearITUR709ToITUR709(df32, pqG);
+            pqB = LinearITUR709ToITUR709(df32, pqB);
+        } else if (gammaCorrection == sRGB) {
+            pqR = LinearSRGBTosRGB(df32, pqR);
+            pqG = LinearSRGBTosRGB(df32, pqG);
+            pqB = LinearSRGBTosRGB(df32, pqB);
+        }
+
+        pqR = Clamp(Round(Mul(pqR, vColors)), zeros, vColors);
+        pqG = Clamp(Round(Mul(pqG, vColors)), zeros, vColors);
+        pqB = Clamp(Round(Mul(pqB, vColors)), zeros, vColors);
+
+        R = pqR;
+        G = pqG;
+        B = pqB;
     }
 
     void ProcessUSRow(uint8_t *HWY_RESTRICT data, const int width, const float maxColors,
