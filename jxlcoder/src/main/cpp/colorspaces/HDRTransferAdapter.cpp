@@ -905,7 +905,9 @@ namespace coder::HWY_NAMESPACE {
                     Eigen::Matrix3f *conversion,
                     const float gamma,
                     const bool useChromaticAdaptation) {
-        concurrency::parallel_for(7, height, [&](int y) {
+        const int threadCount = clamp(min(static_cast<int>(std::thread::hardware_concurrency()),
+                                          width * height / (256 * 256)), 1, 12);
+        concurrency::parallel_for(threadCount, height, [&](int y) {
             ProcessCPURowHWY(data, y, halfFloats,
                              stride, width, maxColors, gammaCorrection,
                              function, curveToneMapper, conversion, gamma,
