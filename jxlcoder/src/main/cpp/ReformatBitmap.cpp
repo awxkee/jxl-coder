@@ -29,17 +29,17 @@
 #include "ReformatBitmap.h"
 #include <string>
 #include "Support.h"
-#include "HalfFloats.h"
-#include "Rgb565.h"
+#include "conversion/HalfFloats.h"
+#include "conversion/Rgb565.h"
 #include <android/bitmap.h>
 #include <HardwareBuffersCompat.h>
 #include <mutex>
-#include "Rgb1010102.h"
-#include "RgbaF16bitNBitU8.h"
-#include "Rgba8ToF16.h"
+#include "conversion/Rgb1010102.h"
+#include "conversion/RgbaF16bitNBitU8.h"
+#include "conversion/Rgba8ToF16.h"
 #include "CopyUnaligned.h"
 #include "JniExceptions.h"
-#include "RGBAlpha.h"
+#include "conversion/RGBAlpha.h"
 
 void
 ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &imageConfig,

@@ -26,16 +26,16 @@
  *
  */
 
-#include "Rgb1010102toF16.h"
+#include "conversion/Rgb1010102toF16.h"
 #include <cstdint>
-#include <HalfFloats.h>
+#include "conversion/HalfFloats.h"
 #include <vector>
 #include <algorithm>
 #include <thread>
 #include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "Rgba1010102toF32.cpp"
+#define HWY_TARGET_INCLUDE "conversion/Rgba1010102toF32.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

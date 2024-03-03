@@ -32,7 +32,7 @@
 #include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "Rgba16bitCopy.cpp"
+#define HWY_TARGET_INCLUDE "conversion/Rgba16bitCopy.cpp"
 
 using namespace std;
 

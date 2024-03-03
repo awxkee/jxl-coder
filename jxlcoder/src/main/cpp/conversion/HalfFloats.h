@@ -30,7 +30,7 @@
 #define JXLCODER_HALFFLOATS_H
 
 #include <cstdint>
-#include "half.hpp"
+#include "conversion/half.hpp"
 
 #if HAVE_NEON
 void RgbaF32ToF16Neon(const float *src, int srcStride, uint16_t *dst, int dstStride,

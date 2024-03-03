@@ -24,11 +24,11 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlEncoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
         icc/cmsgmt.c icc/cmshalf.c icc/cmsintrp.c icc/cmsio0.c icc/cmsio1.c icc/cmslut.c icc/cmsmd5.c icc/cmsmtrx.c icc/cmsnamed.c
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
-        icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp HalfFloats.cpp JniExceptions.cpp JxlEncoding.cpp
-        JxlDecoding.cpp JniDecoding.cpp Rgba2Rgb.cpp Rgb1010102toF16.cpp Rgba16bitCopy.cpp
-        F32ToRGB1010102.cpp Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
-        Support.cpp ReformatBitmap.cpp Rgb565.cpp Rgb1010102.cpp F32toU8.cpp Rgba8ToF16.cpp CopyUnaligned.cpp
-        XScaler.cpp RgbaF16bitNBitU8.cpp RGBAlpha.cpp JxlAnimatedDecoder.cpp JxlAnimatedEncoder.cpp
+        icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp conversion/HalfFloats.cpp JniExceptions.cpp JxlEncoding.cpp
+        JxlDecoding.cpp JniDecoding.cpp conversion/Rgba2Rgb.cpp conversion/Rgb1010102toF16.cpp conversion/Rgba16bitCopy.cpp
+        conversion/F32ToRGB1010102.cpp conversion/Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
+        Support.cpp ReformatBitmap.cpp conversion/Rgb565.cpp conversion/Rgb1010102.cpp conversion/F32toU8.cpp conversion/Rgba8ToF16.cpp CopyUnaligned.cpp
+        XScaler.cpp conversion/RgbaF16bitNBitU8.cpp conversion/RGBAlpha.cpp JxlAnimatedDecoder.cpp JxlAnimatedEncoder.cpp
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp colorspaces/CoderCms.cpp
         colorspaces/HDRTransferAdapter.cpp
         processing/ShgStackBlur.cpp
@@ -82,7 +82,7 @@ if (ANDROID_ABI STREQUAL x86-64)
 endif ()
 
 
-add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION -DCMS_NO_REGISTER_KEYWORD -DHWY_COMPILE_ONLY_STATIC)
+add_definitions(-DSTB_IMAGE_RESIZE_IMPLEMENTATION -DCMS_NO_REGISTER_KEYWORD)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -ffast-math -funroll-loops")

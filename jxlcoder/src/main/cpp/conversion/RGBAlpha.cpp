@@ -8,7 +8,7 @@
 using namespace std;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "RGBAlpha.cpp"
+#define HWY_TARGET_INCLUDE "conversion/RGBAlpha.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

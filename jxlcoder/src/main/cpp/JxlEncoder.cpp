@@ -35,13 +35,13 @@
 #include <android/log.h>
 #include "JniExceptions.h"
 #include "JxlEncoding.h"
-#include "Rgba2Rgb.h"
-#include "Rgb1010102toF16.h"
+#include "conversion/Rgba2Rgb.h"
+#include "conversion/Rgb1010102toF16.h"
 #include <android/data_space.h>
-#include "RGBAlpha.h"
+#include "conversion/RGBAlpha.h"
 #include "CopyUnaligned.h"
 #include "JxlDefinitions.h"
-#include "Rgb565.h"
+#include "conversion/Rgb565.h"
 #include <jxl/encode.h>
 #include "colorspaces/ColorSpaceProfile.h"
 

@@ -29,14 +29,14 @@
 #include "Rgb1010102.h"
 #include <vector>
 #include <algorithm>
-#include "HalfFloats.h"
+#include "conversion/HalfFloats.h"
 #include <thread>
 #include "concurrency.hpp"
 
 using namespace std;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "Rgb1010102.cpp"
+#define HWY_TARGET_INCLUDE "conversion/Rgb1010102.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

@@ -27,17 +27,17 @@
  */
 
 #include "RgbaF16bitNBitU8.h"
-#include "HalfFloats.h"
+#include "conversion/HalfFloats.h"
 #include <algorithm>
 #include <thread>
-#include "half.hpp"
+#include "conversion/half.hpp"
 #include "concurrency.hpp"
 
 using namespace std;
 using namespace half_float;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "imagebits/RgbaF16bitNBitU8.cpp"
+#define HWY_TARGET_INCLUDE "conversion/RgbaF16bitNBitU8.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

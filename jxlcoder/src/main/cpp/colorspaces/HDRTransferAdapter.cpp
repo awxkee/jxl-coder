@@ -29,7 +29,7 @@
 #include "HDRTransferAdapter.h"
 #include <vector>
 #include <thread>
-#include "half.hpp"
+#include "conversion/half.hpp"
 #include "Eigen/Eigen"
 #include "concurrency.hpp"
 
@@ -37,13 +37,13 @@ using namespace half_float;
 using namespace std;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "HDRTransferAdapter.cpp"
+#define HWY_TARGET_INCLUDE "colorspaces/HDRTransferAdapter.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"
 #include "algo/math-inl.h"
 #include "eotf-inl.h"
-#include "HalfFloats.h"
+#include "conversion/HalfFloats.h"
 #include "CoderCms.h"
 
 HWY_BEFORE_NAMESPACE();
@@ -883,16 +883,16 @@ namespace coder::HWY_NAMESPACE {
 
         if (halfFloats) {
             auto ptr16 = reinterpret_cast<uint16_t *>(data + y * stride);
-            HWY_DYNAMIC_DISPATCH(ProcessF16Row)(reinterpret_cast<uint16_t *>(ptr16), width,
-                                                gammaCorrection, function, curveToneMapper,
-                                                conversion, gamma, useChromaticAdaptation);
+            ProcessF16Row(reinterpret_cast<uint16_t *>(ptr16), width,
+                          gammaCorrection, function, curveToneMapper,
+                          conversion, gamma, useChromaticAdaptation);
         } else {
             auto ptr16 = reinterpret_cast<uint8_t *>(data + y * stride);
-            HWY_DYNAMIC_DISPATCH(ProcessUSRow)(reinterpret_cast<uint8_t *>(ptr16),
-                                               width,
-                                               (float) maxColors, gammaCorrection, function,
-                                               curveToneMapper, conversion, gamma,
-                                               useChromaticAdaptation);
+            ProcessUSRow(reinterpret_cast<uint8_t *>(ptr16),
+                         width,
+                         (float) maxColors, gammaCorrection, function,
+                         curveToneMapper, conversion, gamma,
+                         useChromaticAdaptation);
         }
     }
 

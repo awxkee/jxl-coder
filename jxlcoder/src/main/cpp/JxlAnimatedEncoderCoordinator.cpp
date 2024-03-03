@@ -35,14 +35,14 @@
 #include "JniExceptions.h"
 #include <android/data_space.h>
 #include <android/bitmap.h>
-#include "Rgb1010102toF16.h"
+#include "conversion/Rgb1010102toF16.h"
 #include <libyuv.h>
-#include "Rgba8ToF16.h"
-#include "RGBAlpha.h"
-#include "Rgb1010102.h"
-#include "RgbaF16bitNBitU8.h"
-#include "Rgba2Rgb.h"
-#include "Rgb565.h"
+#include "conversion/Rgba8ToF16.h"
+#include "conversion/RGBAlpha.h"
+#include "conversion/Rgb1010102.h"
+#include "conversion/RgbaF16bitNBitU8.h"
+#include "conversion/Rgba2Rgb.h"
+#include "conversion/Rgb565.h"
 #include "CopyUnaligned.h"
 
 using namespace std;

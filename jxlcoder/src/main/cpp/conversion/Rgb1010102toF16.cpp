@@ -28,18 +28,18 @@
 
 #include "Rgb1010102toF16.h"
 #include <cstdint>
-#include <HalfFloats.h>
+#include "conversion/HalfFloats.h"
 #include <vector>
 #include <algorithm>
 #include <thread>
-#include "half.hpp"
+#include "conversion/half.hpp"
 #include "concurrency.hpp"
 
 using namespace half_float;
 using namespace std;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "Rgb1010102toF16.cpp"
+#define HWY_TARGET_INCLUDE "conversion/Rgb1010102toF16.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

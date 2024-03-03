@@ -36,7 +36,7 @@
 #include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "F32ToRGB1010102.cpp"
+#define HWY_TARGET_INCLUDE "conversion/F32ToRGB1010102.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

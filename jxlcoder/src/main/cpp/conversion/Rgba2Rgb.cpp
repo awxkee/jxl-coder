@@ -35,11 +35,11 @@
 using namespace std;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "Rgba2Rgb.cpp"
+#define HWY_TARGET_INCLUDE "conversion/Rgba2Rgb.cpp"
 
-#include <hwy/foreach_target.h>  // IWYU pragma: keep
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 
-#include <hwy/highway.h>
+#include "hwy/highway.h"
 #include "hwy/base.h"
 
 #include <android/log.h>

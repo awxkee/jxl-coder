@@ -27,12 +27,12 @@
  */
 
 #include "Rgb565.h"
-#include "HalfFloats.h"
+#include "conversion/HalfFloats.h"
 #include <thread>
 #include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "Rgb565.cpp"
+#define HWY_TARGET_INCLUDE "conversion/Rgb565.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

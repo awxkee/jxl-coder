@@ -27,9 +27,9 @@
  */
 
 #include "Rgba8ToF16.h"
-#include "HalfFloats.h"
+#include "conversion/HalfFloats.h"
 #include <thread>
-#include "half.hpp"
+#include "conversion/half.hpp"
 #include <thread>
 #include "concurrency.hpp"
 
@@ -37,7 +37,7 @@ using namespace std;
 using namespace half_float;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "Rgba8ToF16.cpp"
+#define HWY_TARGET_INCLUDE "conversion/Rgba8ToF16.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

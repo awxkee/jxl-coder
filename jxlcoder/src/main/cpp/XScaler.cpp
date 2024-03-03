@@ -27,7 +27,7 @@
  */
 
 #include "XScaler.h"
-#include "half.hpp"
+#include "conversion/half.hpp"
 #include <thread>
 #include <vector>
 #include "algo/sampler.h"
@@ -44,6 +44,7 @@
 #include "hwy/highway.h"
 #include "algo/sampler-inl.h"
 #include "algo/math-inl.h"
+#include "algo/sampler.h"
 
 using namespace half_float;
 using namespace std;
@@ -52,31 +53,7 @@ HWY_BEFORE_NAMESPACE();
 
 namespace coder::HWY_NAMESPACE {
 
-    using hwy::HWY_NAMESPACE::Set;
-    using hwy::HWY_NAMESPACE::FixedTag;
-    using hwy::HWY_NAMESPACE::Vec;
-    using hwy::HWY_NAMESPACE::Add;
-    using hwy::HWY_NAMESPACE::LoadU;
-    using hwy::HWY_NAMESPACE::BitCast;
-    using hwy::HWY_NAMESPACE::Min;
-    using hwy::HWY_NAMESPACE::ConvertTo;
-    using hwy::HWY_NAMESPACE::Floor;
-    using hwy::HWY_NAMESPACE::Mul;
-    using hwy::HWY_NAMESPACE::ExtractLane;
-    using hwy::HWY_NAMESPACE::Zero;
-    using hwy::HWY_NAMESPACE::StoreU;
-    using hwy::HWY_NAMESPACE::Round;
-    using hwy::HWY_NAMESPACE::LoadInterleaved4;
-    using hwy::HWY_NAMESPACE::Sub;
-    using hwy::HWY_NAMESPACE::Max;
-    using hwy::HWY_NAMESPACE::Abs;
-    using hwy::HWY_NAMESPACE::MulAdd;
-    using hwy::HWY_NAMESPACE::SumOfLanes;
-    using hwy::HWY_NAMESPACE::Div;
-    using hwy::HWY_NAMESPACE::NegMulAdd;
-    using hwy::HWY_NAMESPACE::IfThenElse;
-    using hwy::HWY_NAMESPACE::MulSub;
-    using hwy::HWY_NAMESPACE::Neg;
+    using namespace hwy::HWY_NAMESPACE;
     using hwy::float32_t;
     using hwy::float16_t;
 
@@ -99,7 +76,7 @@ namespace coder::HWY_NAMESPACE {
             case bSpline:
                 return BSpline(value);
             case hann:
-                return HannWindow(value, float(3));
+                return Hann(value, float(3));
             case bicubic:
                 return BiCubicSpline(value);
         }
@@ -351,7 +328,7 @@ namespace coder::HWY_NAMESPACE {
                         if (option == lanczos) {
                             yWeight = LanczosWindow(dy, lanczosFA);
                         } else {
-                            yWeight = HannWindow(float(j), lanczosFA);
+                            yWeight = Hann(float(j), lanczosFA);
                         }
                         auto row = reinterpret_cast<const uint16_t *>(src8 +
                                                                       clamp(yj, 0,
@@ -425,7 +402,7 @@ namespace coder::HWY_NAMESPACE {
                         if (option == lanczos) {
                             yWeight = LanczosWindow(dy, lanczosFA);
                         } else {
-                            yWeight = HannWindow(float(j), lanczosFA);
+                            yWeight = Hann(float(j), lanczosFA);
                         }
                         for (int i = -a + 1; i <= a; i++) {
                             int xi = (int) kx1 + i;
@@ -434,7 +411,7 @@ namespace coder::HWY_NAMESPACE {
                             if (option == lanczos) {
                                 weight = LanczosWindow(dx, lanczosFA) * yWeight;
                             } else {
-                                weight = HannWindow(float(i), lanczosFA) * yWeight;
+                                weight = Hann(float(i), lanczosFA) * yWeight;
                             }
                             weightSum += weight;
 
@@ -725,7 +702,7 @@ namespace coder::HWY_NAMESPACE {
                         if (option == lanczos) {
                             yWeight = LanczosWindow(dy, float(kernelSize));
                         } else {
-                            yWeight = HannWindow(float(j), float(kernelSize));
+                            yWeight = Hann(float(j), float(kernelSize));
                         }
                         auto row = reinterpret_cast<const uint8_t *>(src8 +
                                                                      clamp(yj, 0,
@@ -810,7 +787,7 @@ namespace coder::HWY_NAMESPACE {
                         if (option == lanczos) {
                             yWeight = LanczosWindow(dy, float(lanczosFA));
                         } else {
-                            yWeight = HannWindow(float(j), float(lanczosFA));
+                            yWeight = Hann(float(j), float(lanczosFA));
                         }
                         for (int i = -a + 1; i <= a; i++) {
                             int xi = (int) kx1 + i;
@@ -819,7 +796,7 @@ namespace coder::HWY_NAMESPACE {
                             if (option == lanczos) {
                                 weight = LanczosWindow(dx, float(lanczosFA)) * yWeight;
                             } else {
-                                weight = HannWindow(float(i), float(lanczosFA)) * yWeight;
+                                weight = Hann(float(i), float(lanczosFA)) * yWeight;
                             }
                             weightSum += weight;
 
