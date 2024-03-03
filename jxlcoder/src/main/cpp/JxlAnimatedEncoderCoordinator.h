@@ -29,7 +29,7 @@
 #ifndef JXLCODER_JXLANIMATEDENCODERCOORDINATOR_H
 #define JXLCODER_JXLANIMATEDENCODERCOORDINATOR_H
 
-#include "JxlAnimatedEncoder.hpp"
+#include "interop/JxlAnimatedEncoder.hpp"
 #include <string>
 
 using namespace std;

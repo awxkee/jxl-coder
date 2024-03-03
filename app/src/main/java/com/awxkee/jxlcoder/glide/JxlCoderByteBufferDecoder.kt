@@ -19,7 +19,7 @@ import java.nio.ByteBuffer
 class JxlCoderByteBufferDecoder(private val bitmapPool: BitmapPool) :
     ResourceDecoder<ByteBuffer, Bitmap> {
 
-    private val coder = JxlCoder()
+    private val coder = JxlCoder
 
     override fun handles(source: ByteBuffer, options: Options): Boolean {
         val bytes = ByteBufferUtil.toBytes(source)

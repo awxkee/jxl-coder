@@ -31,7 +31,7 @@
 
 #include <vector>
 #include "JxlDefinitions.h"
-#include <jxl/encode.h>
+#include "encode.h"
 
 /**
  * Compresses the provided pixels.

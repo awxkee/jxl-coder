@@ -135,7 +135,7 @@ namespace coder::HWY_NAMESPACE {
     void RGBAF32BitToNBitU8(const float *sourceData, int srcStride,
                             uint8_t *dst, int dstStride, int width,
                             int height, int bitDepth) {
-        float maxColors = pow(2.f, (float) bitDepth) - 1;
+        float maxColors = std::powf(2.f, (float) bitDepth) - 1;
 
         auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
         auto mDst = reinterpret_cast<uint8_t *>(dst);

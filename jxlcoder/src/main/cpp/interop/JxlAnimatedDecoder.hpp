@@ -31,10 +31,10 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include <jxl/decode.h>
-#include <jxl/decode_cxx.h>
-#include <jxl/resizable_parallel_runner.h>
-#include <jxl/resizable_parallel_runner_cxx.h>
+#include "decode.h"
+#include "decode_cxx.h"
+#include "resizable_parallel_runner.h"
+#include "resizable_parallel_runner_cxx.h"
 #include <thread>
 
 class AnimatedDecoderError : public std::exception {

@@ -36,7 +36,7 @@ import androidx.annotation.Keep
 import java.nio.ByteBuffer
 
 @Keep
-class JxlCoder {
+object JxlCoder {
 
     /**
      * @author Radzivon Bartoshyk
@@ -108,13 +108,10 @@ class JxlCoder {
         bitmap: Bitmap,
         colorSpace: JxlColorSpace = JxlColorSpace.RGB,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
-        @IntRange(from = 1L, to = 9L) effort: Int = 7,
+        effort: JxlEffort = JxlEffort.SQUIRREL,
         @IntRange(from = 0, to = 100) quality: Int = 0,
         decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.SLOWEST,
     ): ByteArray {
-        if (effort < 1 || effort > 9) {
-            throw Exception("Effort must be on 1..<10")
-        }
         var dataSpaceValue: Int = -1
         var bitmapColorSpace: String? = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -132,7 +129,7 @@ class JxlCoder {
             bitmap,
             colorSpace.cValue,
             compressionOption.cValue,
-            effort,
+            effort.value,
             bitmapColorSpace,
             dataSpaceValue,
             quality,
@@ -177,37 +174,35 @@ class JxlCoder {
         decodingSpeed: Int
     ): ByteArray
 
-    companion object {
 
-        private val MAGIC_1 = byteArrayOf(0xFF.toByte(), 0x0A)
-        private val MAGIC_2 = byteArrayOf(
-            0x0.toByte(),
-            0x0.toByte(),
-            0x0.toByte(),
-            0x0C.toByte(),
-            0x4A,
-            0x58,
-            0x4C,
-            0x20,
-            0x0D,
-            0x0A,
-            0x87.toByte(),
-            0x0A
-        )
+    private val MAGIC_1 = byteArrayOf(0xFF.toByte(), 0x0A)
+    private val MAGIC_2 = byteArrayOf(
+        0x0.toByte(),
+        0x0.toByte(),
+        0x0.toByte(),
+        0x0C.toByte(),
+        0x4A,
+        0x58,
+        0x4C,
+        0x20,
+        0x0D,
+        0x0A,
+        0x87.toByte(),
+        0x0A
+    )
 
-        init {
-            if (Build.VERSION.SDK_INT >= 21) {
-                System.loadLibrary("jxlcoder")
-            }
+    init {
+        if (Build.VERSION.SDK_INT >= 21) {
+            System.loadLibrary("jxlcoder")
         }
+    }
 
-        fun isJXL(byteArray: ByteArray): Boolean {
-            if (byteArray.size < MAGIC_2.size) {
-                return false
-            }
-            val sample1 = byteArray.copyOfRange(0, 2)
-            val sample2 = byteArray.copyOfRange(0, MAGIC_2.size)
-            return sample1.contentEquals(MAGIC_1) || sample2.contentEquals(MAGIC_2)
+    fun isJXL(byteArray: ByteArray): Boolean {
+        if (byteArray.size < MAGIC_2.size) {
+            return false
         }
+        val sample1 = byteArray.copyOfRange(0, 2)
+        val sample2 = byteArray.copyOfRange(0, MAGIC_2.size)
+        return sample1.contentEquals(MAGIC_1) || sample2.contentEquals(MAGIC_2)
     }
 }

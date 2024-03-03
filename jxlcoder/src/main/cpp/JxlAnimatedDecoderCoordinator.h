@@ -29,7 +29,7 @@
 #ifndef JXLCODER_JXLANIMATEDDECODERCOORDINATOR_H
 #define JXLCODER_JXLANIMATEDDECODERCOORDINATOR_H
 
-#include "JxlAnimatedDecoder.hpp"
+#include "interop/JxlAnimatedDecoder.hpp"
 #include "SizeScaler.h"
 #include "Support.h"
 #include <vector>

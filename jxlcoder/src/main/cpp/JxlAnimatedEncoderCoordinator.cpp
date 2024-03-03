@@ -28,7 +28,7 @@
 
 #include "JxlAnimatedEncoderCoordinator.h"
 #include <jni.h>
-#include "JxlDefinitions.h"
+#include "interop/JxlDefinitions.h"
 #include "Support.h"
 #include <string>
 #include <vector>

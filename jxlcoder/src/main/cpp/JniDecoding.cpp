@@ -28,7 +28,7 @@
 
 #include <jni.h>
 #include <vector>
-#include "JxlDecoding.h"
+#include "interop/JxlDecoding.h"
 #include "JniExceptions.h"
 #include "colorspaces/colorspace.h"
 #include "conversion/HalfFloats.h"

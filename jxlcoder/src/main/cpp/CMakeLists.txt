@@ -24,16 +24,16 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlEncoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
         icc/cmsgmt.c icc/cmshalf.c icc/cmsintrp.c icc/cmsio0.c icc/cmsio1.c icc/cmslut.c icc/cmsmd5.c icc/cmsmtrx.c icc/cmsnamed.c
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
-        icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp conversion/HalfFloats.cpp JniExceptions.cpp JxlEncoding.cpp
-        JxlDecoding.cpp JniDecoding.cpp conversion/Rgba2Rgb.cpp conversion/Rgb1010102toF16.cpp conversion/Rgba16bitCopy.cpp
+        icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp conversion/HalfFloats.cpp JniExceptions.cpp interop/JxlEncoding.cpp
+        interop/JxlDecoding.cpp JniDecoding.cpp conversion/Rgba2Rgb.cpp conversion/Rgb1010102toF16.cpp conversion/Rgba16bitCopy.cpp
         conversion/F32ToRGB1010102.cpp conversion/Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
         Support.cpp ReformatBitmap.cpp conversion/Rgb565.cpp conversion/Rgb1010102.cpp conversion/F32toU8.cpp conversion/Rgba8ToF16.cpp CopyUnaligned.cpp
-        XScaler.cpp conversion/RgbaF16bitNBitU8.cpp conversion/RGBAlpha.cpp JxlAnimatedDecoder.cpp JxlAnimatedEncoder.cpp
+        XScaler.cpp conversion/RgbaF16bitNBitU8.cpp conversion/RGBAlpha.cpp interop/JxlAnimatedDecoder.cpp interop/JxlAnimatedEncoder.cpp
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp colorspaces/CoderCms.cpp
         colorspaces/HDRTransferAdapter.cpp
         processing/ShgStackBlur.cpp
         hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
-        hwy/timer.cc
+        hwy/timer.cc JXLFromJpegContruction.cpp
 )
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR}

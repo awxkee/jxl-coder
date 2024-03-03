@@ -116,9 +116,9 @@ class MainActivity : ComponentActivity() {
                                         this@MainActivity.assets.open(asset).source().buffer()
                                             .readByteArray()
 
-                                    val largeImageSize = JxlCoder().getSize(buffer4)
+                                    val largeImageSize = JxlCoder.getSize(buffer4)
                                     if (largeImageSize != null) {
-                                        var srcImage = JxlCoder().decodeSampled(
+                                        var srcImage = JxlCoder.decodeSampled(
                                             buffer4,
                                             largeImageSize.width / 3,
                                             largeImageSize.height / 3,

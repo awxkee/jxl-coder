@@ -27,8 +27,8 @@
  */
 
 #include "JxlEncoding.h"
-#include <jxl/encode.h>
-#include <jxl/encode_cxx.h>
+#include "encode.h"
+#include "encode_cxx.h"
 #include "thread_parallel_runner.h"
 #include "thread_parallel_runner_cxx.h"
 #include <vector>
@@ -41,7 +41,7 @@ static inline float JXLGetDistance(int quality) {
     if (quality >= 30)
         return clamp((0.1f + (float) (100 - std::min(100.0f, (float) quality)) * 0.09f), 0.0f,
                      15.0f);
-    return clamp((6.24f + (float) pow(2.5f, (30.0 - (float) quality) / 5.0) / 6.25f), 0.0f,
+    return clamp((6.24f + (float) std::powf(2.5f, (30.0 - (float) quality) / 5.0) / 6.25f), 0.0f,
                  15.0f);
 }
 

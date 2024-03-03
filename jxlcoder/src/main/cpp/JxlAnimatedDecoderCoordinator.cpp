@@ -31,7 +31,7 @@
 #include "Support.h"
 #include "JniExceptions.h"
 #include <jni.h>
-#include "JxlAnimatedDecoder.hpp"
+#include "interop/JxlAnimatedDecoder.hpp"
 #include "colorspaces/colorspace.h"
 #include "android/bitmap.h"
 #include "ReformatBitmap.h"

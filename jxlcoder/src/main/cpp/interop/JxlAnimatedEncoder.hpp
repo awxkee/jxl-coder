@@ -29,9 +29,9 @@
 #ifdef __cplusplus
 
 #include <stdio.h>
-#include <jxl/encode.h>
-#include <jxl/encode_cxx.h>
-#include <jxl/thread_parallel_runner_cxx.h>
+#include "encode.h"
+#include "encode_cxx.h"
+#include "thread_parallel_runner_cxx.h"
 #include <string>
 #include "JxlDefinitions.h"
 #include <vector>

@@ -1,10 +1,10 @@
 /*
  * MIT License
  *
- * Copyright (c) 2023 Radzivon Bartoshyk
+ * Copyright (c) 2024 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
- * Created by Radzivon Bartoshyk on 6/11/2023
+ * Created by Radzivon Bartoshyk on 3/3/2024
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,15 +28,18 @@
 
 package com.awxkee.jxlcoder
 
-/** Sets the decoding speed tier for the provided options. Minimum is 0
- * (slowest to decode, best quality/density), and maximum is 4 (fastest to
- * decode, at the cost of some quality/density). Default is 0.
- * Uses *JXL_ENC_FRAME_SETTING_DECODING_SPEED* from libjxl
+/**
+ * Sets encoder effort/speed level without affecting decoding speed
  */
-enum class JxlDecodingSpeed(internal val value: Int) {
-    SLOWEST(0),
-    SLOW(1),
-    MEDIUM(2),
-    FAST(3),
-    FASTEST(4)
+enum class JxlEffort(internal val value: Int) {
+    LIGHTNING(1),
+    THUNDER(2),
+    FALCON(3),
+    CHEETAH(4),
+    HARE(5),
+    WOMBAT(6),
+    SQUIRREL(7),
+    KITTEN(8),
+    TORTOISE(9),
+    GLACIER(10),
 }

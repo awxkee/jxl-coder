@@ -855,7 +855,7 @@ namespace coder::HWY_NAMESPACE {
 
         auto src8 = reinterpret_cast<const uint8_t *>(input);
 
-        float maxColors = pow(2.0f, (float) depth) - 1.0f;
+        float maxColors = std::powf(2.0f, static_cast<float>(depth)) - 1.0f;
 
         concurrency::parallel_for(6, outputHeight, [&](int y) {
             ScaleRowU8(src8, srcStride, inputWidth, inputHeight, output,

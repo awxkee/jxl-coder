@@ -62,8 +62,8 @@ namespace coder::HWY_NAMESPACE {
         const float c1 = 3424.0f / 4096.0f;
         const float c2 = (2413.0f / 4096.0f) * 32.0f;
         const float c3 = (2392.0f / 4096.0f) * 32.0f;
-        float p = pow(v, 1.0f / m2);
-        v = pow(max(p - c1, 0.0f) / (c2 - c3 * p), 1.0f / m1);
+        float p = std::powf(v, 1.0f / m2);
+        v = std::powf(max(p - c1, 0.0f) / (c2 - c3 * p), 1.0f / m1);
         v *= 10000.0f / sdrReferencePoint;
         return copysign(v, o);
     }
@@ -144,7 +144,7 @@ namespace coder::HWY_NAMESPACE {
         if (v <= 0.045f) {
             return v / 12.92f;
         } else {
-            return std::pow((v + 0.055f) / 1.055f, 2.4f);
+            return std::powf((v + 0.055f) / 1.055f, 2.4f);
         }
     }
 
@@ -167,7 +167,7 @@ namespace coder::HWY_NAMESPACE {
         } else if (v < 4.5f * 0.018053968510807f) {
             return v / 4.5f;
         } else if (v < 1.f) {
-            return std::pow((v + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
+            return std::powf((v + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
         }
         return 1.f;
     }
@@ -178,7 +178,7 @@ namespace coder::HWY_NAMESPACE {
         } else if (linear < 0.018053968510807f) {
             return linear * 4.5f;
         } else if (linear < 1.f) {
-            return 1.09929682680944f * std::pow(linear, 0.45f) - 0.09929682680944f;
+            return 1.09929682680944f * std::powf(linear, 0.45f) - 0.09929682680944f;
         }
         return 1.f;
     }
@@ -187,7 +187,7 @@ namespace coder::HWY_NAMESPACE {
         if (linear <= 0.0031308f) {
             return 12.92f * linear;
         } else {
-            return 1.055f * std::pow(linear, 1.0f / 2.4f) - 0.055f;
+            return 1.055f * std::powf(linear, 1.0f / 2.4f) - 0.055f;
         }
     }
 
@@ -208,7 +208,7 @@ namespace coder::HWY_NAMESPACE {
         if (linear <= 0.018f) {
             return 4.5f * linear;
         } else {
-            return 1.099f * pow(linear, 0.45f) - 0.099f;
+            return 1.099f * std::powf(linear, 0.45f) - 0.099f;
         }
     }
 
@@ -221,7 +221,7 @@ namespace coder::HWY_NAMESPACE {
     }
 
     HWY_FAST_MATH_INLINE float SMPTE428Eotf(const float value) {
-        return std::pow(std::max(value, 0.f), 2.6f) / 0.91655527974030934f;
+        return std::powf(std::max(value, 0.f), 2.6f) / 0.91655527974030934f;
     }
 
     HWY_FAST_MATH_INLINE float HLGEotf(float v) {
@@ -249,18 +249,18 @@ namespace coder::HWY_NAMESPACE {
     }
 
     HWY_FAST_MATH_INLINE float dciP3PQGammaCorrection(float linear) {
-        return std::pow(linear, 1 / 2.6f);
+        return std::powf(linear, 1 / 2.6f);
     }
 
     HWY_FAST_MATH_INLINE float gammaOtf(float linear, const float gamma) {
-        return std::pow(linear, gamma);
+        return std::powf(linear, gamma);
     }
 
     HWY_FAST_MATH_INLINE float Rec601Oetf(float intensity) {
         if (intensity < 0.018f) {
             return intensity * 4.5f;
         } else {
-            return 1.099 * std::pow(intensity, 0.45f) - 0.099f;
+            return 1.099f * std::powf(intensity, 0.45f) - 0.099f;
         }
     }
 
@@ -284,7 +284,7 @@ namespace coder::HWY_NAMESPACE {
         if (intensity < 0.081f) {
             return intensity / 4.5f;
         } else {
-            return std::pow((intensity + 0.099f) / 1.099f, 1.0f / 0.45f);
+            return std::powf((intensity + 0.099f) / 1.099f, 1.0f / 0.45f);
         }
     }
 
@@ -294,7 +294,7 @@ namespace coder::HWY_NAMESPACE {
         } else if (gamma < 4.f * 0.022821585529445f) {
             return gamma / 4.f;
         } else if (gamma < 1.f) {
-            return std::pow((gamma + 0.111572195921731f) / 1.111572195921731f, 1.f / 0.45f);
+            return std::powf((gamma + 0.111572195921731f) / 1.111572195921731f, 1.f / 0.45f);
         }
         return 1.f;
     }
@@ -321,7 +321,7 @@ namespace coder::HWY_NAMESPACE {
         } else if (linear < 0.022821585529445f) {
             return linear * 4.f;
         } else if (linear < 1.f) {
-            return 1.111572195921731f * std::pow(linear, 0.45f) - 0.111572195921731f;
+            return 1.111572195921731f * std::powf(linear, 0.45f) - 0.111572195921731f;
         }
         return 1.f;
     }
@@ -335,7 +335,7 @@ namespace coder::HWY_NAMESPACE {
         // The function is non-bijective so choose the middle of [0, 0.01].
         const float mid_interval = 0.01f / 2.f;
         return (gamma <= 0.0f) ? mid_interval
-                               : std::pow(10.0f, 2.f * (std::min(gamma, 1.f) - 1.0f));
+                               : std::powf(10.0f, 2.f * (std::min(gamma, 1.f) - 1.0f));
     }
 
     template<class D, HWY_IF_F32_D(D), typename T = TFromD<D>, typename V = VFromD<D>>
@@ -360,7 +360,7 @@ namespace coder::HWY_NAMESPACE {
         // The function is non-bijective so choose the middle of [0, 0.00316227766f[.
         const float mid_interval = 0.00316227766f / 2.f;
         return (gamma <= 0.0f) ? mid_interval
-                               : std::pow(10.0f, 2.5f * (std::min(gamma, 1.f) - 1.0f));
+                               : std::powf(10.0f, 2.5f * (std::min(gamma, 1.f) - 1.0f));
     }
 
     template<class D, HWY_IF_F32_D(D), typename T = TFromD<D>, typename V = VFromD<D>>
@@ -384,11 +384,11 @@ namespace coder::HWY_NAMESPACE {
 
     HWY_FAST_MATH_INLINE float Iec61966Eotf(float gamma) {
         if (gamma <= -4.5f * 0.018053968510807f) {
-            return std::pow((-gamma + 0.09929682680944f) / -1.09929682680944f, 1.f / 0.45f);
+            return std::powf((-gamma + 0.09929682680944f) / -1.09929682680944f, 1.f / 0.45f);
         } else if (gamma < 4.5f * 0.018053968510807f) {
             return gamma / 4.5f;
         }
-        return std::pow((gamma + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
+        return std::powf((gamma + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
     }
 
     template<class D, HWY_IF_F32_D(D), typename T = TFromD<D>, typename V = VFromD<D>>
@@ -419,23 +419,23 @@ namespace coder::HWY_NAMESPACE {
 
     HWY_FAST_MATH_INLINE float Iec61966Oetf(float linear) {
         if (linear <= -0.018053968510807f) {
-            return -1.09929682680944f * std::pow(-linear, 0.45f) + 0.09929682680944f;
+            return -1.09929682680944f * std::powf(-linear, 0.45f) + 0.09929682680944f;
         } else if (linear < 0.018053968510807f) {
             return linear * 4.5f;
         }
-        return 1.09929682680944f * std::pow(linear, 0.45f) - 0.09929682680944f;
+        return 1.09929682680944f * std::powf(linear, 0.45f) - 0.09929682680944f;
     }
 
     HWY_FAST_MATH_INLINE float Bt1361Eotf(float gamma) {
         if (gamma < -0.25f) {
             return -0.25f;
         } else if (gamma < 0.f) {
-            return std::pow((gamma - 0.02482420670236f) / -0.27482420670236f, 1.f / 0.45f) /
+            return std::powf((gamma - 0.02482420670236f) / -0.27482420670236f, 1.f / 0.45f) /
                    -4.f;
         } else if (gamma < 4.5f * 0.018053968510807f) {
             return gamma / 4.5f;
         } else if (gamma < 1.f) {
-            return std::pow((gamma + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
+            return std::powf((gamma + 0.09929682680944f) / 1.09929682680944f, 1.f / 0.45f);
         }
         return 1.f;
     }
@@ -475,11 +475,11 @@ namespace coder::HWY_NAMESPACE {
         if (linear < -0.25f) {
             return -0.25f;
         } else if (linear < 0.f) {
-            return -0.27482420670236f * std::pow(-4.f * linear, 0.45f) + 0.02482420670236f;
+            return -0.27482420670236f * std::powf(-4.f * linear, 0.45f) + 0.02482420670236f;
         } else if (linear < 0.018053968510807f) {
             return linear * 4.5f;
         } else if (linear < 1.f) {
-            return 1.09929682680944f * std::pow(linear, 0.45f) - 0.09929682680944f;
+            return 1.09929682680944f * std::powf(linear, 0.45f) - 0.09929682680944f;
         }
         return 1.f;
     }
@@ -547,7 +547,7 @@ namespace coder::HWY_NAMESPACE {
             if (Lin == 0) {
                 return;
             }
-            const TFromD<D> Lout = log(abs(1 + Lin)) * den;
+            const TFromD<D> Lout = std::logf(std::abs(1 + Lin)) * den;
             const auto shScale = Lout / Lin;
             r = r * shScale;
             g = g * shScale;
