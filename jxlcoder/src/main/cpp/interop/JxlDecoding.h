@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef JXLCODER_JXLDECODING_H
-#define JXLCODER_JXLDECODING_H
+#pragma once
 
 #include <vector>
 #include "codestream_header.h"
@@ -44,5 +43,3 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          bool* hasAlphaInOrigin);
 
 bool DecodeBasicInfo(const uint8_t *jxl, size_t size, size_t *xsize, size_t *ysize);
-
-#endif //JXLCODER_JXLDECODING_H

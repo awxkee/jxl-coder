@@ -41,7 +41,6 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          bool *preferEncoding,
                          JxlColorEncoding *colorEncoding,
                          bool *hasAlphaInOrigin) {
-    // Multi-threaded parallel runner.
     auto runner = JxlResizableParallelRunnerMake(nullptr);
 
     auto dec = JxlDecoderMake(nullptr);

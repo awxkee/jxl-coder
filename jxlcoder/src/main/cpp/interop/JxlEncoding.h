@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef JXLCODER_JXLENCODING_H
-#define JXLCODER_JXLENCODING_H
+#pragma once
 
 #include <vector>
 #include "JxlDefinitions.h"
@@ -48,5 +47,3 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       std::vector<uint8_t>& iccProfile,
                       int effort, int quality, int decodingSpeed,
                       JxlColorEncoding& colorEncoding);
-
-#endif //JXLCODER_JXLENCODING_H

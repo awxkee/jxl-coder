@@ -15,11 +15,19 @@ Image processing speeded up by [libhwy](https://github.com/google/highway)
 
 ```kotlin
 // May decode JXL images, supported RGBA_8888, RGBA_F16, RGBA_1010102, RGB_565, HARDWARE
-val bitmap: Bitmap = JxlCoder().decode(buffer) // Decode JPEG XL from ByteArray
+val bitmap: Bitmap = JxlCoder.decode(buffer) // Decode JPEG XL from ByteArray
 // If you need a sample
 val bitmap: Bitmap =
-    JxlCoder().decodeSampled(buffer, width, height) // Decode JPEG XL from ByteArray with given size
-val bytes: ByteArray = JxlCoder().encode(decodedBitmap) // Encode Bitmap to JPEG XL
+    JxlCoder.decodeSampled(buffer, width, height) // Decode JPEG XL from ByteArray with given size
+val bytes: ByteArray = JxlCoder.encode(decodedBitmap) // Encode Bitmap to JPEG XL
+```
+
+# Construct from JPEG or Reconstruct JPEG from JXL
+```kotlin
+// Construct JPEG XL from JPEG data
+ val encoded = JxlCoder.construct(jpegByteArray)
+// Re-construct JPEG from JXL data
+ val reconstruct = JxlCoder.reconstructJPEG(jxlByteArray)
 ```
 
 # Animation Decoding
@@ -57,13 +65,13 @@ repositories {
 ```
 
 ```groovy
-implementation 'com.github.awxkee:jxl-coder:1.11.1' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder:2.0.0' // or any version above picker from release tags
 
 // Glide JPEG XL plugin if you need one
-implementation 'com.github.awxkee:jxl-coder-glide:1.11.1' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder-glide:2.0.0' // or any version above picker from release tags
 
 // Coil JPEG XL plugin if you need one
-implementation 'com.github.awxkee:jxl-coder-coil:1.11.1' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder-coil:2.0.0' // or any version above picker from release tags
 ```
 
 # Self-build

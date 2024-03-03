@@ -33,7 +33,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         colorspaces/HDRTransferAdapter.cpp
         processing/ShgStackBlur.cpp
         hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
-        hwy/timer.cc JXLFromJpegContruction.cpp
+        hwy/timer.cc JXLJpegInterop.cpp
 )
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR}

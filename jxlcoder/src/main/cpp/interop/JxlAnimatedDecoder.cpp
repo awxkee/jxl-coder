@@ -1,6 +1,6 @@
 //
 //  JxlAnimatedDecoder.cpp
-//  JxclCoder [https://github.com/awxkee/jxl-coder-swift]
+//  jxl-coder [https://github.com/awxkee/jxl-coder]
 //
 //  Created by Radzivon Bartoshyk on 26/10/2023.
 //

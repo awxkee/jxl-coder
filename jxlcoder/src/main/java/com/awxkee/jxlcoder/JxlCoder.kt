@@ -137,9 +137,34 @@ object JxlCoder {
         )
     }
 
+    /**
+     * @author Radzivon Bartoshyk
+     * @param fromJpegData - JPEG data that will be used for JPEG XL lossless construction
+     * @return Byte array that contains constructed JPEG XL
+     */
+    fun construct(fromJpegData: ByteArray): ByteArray {
+        return constructImpl(fromJpegData)
+    }
+
+    /**
+     * @author Radzivon Bartoshyk
+     * @param fromJPEGXLData - JPEG XL data that will be used for JPEG lossless construction
+     * @return Byte array that contains re-constructed JPEG
+     */
+    fun reconstructJPEG(fromJPEGXLData: ByteArray): ByteArray {
+        return reconstructImpl(fromJPEGXLData)
+    }
+
+    /**
+     * @return NULL if byte array is not valid JPEG XL
+     */
     fun getSize(byteArray: ByteArray): Size? {
         return getSizeImpl(byteArray)
     }
+
+    private external fun reconstructImpl(fromJPEGXLData: ByteArray): ByteArray
+
+    private external fun constructImpl(fromJpegData: ByteArray): ByteArray
 
     private external fun getSizeImpl(byteArray: ByteArray): Size?
 

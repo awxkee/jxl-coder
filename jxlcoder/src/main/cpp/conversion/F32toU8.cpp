@@ -33,7 +33,7 @@
 #include "concurrency.hpp"
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "conversion/F32ToU8.cpp"
+#define HWY_TARGET_INCLUDE "conversion/F32toU8.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

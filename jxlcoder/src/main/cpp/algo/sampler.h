@@ -19,13 +19,13 @@ static inline half_float::half castU16(uint16_t t) {
 
 template<typename D, typename T>
 static inline D PromoteTo(T t, float maxColors) {
-    D result = static_cast<D>((float) t / maxColors);
+    D result = static_cast<D>(static_cast<float>(t) / maxColors);
     return result;
 }
 
 template<typename D, typename T>
 static inline D DemoteTo(T t, float maxColors) {
-    return (D) clamp(((float) t * (float) maxColors), 0.0f, (float) maxColors);
+    return (D) std::clamp((static_cast<float>(t) * static_cast<float>(maxColors)), 0.0f, static_cast<float>(maxColors));
 }
 
 template<typename T>
@@ -103,10 +103,10 @@ static inline T sinc(T x) {
 
 template<typename T>
 static inline T LanczosWindow(T x, const T a) {
-    if (abs(x) < a) {
-        return sinc(T(M_PI) * x) * sinc(T(M_PI) * x / a);
+    if (std::abs(x) < a) {
+        return sinc(static_cast<T>(M_PI) * x) * sinc(static_cast<float>(M_PI) * x / a);
     }
-    return T(0.0);
+    return static_cast<T>(0.0);
 }
 
 template<typename T>
