@@ -202,7 +202,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
         function = PQ;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
         function = EOTF_GAMMA;
-        gamma = colorEncoding.gamma;
+        gamma = 1.f / colorEncoding.gamma;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
         function = EOTF_BT709;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {

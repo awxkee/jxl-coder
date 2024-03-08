@@ -141,7 +141,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
       toneMapper = TONE_SKIP;
       function = EOTF_GAMMA;
-      gamma = colorEncoding.gamma;
+      gamma = 1.f / colorEncoding.gamma;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
       toneMapper = TONE_SKIP;
       function = EOTF_BT709;

@@ -573,9 +573,9 @@ void ProcessUSRow(uint8_t *HWY_RESTRICT data, const int width, const float maxCo
     VU8x1 AURow;
     LoadInterleaved4(du8x1, reinterpret_cast<uint8_t *>(ptr16), RURow, GURow, BURow, AURow);
 
-    VF32x1 r = Mul(PromoteTo(df32x1, RURow), recProcColors1);
-    VF32x1 g = Mul(PromoteTo(df32x1, GURow), recProcColors1);
-    VF32x1 b = Mul(PromoteTo(df32x1, BURow), recProcColors1);
+    VF32x1 r = PromoteTo(df32x1, RURow);
+    VF32x1 g = PromoteTo(df32x1, GURow);
+    VF32x1 b = PromoteTo(df32x1, BURow);
 
     chromaAdaptation1Pixel.TransferRow(gammaCorrection,
                                        function,

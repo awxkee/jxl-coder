@@ -109,7 +109,8 @@ class MainActivity : ComponentActivity() {
                     }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
-                            val assets = (this@MainActivity.assets.list("") ?: return@launch)
+                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
+//                            assets = assets.filter { it == "alpha_png_freepik.jxl" }.toList()
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -122,12 +123,11 @@ class MainActivity : ComponentActivity() {
                                             buffer4,
                                             largeImageSize.width / 3,
                                             largeImageSize.height / 3,
-                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
+                                            preferredColorConfig = PreferredColorConfig.HARDWARE,
                                             com.awxkee.jxlcoder.ScaleMode.FIT,
                                             JxlResizeFilter.BICUBIC,
                                             toneMapper = JxlToneMapper.LOGARITHMIC,
                                         )
-                                        JxlCoder.encode(bitmap = srcImage, colorSpace = JxlColorSpace.RGB)
                                         lifecycleScope.launch {
                                             imagesArray.add(srcImage)
                                         }
