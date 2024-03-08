@@ -35,33 +35,33 @@
 
 bool loadAHardwareBuffersAPI();
 
-typedef int (* _Nullable AHardwareBufferAllocateFunc)(
-        const AHardwareBuffer_Desc *_Nonnull desc, AHardwareBuffer *_Nullable *_Nonnull outBuffer
+typedef int (*_Nullable AHardwareBufferAllocateFunc)(
+    const AHardwareBuffer_Desc *_Nonnull desc, AHardwareBuffer *_Nullable *_Nonnull outBuffer
 );
 
-typedef int (* _Nullable AHardwareBufferIsSupportedFunc)(
-        const AHardwareBuffer_Desc *_Nonnull desc
+typedef int (*_Nullable AHardwareBufferIsSupportedFunc)(
+    const AHardwareBuffer_Desc *_Nonnull desc
 );
 
-typedef int (* _Nullable AHardwareBufferReleaseFunc)(
-        AHardwareBuffer *_Nonnull buffer
+typedef int (*_Nullable AHardwareBufferReleaseFunc)(
+    AHardwareBuffer *_Nonnull buffer
 );
 
-typedef int (* _Nullable AHardwareBufferUnlockFunc)(
-        AHardwareBuffer *_Nonnull buffer, int32_t *_Nullable fence
+typedef int (*_Nullable AHardwareBufferUnlockFunc)(
+    AHardwareBuffer *_Nonnull buffer, int32_t *_Nullable fence
 );
 
-typedef int (* _Nullable AHardwareBufferLockFunc)(
-        AHardwareBuffer *_Nonnull buffer, uint64_t usage, int32_t fence,
-        const ARect *_Nullable rect, void *_Nullable *_Nonnull outVirtualAddress
+typedef int (*_Nullable AHardwareBufferLockFunc)(
+    AHardwareBuffer *_Nonnull buffer, uint64_t usage, int32_t fence,
+    const ARect *_Nullable rect, void *_Nullable *_Nonnull outVirtualAddress
 );
 
-typedef void (* _Nullable AHardwareBufferDescribeFunc)(
-        const AHardwareBuffer *_Nonnull buffer, AHardwareBuffer_Desc *_Nonnull outDesc
+typedef void (*_Nullable AHardwareBufferDescribeFunc)(
+    const AHardwareBuffer *_Nonnull buffer, AHardwareBuffer_Desc *_Nonnull outDesc
 );
 
-typedef jobject _Nullable (* _Nullable AHardwareBufferToHardwareBufferFunc)(
-        JNIEnv * _Nonnull env, AHardwareBuffer * _Nonnull hardwareBuffer
+typedef jobject _Nullable (*_Nullable AHardwareBufferToHardwareBufferFunc)(
+    JNIEnv *_Nonnull env, AHardwareBuffer *_Nonnull hardwareBuffer
 );
 
 extern AHardwareBufferAllocateFunc AHardwareBuffer_allocate_compat;

@@ -36,78 +36,78 @@
 
 namespace coder {
 
-    class JxlConstruction {
-    public:
-        JxlConstruction(std::vector<uint8_t> &data) : jpegData(data) {
+class JxlConstruction {
+ public:
+  JxlConstruction(std::vector<uint8_t> &data) : jpegData(data) {
 
-        }
+  }
 
-        bool construct() {
-            auto enc = JxlEncoderMake(nullptr);
-            auto runner = JxlThreadParallelRunnerMake(nullptr,
-                                                      JxlThreadParallelRunnerDefaultNumWorkerThreads());
-            if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
-                                                               JxlThreadParallelRunner,
-                                                               runner.get())) {
-                return false;
-            }
+  bool construct() {
+    auto enc = JxlEncoderMake(nullptr);
+    auto runner = JxlThreadParallelRunnerMake(nullptr,
+                                              JxlThreadParallelRunnerDefaultNumWorkerThreads());
+    if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
+                                                       JxlThreadParallelRunner,
+                                                       runner.get())) {
+      return false;
+    }
 
-            if (JXL_ENC_SUCCESS != JxlEncoderStoreJPEGMetadata(enc.get(), JXL_TRUE)) {
-                return false;
-            }
+    if (JXL_ENC_SUCCESS != JxlEncoderStoreJPEGMetadata(enc.get(), JXL_TRUE)) {
+      return false;
+    }
 
-            JxlEncoderFrameSettings *frameSettings =
-                    JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
+    JxlEncoderFrameSettings *frameSettings =
+        JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
 
-            if (JXL_ENC_SUCCESS != JxlEncoderSetFrameLossless(frameSettings, JXL_TRUE)) {
-                return false;
-            }
+    if (JXL_ENC_SUCCESS != JxlEncoderSetFrameLossless(frameSettings, JXL_TRUE)) {
+      return false;
+    }
 
-            if (JxlEncoderFrameSettingsSetOption(frameSettings,
-                                                 JXL_ENC_FRAME_SETTING_EFFORT, 7) != JXL_ENC_SUCCESS) {
-                return false;
-            }
+    if (JxlEncoderFrameSettingsSetOption(frameSettings,
+                                         JXL_ENC_FRAME_SETTING_EFFORT, 7) != JXL_ENC_SUCCESS) {
+      return false;
+    }
 
-            if (JXL_ENC_SUCCESS !=
-                JxlEncoderFrameSettingsSetOption(frameSettings, JXL_ENC_FRAME_SETTING_DECODING_SPEED, 3)) {
-                return false;
-            }
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderFrameSettingsSetOption(frameSettings, JXL_ENC_FRAME_SETTING_DECODING_SPEED, 3)) {
+      return false;
+    }
 
-            if (JXL_ENC_SUCCESS !=
-                JxlEncoderAddJPEGFrame(frameSettings, jpegData.data(), jpegData.size())) {
-                return false;
-            }
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderAddJPEGFrame(frameSettings, jpegData.data(), jpegData.size())) {
+      return false;
+    }
 
-            JxlEncoderCloseInput(enc.get());
+    JxlEncoderCloseInput(enc.get());
 
-            compressed.resize(64);
-            uint8_t *next_out = compressed.data();
-            size_t avail_out = compressed.size() - (next_out - compressed.data());
-            JxlEncoderStatus process_result = JXL_ENC_NEED_MORE_OUTPUT;
-            while (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
-                process_result = JxlEncoderProcessOutput(enc.get(), &next_out, &avail_out);
-                if (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
-                    size_t offset = next_out - compressed.data();
-                    compressed.resize(compressed.size() * 2);
-                    next_out = compressed.data() + offset;
-                    avail_out = compressed.size() - offset;
-                }
-            }
-            compressed.resize(next_out - compressed.data());
-            if (JXL_ENC_SUCCESS != process_result) {
-                return false;
-            }
+    compressed.resize(64);
+    uint8_t *next_out = compressed.data();
+    size_t avail_out = compressed.size() - (next_out - compressed.data());
+    JxlEncoderStatus process_result = JXL_ENC_NEED_MORE_OUTPUT;
+    while (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
+      process_result = JxlEncoderProcessOutput(enc.get(), &next_out, &avail_out);
+      if (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
+        size_t offset = next_out - compressed.data();
+        compressed.resize(compressed.size() * 2);
+        next_out = compressed.data() + offset;
+        avail_out = compressed.size() - offset;
+      }
+    }
+    compressed.resize(next_out - compressed.data());
+    if (JXL_ENC_SUCCESS != process_result) {
+      return false;
+    }
 
-            return true;
-        }
+    return true;
+  }
 
-        std::vector<uint8_t>& getCompressedData() {
-            return compressed;
-        }
+  std::vector<uint8_t> &getCompressedData() {
+    return compressed;
+  }
 
-    private:
-        const std::vector<uint8_t> jpegData;
-        std::vector<uint8_t> compressed;
-    };
+ private:
+  const std::vector<uint8_t> jpegData;
+  std::vector<uint8_t> compressed;
+};
 
 } // coder

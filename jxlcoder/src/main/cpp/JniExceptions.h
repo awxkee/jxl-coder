@@ -34,7 +34,7 @@
 
 jint throwInvalidJXLException(JNIEnv *env);
 jint throwPixelsException(JNIEnv *env);
-jint throwException(JNIEnv *env, std::string& msg);
+jint throwException(JNIEnv *env, std::string &msg);
 jint throwCantCompressImage(JNIEnv *env);
 jint throwInvalidColorSpaceException(JNIEnv *env);
 jint throwInvalidCompressionOptionException(JNIEnv *env);

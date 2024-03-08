@@ -47,52 +47,83 @@ using namespace std;
 HWY_BEFORE_NAMESPACE();
 namespace coder::HWY_NAMESPACE {
 
-    using hwy::HWY_NAMESPACE::LoadInterleaved4;
-    using hwy::HWY_NAMESPACE::StoreInterleaved3;
-    using hwy::HWY_NAMESPACE::ScalableTag;
-    using hwy::HWY_NAMESPACE::Vec;
+using namespace hwy::HWY_NAMESPACE;
 
-    void
-    Rgba16bitToRGBC(const uint16_t *HWY_RESTRICT src, uint16_t *HWY_RESTRICT dst, int width) {
-        const ScalableTag<uint16_t> du16;
-        using V = Vec<decltype(du16)>;
-        int x = 0;
-        auto srcPixels = reinterpret_cast<const uint16_t *>(src);
-        auto dstPixels = reinterpret_cast<uint16_t *>(dst);
-        const int pixels = du16.MaxLanes();
-        for (; x + pixels < width; x += pixels) {
-            V pixels1;
-            V pixels2;
-            V pixels3;
-            V pixels4;
-            LoadInterleaved4(du16, srcPixels, pixels1, pixels2, pixels3, pixels4);
-            StoreInterleaved3(pixels1, pixels2, pixels3, du16, dstPixels);
+template<class D, typename V = VFromD<D>, typename T = TFromD<D>>
+void
+Rgba2RgbROW(D d, const T *HWY_RESTRICT src, T *HWY_RESTRICT dst, const int width) {
+  int x = 0;
+  auto srcPixels = reinterpret_cast<const T *>(src);
+  auto dstPixels = reinterpret_cast<T *>(dst);
+  const int pixels = d.MaxLanes();
+  for (; x + pixels < width; x += pixels) {
+    V pixels1;
+    V pixels2;
+    V pixels3;
+    V pixels4;
+    LoadInterleaved4(d, srcPixels, pixels1, pixels2, pixels3, pixels4);
+    StoreInterleaved3(pixels1, pixels2, pixels3, d, dstPixels);
 
-            srcPixels += 4 * pixels;
-            dstPixels += 3 * pixels;
-        }
+    srcPixels += 4 * pixels;
+    dstPixels += 3 * pixels;
+  }
 
-        for (; x < width; ++x) {
-            dstPixels[0] = srcPixels[0];
-            dstPixels[1] = srcPixels[1];
-            dstPixels[2] = srcPixels[2];
+  for (; x < width; ++x) {
+    dstPixels[0] = srcPixels[0];
+    dstPixels[1] = srcPixels[1];
+    dstPixels[2] = srcPixels[2];
 
-            srcPixels += 4;
-            dstPixels += 3;
-        }
-    }
+    srcPixels += 4;
+    dstPixels += 3;
+  }
+}
 
-    void HRgba16bit2RGB(const uint16_t *HWY_RESTRICT src, int srcStride,
-                        uint16_t *HWY_RESTRICT dst, int dstStride, int height,
-                        int width) {
-        auto rgbaData = reinterpret_cast<const uint8_t *>(src);
-        auto rgbData = reinterpret_cast<uint8_t *>(dst);
+template<class D, typename V = VFromD<D>, typename T = TFromD<D>>
+void Rgba2RGBHWY(D d,
+                 const T *HWY_RESTRICT src,
+                 const int srcStride,
+                 T *HWY_RESTRICT dst,
+                 const int dstStride,
+                 const int width,
+                 const int height) {
+  auto rgbaData = reinterpret_cast<const uint8_t *>(src);
+  auto rgbData = reinterpret_cast<uint8_t *>(dst);
 
-        concurrency::parallel_for(2, height, [&](int y) {
-            Rgba16bitToRGBC(reinterpret_cast<const uint16_t *>(rgbaData + srcStride * y),
-                            reinterpret_cast<uint16_t *>(rgbData + dstStride * y), width);
-        });
-    }
+  concurrency::parallel_for(2, height, [&](int y) {
+    Rgba2RgbROW(d, reinterpret_cast<const T *>(rgbaData + srcStride * y),
+                reinterpret_cast<T *>(rgbData + dstStride * y), width);
+  });
+}
+
+void Rgba2RGBHWYU8(const uint8_t *HWY_RESTRICT src,
+                   const int srcStride,
+                   uint8_t *HWY_RESTRICT dst,
+                   const int dstStride,
+                   const int width,
+                   const int height) {
+  const ScalableTag<uint8_t> t;
+  Rgba2RGBHWY(t, src, srcStride, dst, dstStride, height, width);
+}
+
+void Rgba2RGBHWYU16(const uint16_t *HWY_RESTRICT src,
+                    const int srcStride,
+                    uint16_t *HWY_RESTRICT dst,
+                    const int dstStride,
+                    const int width,
+                    const int height) {
+  const ScalableTag<uint16_t> t;
+  Rgba2RGBHWY(t, src, srcStride, dst, dstStride, height, width);
+}
+
+void Rgba2RGBHWYF32(const hwy::float32_t *HWY_RESTRICT src,
+                    const int srcStride,
+                    hwy::float32_t *HWY_RESTRICT dst,
+                    const int dstStride,
+                    const int width,
+                    const int height) {
+  const ScalableTag<hwy::float32_t> t;
+  Rgba2RGBHWY(t, src, srcStride, dst, dstStride, height, width);
+}
 
 }
 HWY_AFTER_NAMESPACE();
@@ -100,13 +131,65 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 
 namespace coder {
-    HWY_EXPORT(Rgba16bitToRGBC);
-    HWY_EXPORT(HRgba16bit2RGB);
-    HWY_DLLEXPORT void Rgba16bit2RGB(const uint16_t *HWY_RESTRICT src, int srcStride,
-                                     uint16_t *HWY_RESTRICT dst, int dstStride, int height,
-                                     int width) {
-        HWY_DYNAMIC_DISPATCH(HRgba16bit2RGB)(src, srcStride, dst, dstStride, height, width);
-    }
+HWY_EXPORT(Rgba2RGBHWYU8);
+HWY_EXPORT(Rgba2RGBHWYU16);
+HWY_EXPORT(Rgba2RGBHWYF32);
+
+template<class T>
+HWY_DLLEXPORT void Rgba2RGB(const T *HWY_RESTRICT src,
+                            const int srcStride,
+                            T *HWY_RESTRICT dst,
+                            const int dstStride,
+                            const int width,
+                            const int height) {
+  if (std::is_same<T, uint8_t>::value) {
+    HWY_DYNAMIC_DISPATCH(Rgba2RGBHWYU8)(reinterpret_cast<const uint8_t *>(src),
+                                        srcStride,
+                                        reinterpret_cast<uint8_t *>(dst),
+                                        dstStride,
+                                        height,
+                                        width);
+  } else if (std::is_same<T, uint16_t>::value || std::is_same<T, hwy::float16_t>::value) {
+    HWY_DYNAMIC_DISPATCH(Rgba2RGBHWYU16)(reinterpret_cast<const uint16_t *>(src),
+                                         srcStride,
+                                         reinterpret_cast<uint16_t *>(dst),
+                                         dstStride,
+                                         height,
+                                         width);
+  } else if (std::is_same<T, hwy::float32_t>::value || std::is_same<T, float>::value) {
+    HWY_DYNAMIC_DISPATCH(Rgba2RGBHWYF32)(reinterpret_cast<const hwy::float32_t *>(src),
+                                         srcStride,
+                                         reinterpret_cast<hwy::float32_t *>(dst),
+                                         dstStride,
+                                         height,
+                                         width);
+  }
+}
+
+template void Rgba2RGB(const uint8_t *HWY_RESTRICT src,
+                       const int srcStride,
+                       uint8_t *HWY_RESTRICT dst,
+                       const int dstStride,
+                       const int width,
+                       const int height);
+
+template void Rgba2RGB(const uint16_t *HWY_RESTRICT src,
+                       const int srcStride,
+                       uint16_t *HWY_RESTRICT dst,
+                       const int dstStride,
+                       const int width,
+                       const int height);
+
+template void Rgba2RGB(const hwy::float16_t *HWY_RESTRICT src,
+                       const int srcStride,
+                       hwy::float16_t *HWY_RESTRICT dst,
+                       const int dstStride, const int width, const int height);
+
+template void Rgba2RGB(const float *HWY_RESTRICT src,
+                       const int srcStride,
+                       float *HWY_RESTRICT dst,
+                       const int dstStride, const int width, const int height);
+
 }
 
 #endif

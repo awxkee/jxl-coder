@@ -17,23 +17,20 @@ add_library(libbrotlienc SHARED IMPORTED)
 add_library(libjxl SHARED IMPORTED)
 add_library(libjxl_threads SHARED IMPORTED)
 add_library(libjxl_cms SHARED IMPORTED)
-add_library(libyuv STATIC IMPORTED)
-add_library(libskcms STATIC IMPORTED)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlEncoder.cpp icc/cmsalpha.c icc/cmscam02.c icc/cmscgats.c icc/cmscnvrt.c icc/cmserr.c icc/cmsgamma.c
         icc/cmsgmt.c icc/cmshalf.c icc/cmsintrp.c icc/cmsio0.c icc/cmsio1.c icc/cmslut.c icc/cmsmd5.c icc/cmsmtrx.c icc/cmsnamed.c
         icc/cmsopt.c icc/cmspack.c icc/cmspcs.c icc/cmsplugin.c icc/cmsps2.c icc/cmssamp.c icc/cmssm.c icc/cmstypes.c icc/cmsvirt.c
         icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp conversion/HalfFloats.cpp JniExceptions.cpp interop/JxlEncoding.cpp
-        interop/JxlDecoding.cpp JniDecoding.cpp conversion/Rgba2Rgb.cpp conversion/Rgb1010102toF16.cpp conversion/Rgba16bitCopy.cpp
+        interop/JxlDecoding.cpp JniDecoding.cpp conversion/Rgba2Rgb.cpp conversion/Rgb1010102toF16.cpp
         conversion/F32ToRGB1010102.cpp conversion/Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
         Support.cpp ReformatBitmap.cpp conversion/Rgb565.cpp conversion/Rgb1010102.cpp conversion/F32toU8.cpp conversion/Rgba8ToF16.cpp CopyUnaligned.cpp
         XScaler.cpp conversion/RgbaF16bitNBitU8.cpp conversion/RGBAlpha.cpp interop/JxlAnimatedDecoder.cpp interop/JxlAnimatedEncoder.cpp
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp colorspaces/CoderCms.cpp
-        colorspaces/HDRTransferAdapter.cpp
         processing/ShgStackBlur.cpp
         hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
-        hwy/timer.cc JXLJpegInterop.cpp
+        hwy/timer.cc JXLJpegInterop.cpp colorspaces/GamutAdapter.cpp
 )
 
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR}
@@ -45,8 +42,6 @@ set_target_properties(jxlcoder libbrotlienc PROPERTIES IMPORTED_LOCATION ${CMAKE
 set_target_properties(jxlcoder libjxl PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl.so)
 set_target_properties(jxlcoder libjxl_threads PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_threads.so)
 set_target_properties(jxlcoder libjxl_cms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_cms.so)
-set_target_properties(jxlcoder libyuv PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libyuv.a)
-set_target_properties(jxlcoder libskcms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libskcms.a)
 
 add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)
 target_include_directories(cpufeatures PUBLIC ${ANDROID_NDK}/sources/android/cpufeatures)
@@ -105,7 +100,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         libjxl
         libjxl_threads
         libjxl_cms
-        libskcms
         -ljnigraphics
-        libyuv
         log)

@@ -38,59 +38,59 @@
 extern "C"
 JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_constructImpl(JNIEnv *env, jobject thiz, jbyteArray fromJpegData) {
-    try {
-        auto totalLength = env->GetArrayLength(fromJpegData);
-        if (totalLength <= 0) {
-            std::string errorString = "Invalid input array length";
-            throwException(env, errorString);
-            return nullptr;
-        }
-        std::vector<uint8_t> srcBuffer(totalLength);
-        env->GetByteArrayRegion(fromJpegData, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.data()));
-        coder::JxlConstruction construction(srcBuffer);
-        if (!construction.construct()) {
-            std::string errorString = "Cannot construct JPEG XL from provided JPEG data";
-            throwException(env, errorString);
-            return nullptr;
-        }
-        std::vector<uint8_t> constructedJpegXL = construction.getCompressedData();
-        jbyteArray byteArray = env->NewByteArray((jsize) constructedJpegXL.size());
-        env->SetByteArrayRegion(byteArray, 0, (jint) constructedJpegXL.size(),
-                                reinterpret_cast<const jbyte *>(constructedJpegXL.data()));
-        return byteArray;
-    } catch (std::bad_alloc &err) {
-        std::string errorString = "Not enough memory to construct this image";
-        throwException(env, errorString);
-        return nullptr;
+  try {
+    auto totalLength = env->GetArrayLength(fromJpegData);
+    if (totalLength <= 0) {
+      std::string errorString = "Invalid input array length";
+      throwException(env, errorString);
+      return nullptr;
     }
+    std::vector<uint8_t> srcBuffer(totalLength);
+    env->GetByteArrayRegion(fromJpegData, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.data()));
+    coder::JxlConstruction construction(srcBuffer);
+    if (!construction.construct()) {
+      std::string errorString = "Cannot construct JPEG XL from provided JPEG data";
+      throwException(env, errorString);
+      return nullptr;
+    }
+    std::vector<uint8_t> constructedJpegXL = construction.getCompressedData();
+    jbyteArray byteArray = env->NewByteArray(static_cast<jint>(constructedJpegXL.size()));
+    env->SetByteArrayRegion(byteArray, 0, static_cast<jint>(constructedJpegXL.size()),
+                            reinterpret_cast<const jbyte *>(constructedJpegXL.data()));
+    return byteArray;
+  } catch (std::bad_alloc &err) {
+    std::string errorString = "Not enough memory to construct this image";
+    throwException(env, errorString);
+    return nullptr;
+  }
 }
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlCoder_reconstructImpl(JNIEnv *env, jobject thiz, jbyteArray fromJpegXlData) {
-    try {
-        auto totalLength = env->GetArrayLength(fromJpegXlData);
-        if (totalLength <= 0) {
-            std::string errorString = "Invalid input array length";
-            throwException(env, errorString);
-            return nullptr;
-        }
-        std::vector<uint8_t> srcBuffer(totalLength);
-        env->GetByteArrayRegion(fromJpegXlData, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.data()));
-        coder::JxlReconstruction reconstruction(srcBuffer);
-        if (!reconstruction.reconstruct()) {
-            std::string errorString = "Cannot construct JPEG from provided JPEG XL data";
-            throwException(env, errorString);
-            return nullptr;
-        }
-        std::vector<uint8_t> constructedJPEG = reconstruction.getJPEGData();
-        jbyteArray byteArray = env->NewByteArray((jsize) constructedJPEG.size());
-        env->SetByteArrayRegion(byteArray, 0, (jint) constructedJPEG.size(),
-                                reinterpret_cast<const jbyte *>(constructedJPEG.data()));
-        return byteArray;
-    } catch (std::bad_alloc &err) {
-        std::string errorString = "Not enough memory to re-construct this image";
-        throwException(env, errorString);
-        return nullptr;
+  try {
+    auto totalLength = env->GetArrayLength(fromJpegXlData);
+    if (totalLength <= 0) {
+      std::string errorString = "Invalid input array length";
+      throwException(env, errorString);
+      return nullptr;
     }
+    std::vector<uint8_t> srcBuffer(totalLength);
+    env->GetByteArrayRegion(fromJpegXlData, 0, totalLength, reinterpret_cast<jbyte *>(srcBuffer.data()));
+    coder::JxlReconstruction reconstruction(srcBuffer);
+    if (!reconstruction.reconstruct()) {
+      std::string errorString = "Cannot construct JPEG from provided JPEG XL data";
+      throwException(env, errorString);
+      return nullptr;
+    }
+    std::vector<uint8_t> constructedJPEG = reconstruction.getJPEGData();
+    jbyteArray byteArray = env->NewByteArray(static_cast<jint>(constructedJPEG.size()));
+    env->SetByteArrayRegion(byteArray, 0, static_cast<jint>(constructedJPEG.size()),
+                            reinterpret_cast<const jbyte *>(constructedJPEG.data()));
+    return byteArray;
+  } catch (std::bad_alloc &err) {
+    std::string errorString = "Not enough memory to re-construct this image";
+    throwException(env, errorString);
+    return nullptr;
+  }
 }

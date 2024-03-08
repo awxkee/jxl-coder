@@ -38,56 +38,55 @@ using namespace std;
 void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int width, int height,
                                  const unsigned char *colorSpace, size_t colorSpaceSize,
                                  bool image16Bits) {
-    cmsContext context = cmsCreateContext(nullptr, nullptr);
-    std::shared_ptr<void> contextPtr(context, [](void *profile) {
-        cmsDeleteContext(reinterpret_cast<cmsContext>(profile));
-    });
-    cmsHPROFILE srcProfile = cmsOpenProfileFromMem(colorSpace, colorSpaceSize);
-    if (!srcProfile) {
-        // JUST RETURN without signalling error, better proceed with invalid photo than crash
-        __android_log_print(ANDROID_LOG_ERROR, "JXLCoder", "ColorProfile Allocation Failed");
-        return;
-    }
-    std::shared_ptr<void> ptrSrcProfile(srcProfile, [](void *profile) {
-        cmsCloseProfile(reinterpret_cast<cmsHPROFILE>(profile));
-    });
-    cmsHPROFILE dstProfile = cmsCreate_sRGBProfileTHR(
-            reinterpret_cast<cmsContext>(contextPtr.get()));
-    std::shared_ptr<void> ptrDstProfile(dstProfile, [](void *profile) {
-        cmsCloseProfile(reinterpret_cast<cmsHPROFILE>(profile));
-    });
-    cmsHTRANSFORM transform = cmsCreateTransform(ptrSrcProfile.get(),
-                                                 image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
-                                                 ptrDstProfile.get(),
-                                                 image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
-                                                 INTENT_PERCEPTUAL,
-                                                 cmsFLAGS_BLACKPOINTCOMPENSATION |
-                                                 cmsFLAGS_NOWHITEONWHITEFIXUP |
-                                                 cmsFLAGS_COPY_ALPHA);
-    if (!transform) {
-        // JUST RETURN without signalling error, better proceed with invalid photo than crash
-        __android_log_print(ANDROID_LOG_ERROR, "AVIFCoder", "ColorProfile Creation has hailed");
-        return;
-    }
-    std::shared_ptr<void> ptrTransform(transform, [](void *transform) {
-        cmsDeleteTransform(reinterpret_cast<cmsHTRANSFORM>(transform));
-    });
+  cmsContext context = cmsCreateContext(nullptr, nullptr);
+  std::shared_ptr<void> contextPtr(context, [](void *profile) {
+    cmsDeleteContext(reinterpret_cast<cmsContext>(profile));
+  });
+  cmsHPROFILE srcProfile = cmsOpenProfileFromMem(colorSpace, colorSpaceSize);
+  if (!srcProfile) {
+    // JUST RETURN without signalling error, better proceed with invalid photo than crash
+    __android_log_print(ANDROID_LOG_ERROR, "JXLCoder", "ColorProfile Allocation Failed");
+    return;
+  }
+  std::shared_ptr<void> ptrSrcProfile(srcProfile, [](void *profile) {
+    cmsCloseProfile(reinterpret_cast<cmsHPROFILE>(profile));
+  });
+  cmsHPROFILE dstProfile = cmsCreate_sRGBProfileTHR(
+      reinterpret_cast<cmsContext>(contextPtr.get()));
+  std::shared_ptr<void> ptrDstProfile(dstProfile, [](void *profile) {
+    cmsCloseProfile(reinterpret_cast<cmsHPROFILE>(profile));
+  });
+  cmsHTRANSFORM transform = cmsCreateTransform(ptrSrcProfile.get(),
+                                               image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
+                                               ptrDstProfile.get(),
+                                               image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
+                                               INTENT_PERCEPTUAL,
+                                               cmsFLAGS_BLACKPOINTCOMPENSATION |
+                                                   cmsFLAGS_NOWHITEONWHITEFIXUP |
+                                                   cmsFLAGS_COPY_ALPHA);
+  if (!transform) {
+    // JUST RETURN without signalling error, better proceed with invalid photo than crash
+    __android_log_print(ANDROID_LOG_ERROR, "AVIFCoder", "ColorProfile Creation has hailed");
+    return;
+  }
+  std::shared_ptr<void> ptrTransform(transform, [](void *transform) {
+    cmsDeleteTransform(reinterpret_cast<cmsHTRANSFORM>(transform));
+  });
 
+  std::vector<uint8_t> iccARGB;
+  iccARGB.resize(stride * height);
 
-    std::vector<uint8_t> iccARGB;
-    iccARGB.resize(stride * height);
+  auto mSrcInput = vector.data();
+  auto mDstARGB = iccARGB.data();
 
-    auto mSrcInput = vector.data();
-    auto mDstARGB = iccARGB.data();
+  concurrency::parallel_for(6, height, [&](int y) {
+    cmsDoTransformLineStride(
+        reinterpret_cast<void *>(ptrTransform.get()),
+        reinterpret_cast<const void *>(mSrcInput + stride * y),
+        reinterpret_cast<void *>(mDstARGB + stride * y),
+        width, 1,
+        stride, stride, 0, 0);
+  });
 
-    concurrency::parallel_for(6, height, [&](int y) {
-        cmsDoTransformLineStride(
-                reinterpret_cast<void *>(ptrTransform.get()),
-                reinterpret_cast<const void *>(mSrcInput + stride * y),
-                reinterpret_cast<void *>(mDstARGB + stride * y),
-                width, 1,
-                stride, stride, 0, 0);
-    });
-
-    vector = iccARGB;
+  vector = iccARGB;
 }

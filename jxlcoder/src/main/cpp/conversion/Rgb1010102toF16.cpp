@@ -85,7 +85,7 @@ namespace coder::HWY_NAMESPACE {
         const Rebind<float16_t, decltype(df32)> dfc16;
         const RebindToFloat<decltype(du32)> dfcf16;
 
-        auto maxColors = (float) (powf(2.0f, 10.0f) - 1.0f);
+        auto maxColors = (float) (std::powf(2.0f, 10.0f) - 1.0f);
         auto maxColorsF32 = Set(df32, maxColors);
         auto maxColorsAF32 = Set(df32, 3.0f);
 

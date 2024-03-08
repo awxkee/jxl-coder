@@ -127,6 +127,7 @@ class MainActivity : ComponentActivity() {
                                             JxlResizeFilter.BICUBIC,
                                             toneMapper = JxlToneMapper.LOGARITHMIC,
                                         )
+                                        JxlCoder.encode(bitmap = srcImage, colorSpace = JxlColorSpace.RGB)
                                         lifecycleScope.launch {
                                             imagesArray.add(srcImage)
                                         }

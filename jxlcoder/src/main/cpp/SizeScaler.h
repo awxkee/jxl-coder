@@ -34,9 +34,9 @@
 #include "XScaler.h"
 
 enum ScaleMode {
-    Fit = 1,
-    Fill = 2,
-    Resize = 3,
+  Fit = 1,
+  Fill = 2,
+  Resize = 3,
 };
 
 bool RescaleImage(std::vector<uint8_t> &rgbaData,

@@ -36,13 +36,13 @@
 using namespace std;
 
 static inline float JXLGetDistance(int quality) {
-    if (quality == 0)
-        return (1.0f);
-    if (quality >= 30)
-        return clamp((0.1f + (float) (100 - std::min(100.0f, (float) quality)) * 0.09f), 0.0f,
-                     15.0f);
-    return clamp((6.24f + (float) std::powf(2.5f, (30.0 - (float) quality) / 5.0) / 6.25f), 0.0f,
+  if (quality == 0)
+    return (1.0f);
+  if (quality >= 30)
+    return clamp((0.1f + (float) (100 - std::min(100.0f, (float) quality)) * 0.09f), 0.0f,
                  15.0f);
+  return clamp((6.24f + (float) std::powf(2.5f, (30.0 - (float) quality) / 5.0) / 6.25f), 0.0f,
+               15.0f);
 }
 
 bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
@@ -51,135 +51,133 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       JxlEncodingPixelDataFormat encodingDataFormat,
                       std::vector<uint8_t> &iccProfile, int effort, int quality,
                       int decodingSpeed, JxlColorEncoding &colorEncoding) {
-    auto enc = JxlEncoderMake(nullptr);
-    auto runner = JxlThreadParallelRunnerMake(nullptr,
-                                              JxlThreadParallelRunnerDefaultNumWorkerThreads());
-    if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
-                                                       JxlThreadParallelRunner,
-                                                       runner.get())) {
-        return false;
-    }
+  auto enc = JxlEncoderMake(nullptr);
+  auto runner = JxlThreadParallelRunnerMake(nullptr,
+                                            JxlThreadParallelRunnerDefaultNumWorkerThreads());
+  if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
+                                                     JxlThreadParallelRunner,
+                                                     runner.get())) {
+    return false;
+  }
 
-    JxlPixelFormat pixelFormat;
-    switch (colorspace) {
-        case rgb:
-            pixelFormat = {3, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
-                           JXL_NATIVE_ENDIAN,
-                           0};
-            break;
-        case rgba:
-            pixelFormat = {4, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
-                           JXL_NATIVE_ENDIAN,
-                           0};
-            break;
-    }
+  JxlPixelFormat pixelFormat;
+  switch (colorspace) {
+    case rgb:
+      pixelFormat = {3, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
+                     JXL_NATIVE_ENDIAN,
+                     0};
+      break;
+    case rgba:
+      pixelFormat = {4, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
+                     JXL_NATIVE_ENDIAN,
+                     0};
+      break;
+  }
 
-    JxlBasicInfo basicInfo;
-    JxlEncoderInitBasicInfo(&basicInfo);
-    basicInfo.xsize = xsize;
-    basicInfo.ysize = ysize;
-    basicInfo.bits_per_sample = encodingDataFormat == BINARY_16 ? 16 : 8;
-    basicInfo.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
+  JxlBasicInfo basicInfo;
+  JxlEncoderInitBasicInfo(&basicInfo);
+  basicInfo.xsize = xsize;
+  basicInfo.ysize = ysize;
+  basicInfo.bits_per_sample = encodingDataFormat == BINARY_16 ? 16 : 8;
+  basicInfo.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
+  if (encodingDataFormat == BINARY_16) {
+    basicInfo.exponent_bits_per_sample = 5;
+  }
+  basicInfo.num_color_channels = 3;
+  basicInfo.alpha_premultiplied = false;
+
+  if (colorspace == rgba) {
+    basicInfo.num_extra_channels = 1;
+    basicInfo.alpha_bits = encodingDataFormat == BINARY_16 ? 16 : 8;
     if (encodingDataFormat == BINARY_16) {
-        basicInfo.exponent_bits_per_sample = 5;
+      basicInfo.alpha_exponent_bits = 5;
     }
-    basicInfo.num_color_channels = 3;
-    basicInfo.alpha_premultiplied = false;
+  }
 
-    if (colorspace == rgba) {
-        basicInfo.num_extra_channels = 1;
-        basicInfo.alpha_bits = encodingDataFormat == BINARY_16 ? 16 : 8;
-        if (encodingDataFormat == BINARY_16) {
-            basicInfo.alpha_exponent_bits = 5;
-        }
-    }
+  if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basicInfo)) {
+    return false;
+  }
 
-    if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basicInfo)) {
+  switch (colorspace) {
+    case rgb:basicInfo.num_color_channels = 3;
+      break;
+    case rgba:basicInfo.num_color_channels = 4;
+      JxlExtraChannelInfo channelInfo;
+      JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
+      channelInfo.bits_per_sample = encodingDataFormat == BINARY_16 ? 16 : 8;
+      channelInfo.alpha_premultiplied = false;
+      if (JXL_ENC_SUCCESS != JxlEncoderSetExtraChannelInfo(enc.get(), 0, &channelInfo)) {
         return false;
-    }
+      }
+      break;
+  }
 
-    switch (colorspace) {
-        case rgb:
-            basicInfo.num_color_channels = 3;
-            break;
-        case rgba:
-            basicInfo.num_color_channels = 4;
-            JxlExtraChannelInfo channelInfo;
-            JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
-            channelInfo.bits_per_sample = encodingDataFormat == BINARY_16 ? 16 : 8;
-            channelInfo.alpha_premultiplied = false;
-            if (JXL_ENC_SUCCESS != JxlEncoderSetExtraChannelInfo(enc.get(), 0, &channelInfo)) {
-                return false;
-            }
-            break;
-    }
-
-    if (!iccProfile.empty()) {
-        if (JXL_ENC_SUCCESS !=
-            JxlEncoderSetICCProfile(enc.get(), iccProfile.data(), iccProfile.size())) {
-            return false;
-        }
-    } else {
-        JxlColorEncoding encoding;
-        memcpy(&encoding, &colorEncoding, sizeof(JxlColorEncoding));
-        if (JXL_ENC_SUCCESS !=
-            JxlEncoderSetColorEncoding(enc.get(), &colorEncoding)) {
-            return false;
-        }
-    }
-
-    JxlEncoderFrameSettings *frameSettings =
-            JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
-
-    float distance = JXLGetDistance(quality);
-
-    if (compression_option == loosy &&
-        JXL_ENC_SUCCESS != JxlEncoderSetFrameDistance(frameSettings, distance)) {
-        return false;
-    }
-
-    if (JxlEncoderFrameSettingsSetOption(frameSettings,
-                                         JXL_ENC_FRAME_SETTING_EFFORT, effort) != JXL_ENC_SUCCESS) {
-        return false;
-    }
-
-    if (compression_option == loseless &&
-        JXL_ENC_SUCCESS != JxlEncoderSetFrameLossless(frameSettings, JXL_TRUE)) {
-        return false;
-    }
-
+  if (!iccProfile.empty()) {
     if (JXL_ENC_SUCCESS !=
-        JxlEncoderFrameSettingsSetOption(frameSettings, JXL_ENC_FRAME_SETTING_DECODING_SPEED,
-                                         decodingSpeed)) {
-        return false;
+        JxlEncoderSetICCProfile(enc.get(), iccProfile.data(), iccProfile.size())) {
+      return false;
     }
-
+  } else {
+    JxlColorEncoding encoding;
+    memcpy(&encoding, &colorEncoding, sizeof(JxlColorEncoding));
     if (JXL_ENC_SUCCESS !=
-        JxlEncoderAddImageFrame(frameSettings, &pixelFormat,
-                                (void *) pixels.data(),
-                                sizeof(uint8_t) * pixels.size())) {
-        return false;
+        JxlEncoderSetColorEncoding(enc.get(), &colorEncoding)) {
+      return false;
     }
+  }
 
-    JxlEncoderCloseInput(enc.get());
+  JxlEncoderFrameSettings *frameSettings =
+      JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
 
-    compressed->resize(64);
-    uint8_t *next_out = compressed->data();
-    size_t avail_out = compressed->size() - (next_out - compressed->data());
-    JxlEncoderStatus process_result = JXL_ENC_NEED_MORE_OUTPUT;
-    while (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
-        process_result = JxlEncoderProcessOutput(enc.get(), &next_out, &avail_out);
-        if (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
-            size_t offset = next_out - compressed->data();
-            compressed->resize(compressed->size() * 2);
-            next_out = compressed->data() + offset;
-            avail_out = compressed->size() - offset;
-        }
+  float distance = JXLGetDistance(quality);
+
+  if (compression_option == loosy &&
+      JXL_ENC_SUCCESS != JxlEncoderSetFrameDistance(frameSettings, distance)) {
+    return false;
+  }
+
+  if (JxlEncoderFrameSettingsSetOption(frameSettings,
+                                       JXL_ENC_FRAME_SETTING_EFFORT, effort) != JXL_ENC_SUCCESS) {
+    return false;
+  }
+
+  if (compression_option == loseless &&
+      JXL_ENC_SUCCESS != JxlEncoderSetFrameLossless(frameSettings, JXL_TRUE)) {
+    return false;
+  }
+
+  if (JXL_ENC_SUCCESS !=
+      JxlEncoderFrameSettingsSetOption(frameSettings, JXL_ENC_FRAME_SETTING_DECODING_SPEED,
+                                       decodingSpeed)) {
+    return false;
+  }
+
+  if (JXL_ENC_SUCCESS !=
+      JxlEncoderAddImageFrame(frameSettings, &pixelFormat,
+                              (void *) pixels.data(),
+                              sizeof(uint8_t) * pixels.size())) {
+    return false;
+  }
+
+  JxlEncoderCloseInput(enc.get());
+
+  compressed->resize(64);
+  uint8_t *next_out = compressed->data();
+  size_t avail_out = compressed->size() - (next_out - compressed->data());
+  JxlEncoderStatus process_result = JXL_ENC_NEED_MORE_OUTPUT;
+  while (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
+    process_result = JxlEncoderProcessOutput(enc.get(), &next_out, &avail_out);
+    if (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
+      size_t offset = next_out - compressed->data();
+      compressed->resize(compressed->size() * 2);
+      next_out = compressed->data() + offset;
+      avail_out = compressed->size() - offset;
     }
-    compressed->resize(next_out - compressed->data());
-    if (JXL_ENC_SUCCESS != process_result) {
-        return false;
-    }
+  }
+  compressed->resize(next_out - compressed->data());
+  if (JXL_ENC_SUCCESS != process_result) {
+    return false;
+  }
 
-    return true;
+  return true;
 }

@@ -38,78 +38,78 @@ using namespace std;
 
 class JxlAnimatedDecoderCoordinator {
 
-public:
-    JxlAnimatedDecoderCoordinator(JxlAnimatedDecoder *decoder,
-                                  ScaleMode scaleMode,
-                                  PreferredColorConfig preferredColorConfig,
-                                  XSampler sample, CurveToneMapper curveToneMapper) :
-                                  decoder(decoder), scaleMode(scaleMode),
-                                                     preferredColorConfig(preferredColorConfig),
-                                                     sampler(sample), toneMapper(curveToneMapper) {
+ public:
+  JxlAnimatedDecoderCoordinator(JxlAnimatedDecoder *decoder,
+                                ScaleMode scaleMode,
+                                PreferredColorConfig preferredColorConfig,
+                                XSampler sample, CurveToneMapper curveToneMapper) :
+      decoder(decoder), scaleMode(scaleMode),
+      preferredColorConfig(preferredColorConfig),
+      sampler(sample), toneMapper(curveToneMapper) {
 
+  }
+
+  int numberOfFrames() {
+    return decoder->getNumberOfFrames();
+  }
+
+  int frameDuration(int frame) {
+    return decoder->getFrameDuration(frame);
+  }
+
+  int loopsCount() {
+    return decoder->getLoopCount();
+  }
+
+  JxlFrame getFrame(int at) {
+    return decoder->getFrame(at);
+  }
+
+  JxlFrame nextFrame() {
+    return decoder->nextFrame();
+  }
+
+  CurveToneMapper getToneMapper() {
+    return toneMapper;
+  }
+
+  ~JxlAnimatedDecoderCoordinator() {
+    if (decoder) {
+      delete decoder;
+      decoder = nullptr;
     }
+  }
 
-    int numberOfFrames() {
-        return decoder->getNumberOfFrames();
-    }
+  ScaleMode getScaleMode() {
+    return scaleMode;
+  }
 
-    int frameDuration(int frame) {
-        return decoder->getFrameDuration(frame);
-    }
+  PreferredColorConfig getPreferredColorConfig() {
+    return preferredColorConfig;
+  }
 
-    int loopsCount() {
-        return decoder->getLoopCount();
-    }
+  XSampler getSampler() {
+    return sampler;
+  }
 
-    JxlFrame getFrame(int at) {
-        return decoder->getFrame(at);
-    }
+  int getWidth() {
+    return decoder->getWidth();
+  }
 
-    JxlFrame nextFrame() {
-        return decoder->nextFrame();
-    }
+  int getHeight() {
+    return decoder->getHeight();
+  }
 
-    CurveToneMapper getToneMapper() {
-        return toneMapper;
-    }
+  bool isAlphaAttenuated() {
+    return decoder->isAlphaAttenuated();
+  }
 
-    ~JxlAnimatedDecoderCoordinator() {
-        if (decoder) {
-            delete decoder;
-            decoder = nullptr;
-        }
-    }
-
-    ScaleMode getScaleMode() {
-        return scaleMode;
-    }
-
-    PreferredColorConfig getPreferredColorConfig() {
-        return preferredColorConfig;
-    }
-
-    XSampler getSampler() {
-        return sampler;
-    }
-
-    int getWidth() {
-        return decoder->getWidth();
-    }
-
-    int getHeight() {
-        return decoder->getHeight();
-    }
-
-    bool isAlphaAttenuated() {
-        return decoder->isAlphaAttenuated();
-    }
-
-private:
-    JxlAnimatedDecoder *decoder;
-    ScaleMode scaleMode;
-    PreferredColorConfig preferredColorConfig;
-    XSampler sampler;
-    CurveToneMapper toneMapper;
+ private:
+  JxlAnimatedDecoder *decoder;
+  ScaleMode scaleMode;
+  PreferredColorConfig preferredColorConfig;
+  XSampler sampler;
+  CurveToneMapper toneMapper;
 };
 
 #endif //JXLCODER_JXLANIMATEDDECODERCOORDINATOR_H

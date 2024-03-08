@@ -44,6 +44,6 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
                       const uint32_t ysize, std::vector<uint8_t> *compressed,
                       JxlColorPixelType colorspace, JxlCompressionOption compression_option,
                       JxlEncodingPixelDataFormat encodingPixelDataFormat,
-                      std::vector<uint8_t>& iccProfile,
+                      std::vector<uint8_t> &iccProfile,
                       int effort, int quality, int decodingSpeed,
-                      JxlColorEncoding& colorEncoding);
+                      JxlColorEncoding &colorEncoding);

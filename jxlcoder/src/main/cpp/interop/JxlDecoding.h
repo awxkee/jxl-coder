@@ -40,6 +40,6 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          JxlOrientation *jxlOrientation,
                          bool *preferEncoding,
                          JxlColorEncoding *colorEncoding,
-                         bool* hasAlphaInOrigin);
+                         bool *hasAlphaInOrigin);
 
 bool DecodeBasicInfo(const uint8_t *jxl, size_t size, size_t *xsize, size_t *ysize);

@@ -35,65 +35,63 @@
 using namespace std;
 
 class JxlAnimatedEncoderCoordinator {
-public:
+ public:
+  JxlAnimatedEncoderCoordinator(JxlAnimatedEncoder *encoder, JxlColorPixelType colorPixelType,
+                                JxlCompressionOption compressionOption, int effort, int quality,
+                                JxlColorMatrix colorSpaceMatrix,
+                                JxlEncodingPixelDataFormat dataPixelFormat) : encoder(encoder),
+                                                                              colorPixelType(
+                                                                                  colorPixelType),
+                                                                              compressionOption(
+                                                                                  compressionOption),
+                                                                              effort(effort),
+                                                                              quality(quality),
+                                                                              colorSpaceMatrix(
+                                                                                  colorSpaceMatrix),
+                                                                              pixelDataFormat(
+                                                                                  dataPixelFormat) {
 
-public:
-    JxlAnimatedEncoderCoordinator(JxlAnimatedEncoder *encoder, JxlColorPixelType colorPixelType,
-                                  JxlCompressionOption compressionOption, int effort, int quality,
-                                  JxlColorMatrix colorSpaceMatrix,
-                                  JxlEncodingPixelDataFormat dataPixelFormat) : encoder(encoder),
-                                                                                colorPixelType(
-                                                                                        colorPixelType),
-                                                                                compressionOption(
-                                                                                        compressionOption),
-                                                                                effort(effort),
-                                                                                quality(quality),
-                                                                                colorSpaceMatrix(
-                                                                                        colorSpaceMatrix),
-                                                                                pixelDataFormat(
-                                                                                        dataPixelFormat) {
+  }
 
+  JxlEncodingPixelDataFormat getDataPixelFormat() {
+    return this->pixelDataFormat;
+  }
+
+  JxlColorPixelType getColorPixelType() {
+    return colorPixelType;
+  }
+
+  int getWidth() {
+    return encoder->getWidth();
+  }
+
+  int getHeight() {
+    return encoder->getHeight();
+  }
+
+  JxlAnimatedEncoder *getEncoder() {
+    return encoder;
+  }
+
+  void finish(vector<uint8_t> &dst) {
+    return encoder->encode(dst);
+  }
+
+  ~JxlAnimatedEncoderCoordinator() {
+    if (encoder) {
+      delete encoder;
+      encoder = nullptr;
     }
+  }
 
-    JxlEncodingPixelDataFormat getDataPixelFormat() {
-        return this->pixelDataFormat;
-    }
-
-    JxlColorPixelType getColorPixelType() {
-        return colorPixelType;
-    }
-
-    int getWidth() {
-        return encoder->getWidth();
-    }
-
-    int getHeight() {
-        return encoder->getHeight();
-    }
-
-    JxlAnimatedEncoder *getEncoder() {
-        return encoder;
-    }
-
-    void finish(vector<uint8_t> &dst) {
-        return encoder->encode(dst);
-    }
-
-    ~JxlAnimatedEncoderCoordinator() {
-        if (encoder) {
-            delete encoder;
-            encoder = nullptr;
-        }
-    }
-
-private:
-    JxlAnimatedEncoder *encoder;
-    JxlColorPixelType colorPixelType;
-    JxlCompressionOption compressionOption;
-    int effort;
-    int quality;
-    JxlColorMatrix colorSpaceMatrix;
-    JxlEncodingPixelDataFormat pixelDataFormat;
+ private:
+  JxlAnimatedEncoder *encoder;
+  JxlColorPixelType colorPixelType;
+  JxlCompressionOption compressionOption;
+  int effort;
+  int quality;
+  JxlColorMatrix colorSpaceMatrix;
+  JxlEncodingPixelDataFormat pixelDataFormat;
 };
 
 #endif //JXLCODER_JXLANIMATEDENCODERCOORDINATOR_H

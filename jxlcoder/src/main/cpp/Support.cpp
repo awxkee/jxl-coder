@@ -31,72 +31,71 @@
 #include "Support.h"
 #include "SizeScaler.h"
 #include <string>
-#include "colorspaces/HDRTransferAdapter.h"
 
 bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorConfig *config,
                               jint javaScaleMode, ScaleMode *scaleMode, jint javaSampler,
-                              XSampler *sampler, jint javaToneMapper, CurveToneMapper* toneMapper) {
-    auto preferredColorConfig = static_cast<PreferredColorConfig>(javaColorspace);
-    if (!preferredColorConfig) {
-        std::string errorString =
-                "Invalid Color Config: " + std::to_string(javaColorspace) + " was passed";
-        throwException(env, errorString);
-        return false;
-    }
+                              XSampler *sampler, jint javaToneMapper, CurveToneMapper *toneMapper) {
+  auto preferredColorConfig = static_cast<PreferredColorConfig>(javaColorspace);
+  if (!preferredColorConfig) {
+    std::string errorString =
+        "Invalid Color Config: " + std::to_string(javaColorspace) + " was passed";
+    throwException(env, errorString);
+    return false;
+  }
 
-    int osVersion = androidOSVersion();
+  int osVersion = androidOSVersion();
 
-    if (preferredColorConfig == Rgba_1010102 && osVersion < 33) {
-        std::string errorString =
-                "Color Config RGBA_1010102 supported only 33+ OS version but current is: " +
-                std::to_string(osVersion);
-        throwException(env, errorString);
-        return false;
-    }
+  if (preferredColorConfig == Rgba_1010102 && osVersion < 33) {
+    std::string errorString =
+        "Color Config RGBA_1010102 supported only 33+ OS version but current is: " +
+            std::to_string(osVersion);
+    throwException(env, errorString);
+    return false;
+  }
 
-    if (preferredColorConfig == Rgba_F16 && osVersion < 26) {
-        std::string errorString =
-                "Color Config RGBA_1010102 supported only 26+ OS version but current is: " +
-                std::to_string(osVersion);
-        throwException(env, errorString);
-        return false;
-    }
+  if (preferredColorConfig == Rgba_F16 && osVersion < 26) {
+    std::string errorString =
+        "Color Config RGBA_1010102 supported only 26+ OS version but current is: " +
+            std::to_string(osVersion);
+    throwException(env, errorString);
+    return false;
+  }
 
-    if (preferredColorConfig == Hardware && osVersion < 29) {
-        std::string errorString =
-                "Color Config HARDWARE supported only 29+ OS version but current is: " +
-                std::to_string(osVersion);
-        throwException(env, errorString);
-        return false;
-    }
+  if (preferredColorConfig == Hardware && osVersion < 29) {
+    std::string errorString =
+        "Color Config HARDWARE supported only 29+ OS version but current is: " +
+            std::to_string(osVersion);
+    throwException(env, errorString);
+    return false;
+  }
 
-    auto mScaleMode = static_cast<ScaleMode>(javaScaleMode);
-    if (!mScaleMode) {
-        std::string errorString =
-                "Invalid Scale Mode was passed";
-        throwException(env, errorString);
-        return false;
-    }
+  auto mScaleMode = static_cast<ScaleMode>(javaScaleMode);
+  if (!mScaleMode) {
+    std::string errorString =
+        "Invalid Scale Mode was passed";
+    throwException(env, errorString);
+    return false;
+  }
 
-    auto xSampler = static_cast<XSampler>(javaSampler);
-    if (!xSampler) {
-        std::string errorString =
-                "Invalid Sampler: " + std::to_string(javaSampler) + " was passed";
-        throwException(env, errorString);
-        return false;
-    }
+  auto xSampler = static_cast<XSampler>(javaSampler);
+  if (!xSampler) {
+    std::string errorString =
+        "Invalid Sampler: " + std::to_string(javaSampler) + " was passed";
+    throwException(env, errorString);
+    return false;
+  }
 
-    auto xToneMapper = static_cast<CurveToneMapper>(javaToneMapper);
-    if (!xToneMapper) {
-        std::string errorString =
-                "Invalid Tone Mapper: " + std::to_string(javaToneMapper) + " was passed";
-        throwException(env, errorString);
-        return false;
-    }
+  auto xToneMapper = static_cast<CurveToneMapper>(javaToneMapper);
+  if (!xToneMapper) {
+    std::string errorString =
+        "Invalid Tone Mapper: " + std::to_string(javaToneMapper) + " was passed";
+    throwException(env, errorString);
+    return false;
+  }
 
-    *scaleMode = mScaleMode;
-    *config = preferredColorConfig;
-    *sampler = xSampler;
-    *toneMapper = xToneMapper;
-    return true;
+  *scaleMode = mScaleMode;
+  *config = preferredColorConfig;
+  *sampler = xSampler;
+  *toneMapper = xToneMapper;
+  return true;
 }

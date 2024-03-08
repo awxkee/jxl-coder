@@ -35,64 +35,64 @@
 #include "jxl/resizable_parallel_runner_cxx.h"
 
 namespace coder {
-    class JxlReconstruction {
-    public:
-        JxlReconstruction(std::vector<uint8_t> &data) : jxlData(data) {
+class JxlReconstruction {
+ public:
+  JxlReconstruction(std::vector<uint8_t> &data) : jxlData(data) {
 
-        }
+  }
 
-        bool reconstruct() {
-            auto runner = JxlResizableParallelRunnerMake(nullptr);
+  bool reconstruct() {
+    auto runner = JxlResizableParallelRunnerMake(nullptr);
 
-            auto dec = JxlDecoderMake(nullptr);
-            if (JXL_DEC_SUCCESS !=
-                JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_JPEG_RECONSTRUCTION | JXL_DEC_FULL_IMAGE)) {
-                return false;
-            }
-            JxlDecoderSetInput(dec.get(), jxlData.data(), jxlData.size());
-            JxlDecoderCloseInput(dec.get());
+    auto dec = JxlDecoderMake(nullptr);
+    if (JXL_DEC_SUCCESS !=
+        JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_JPEG_RECONSTRUCTION | JXL_DEC_FULL_IMAGE)) {
+      return false;
+    }
+    JxlDecoderSetInput(dec.get(), jxlData.data(), jxlData.size());
+    JxlDecoderCloseInput(dec.get());
 
-            JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
+    JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
 
-            if (status == JXL_DEC_ERROR) {
-                return false;
-            }
+    if (status == JXL_DEC_ERROR) {
+      return false;
+    }
 
-            jpegData.resize(128);
-            if (status == JXL_DEC_JPEG_RECONSTRUCTION) {
-                if (JXL_DEC_SUCCESS != JxlDecoderSetJPEGBuffer(dec.get(), jpegData.data(), jpegData.size())) {
-                    return false;
-                }
-            }
+    jpegData.resize(128);
+    if (status == JXL_DEC_JPEG_RECONSTRUCTION) {
+      if (JXL_DEC_SUCCESS != JxlDecoderSetJPEGBuffer(dec.get(), jpegData.data(), jpegData.size())) {
+        return false;
+      }
+    }
 
-            size_t used = 0;
-            JxlDecoderStatus decProcessResult = JXL_DEC_JPEG_NEED_MORE_OUTPUT;
-            while (decProcessResult == JXL_DEC_JPEG_NEED_MORE_OUTPUT) {
-                size_t us = JxlDecoderReleaseJPEGBuffer(dec.get());
-                used = jpegData.size() - us;
-                jpegData.resize(jpegData.size() * 2);
-                if (JXL_DEC_SUCCESS != JxlDecoderSetJPEGBuffer(dec.get(), jpegData.data() + used,
-                                                               jpegData.size() - used)) {
-                    return false;
-                }
-                decProcessResult = JxlDecoderProcessInput(dec.get());
-            }
+    size_t used = 0;
+    JxlDecoderStatus decProcessResult = JXL_DEC_JPEG_NEED_MORE_OUTPUT;
+    while (decProcessResult == JXL_DEC_JPEG_NEED_MORE_OUTPUT) {
+      size_t us = JxlDecoderReleaseJPEGBuffer(dec.get());
+      used = jpegData.size() - us;
+      jpegData.resize(jpegData.size() * 2);
+      if (JXL_DEC_SUCCESS != JxlDecoderSetJPEGBuffer(dec.get(), jpegData.data() + used,
+                                                     jpegData.size() - used)) {
+        return false;
+      }
+      decProcessResult = JxlDecoderProcessInput(dec.get());
+    }
 
-            if (decProcessResult != JXL_DEC_FULL_IMAGE) {
-                return false;
-            }
+    if (decProcessResult != JXL_DEC_FULL_IMAGE) {
+      return false;
+    }
 
-            used = jpegData.size() - JxlDecoderReleaseJPEGBuffer(dec.get());
-            jpegData.resize(used);
-            return true;
-        }
+    used = jpegData.size() - JxlDecoderReleaseJPEGBuffer(dec.get());
+    jpegData.resize(used);
+    return true;
+  }
 
-        std::vector<uint8_t> getJPEGData() {
-            return jpegData;
-        }
+  std::vector<uint8_t> getJPEGData() {
+    return jpegData;
+  }
 
-    private:
-        std::vector<uint8_t> jxlData;
-        std::vector<uint8_t> jpegData;
-    };
+ private:
+  std::vector<uint8_t> jxlData;
+  std::vector<uint8_t> jpegData;
+};
 }

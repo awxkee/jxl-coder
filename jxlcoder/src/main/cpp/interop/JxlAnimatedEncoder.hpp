@@ -38,220 +38,215 @@
 #include <thread>
 
 class AnimatedEncoderError : public std::exception {
-public:
-    AnimatedEncoderError(const std::string &message) : errorMessage(message) {}
+ public:
+  AnimatedEncoderError(const std::string &message) : errorMessage(message) {}
 
-    const char *what() const noexcept override {
-        return errorMessage.c_str();
-    }
+  const char *what() const noexcept override {
+    return errorMessage.c_str();
+  }
 
-private:
-    std::string errorMessage;
+ private:
+  std::string errorMessage;
 };
 
 class JxlAnimatedEncoder {
-public:
-    JxlAnimatedEncoder(int width, int height, JxlColorPixelType pixelType,
-                       JxlEncodingPixelDataFormat encodingPixelFormat,
-                       JxlCompressionOption compressionOption,
-                       int numLoops, int quality, int effort, int decodingSpeed) : width(width),
-                                                                                   height(height),
-                                                                                   pixelType(
-                                                                                           pixelType),
-                                                                                   encodingPixelFormat(
-                                                                                           encodingPixelFormat),
-                                                                                   compressionOption(
-                                                                                           compressionOption),
-                                                                                   quality(quality),
-                                                                                   effort(effort) {
-        if (!enc || !runner) {
-            std::string str = "Cannot initialize encoder";
-            throw AnimatedEncoderError(str);
-        }
-        if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
-                                                           JxlThreadParallelRunner,
-                                                           runner.get())) {
-            std::string str = "Cannot initialize parallel runner";
-            throw AnimatedEncoderError(str);
-        }
-
-        pixelFormat = {3, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
-        switch (pixelType) {
-            case rgb:
-                pixelFormat = {3, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
-                break;
-            case rgba:
-                pixelFormat = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
-                break;
-        }
-
-        if (encodingPixelFormat == BINARY_16) {
-            pixelFormat.data_type = JXL_TYPE_FLOAT16;
-        } else {
-            pixelFormat.data_type = JXL_TYPE_UINT8;
-        }
-
-        JxlEncoderInitBasicInfo(&basicInfo);
-        basicInfo.xsize = width;
-        basicInfo.ysize = height;
-        basicInfo.bits_per_sample = 8;
-        basicInfo.uses_original_profile = compressionOption == loosy ? JXL_FALSE : JXL_TRUE;
-        basicInfo.num_color_channels = 3;
-
-        basicInfo.animation.tps_numerator = 1000;
-        basicInfo.animation.tps_denominator = 1;
-        basicInfo.animation.num_loops = static_cast<uint32_t>(numLoops);
-        basicInfo.animation.have_timecodes = false;
-        basicInfo.have_animation = true;
-
-        if (JXL_ENC_SUCCESS != JxlEncoderSetCodestreamLevel(enc.get(), 10)) {
-            std::string str = "Cannot set codestream level";
-            throw AnimatedEncoderError(str);
-        }
-
-        if (pixelType == rgba) {
-            basicInfo.num_extra_channels = 1;
-            basicInfo.alpha_bits = 8;
-        }
-
-        if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basicInfo)) {
-            std::string str = "Cannot set basic info to encoder";
-            throw AnimatedEncoderError(str);
-        }
-
-        switch (pixelType) {
-            case rgb:
-                basicInfo.num_color_channels = 3;
-                break;
-            case rgba:
-                basicInfo.num_color_channels = 4;
-                JxlExtraChannelInfo channelInfo;
-                JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
-                channelInfo.bits_per_sample = 8;
-                channelInfo.alpha_premultiplied = false;
-                if (JXL_ENC_SUCCESS != JxlEncoderSetExtraChannelInfo(enc.get(), 0, &channelInfo)) {
-                    std::string str = "Cannot set extra channel to encoder";
-                    throw AnimatedEncoderError(str);
-                }
-                break;
-        }
-
-        JxlColorEncoding colorEncoding = {};
-        JxlColorEncodingSetToSRGB(&colorEncoding, pixelFormat.num_channels < 3);
-        if (JXL_ENC_SUCCESS !=
-            JxlEncoderSetColorEncoding(enc.get(), &colorEncoding)) {
-            std::string str = "Cannot set color encoding";
-            throw AnimatedEncoderError(str);
-        }
-
-        frameSettings =
-                JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
-
-        JxlBitDepth depth;
-        if (encodingPixelFormat == BINARY_16) {
-            depth.bits_per_sample = 16;
-            depth.exponent_bits_per_sample = 5;
-        } else {
-            depth.bits_per_sample = 8;
-            depth.exponent_bits_per_sample = 0;
-        }
-        depth.type = JXL_BIT_DEPTH_FROM_PIXEL_FORMAT;
-
-        if (JXL_ENC_SUCCESS != JxlEncoderSetFrameBitDepth(frameSettings, &depth)) {
-            std::string str = "Set bit depth to frame has failed";
-            throw AnimatedEncoderError(str);
-        }
-
-        if (JXL_ENC_SUCCESS !=
-            JxlEncoderSetFrameLossless(frameSettings, compressionOption == loseless)) {
-            std::string str = "Set frame to loseless has failed";
-            throw AnimatedEncoderError(str);
-        }
-
-        if (JXL_ENC_SUCCESS !=
-            JxlEncoderSetFrameDistance(frameSettings, JXLGetDistance(quality))) {
-            std::string str = "Set frame distance has failed";
-            throw AnimatedEncoderError(str);
-        }
-
-        if (JXL_ENC_SUCCESS !=
-            JxlEncoderFrameSettingsSetOption(frameSettings, JXL_ENC_FRAME_SETTING_DECODING_SPEED,
-                                             decodingSpeed)) {
-            std::string str = "Set decoding speed has failed";
-            throw AnimatedEncoderError(str);
-        }
-
-        if (pixelType == rgba) {
-            if (JXL_ENC_SUCCESS !=
-                JxlEncoderSetExtraChannelDistance(frameSettings, 0, JXLGetDistance(quality))) {
-                std::string str = "Set extra channel distance has failed";
-                throw AnimatedEncoderError(str);
-            }
-        }
-
-        if (JxlEncoderFrameSettingsSetOption(frameSettings,
-                                             JXL_ENC_FRAME_SETTING_EFFORT, effort) !=
-            JXL_ENC_SUCCESS) {
-            std::string str = "Set effort has failed";
-            throw AnimatedEncoderError(str);
-        }
-
-
+ public:
+  JxlAnimatedEncoder(int width, int height, JxlColorPixelType pixelType,
+                     JxlEncodingPixelDataFormat encodingPixelFormat,
+                     JxlCompressionOption compressionOption,
+                     int numLoops, int quality, int effort, int decodingSpeed) : width(width),
+                                                                                 height(height),
+                                                                                 pixelType(
+                                                                                     pixelType),
+                                                                                 encodingPixelFormat(
+                                                                                     encodingPixelFormat),
+                                                                                 compressionOption(
+                                                                                     compressionOption),
+                                                                                 quality(quality),
+                                                                                 effort(effort) {
+    if (!enc || !runner) {
+      std::string str = "Cannot initialize encoder";
+      throw AnimatedEncoderError(str);
+    }
+    if (JXL_ENC_SUCCESS != JxlEncoderSetParallelRunner(enc.get(),
+                                                       JxlThreadParallelRunner,
+                                                       runner.get())) {
+      std::string str = "Cannot initialize parallel runner";
+      throw AnimatedEncoderError(str);
     }
 
-    void addFrame(std::vector<uint8_t> &data, int frameTime);
-
-    void encode(std::vector<uint8_t> &dst);
-
-    int getWidth() {
-        return width;
+    pixelFormat = {3, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+    switch (pixelType) {
+      case rgb:pixelFormat = {3, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+        break;
+      case rgba:pixelFormat = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+        break;
     }
 
-    int getHeight() {
-        return height;
+    if (encodingPixelFormat == BINARY_16) {
+      pixelFormat.data_type = JXL_TYPE_FLOAT16;
+    } else {
+      pixelFormat.data_type = JXL_TYPE_UINT8;
     }
 
-    JxlPixelFormat getPixelFormat() {
-        return pixelFormat;
+    JxlEncoderInitBasicInfo(&basicInfo);
+    basicInfo.xsize = width;
+    basicInfo.ysize = height;
+    basicInfo.bits_per_sample = 8;
+    basicInfo.uses_original_profile = compressionOption == loosy ? JXL_FALSE : JXL_TRUE;
+    basicInfo.num_color_channels = 3;
+
+    basicInfo.animation.tps_numerator = 1000;
+    basicInfo.animation.tps_denominator = 1;
+    basicInfo.animation.num_loops = static_cast<uint32_t>(numLoops);
+    basicInfo.animation.have_timecodes = false;
+    basicInfo.have_animation = true;
+
+    if (JXL_ENC_SUCCESS != JxlEncoderSetCodestreamLevel(enc.get(), 10)) {
+      std::string str = "Cannot set codestream level";
+      throw AnimatedEncoderError(str);
     }
 
-    JxlColorPixelType getJxlPixelType() {
-        return pixelType;
+    if (pixelType == rgba) {
+      basicInfo.num_extra_channels = 1;
+      basicInfo.alpha_bits = 8;
     }
 
-    ~JxlAnimatedEncoder();
-
-private:
-    const int width;
-    const int height;
-    const int quality;
-    const int effort;
-    const JxlColorPixelType pixelType;
-    const JxlEncodingPixelDataFormat encodingPixelFormat;
-    const JxlCompressionOption compressionOption;
-    JxlPixelFormat pixelFormat;
-    int addedFrames = 0;
-
-    JxlEncoderPtr enc = JxlEncoderMake(nullptr);
-    JxlThreadParallelRunnerPtr runner = JxlThreadParallelRunnerMake(nullptr,
-                                                                    JxlThreadParallelRunnerDefaultNumWorkerThreads());
-
-    JxlBasicInfo basicInfo;
-    JxlFrameHeader header;
-    JxlEncoderFrameSettings *frameSettings;
-
-    float JXLGetDistance(const int quality) {
-        if (quality == 0)
-            return (1.0f);
-        float distance = quality >= 100 ? 0.0
-                                        : quality >= 30
-                                          ? 0.1 + (100 - quality) * 0.09
-                                          : 53.0 / 3000.0 * quality * quality -
-                                            23.0 / 20.0 * quality + 25.0;
-        return distance;
+    if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basicInfo)) {
+      std::string str = "Cannot set basic info to encoder";
+      throw AnimatedEncoderError(str);
     }
 
-    std::mutex lock;
+    switch (pixelType) {
+      case rgb:basicInfo.num_color_channels = 3;
+        break;
+      case rgba:basicInfo.num_color_channels = 4;
+        JxlExtraChannelInfo channelInfo;
+        JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
+        channelInfo.bits_per_sample = 8;
+        channelInfo.alpha_premultiplied = false;
+        if (JXL_ENC_SUCCESS != JxlEncoderSetExtraChannelInfo(enc.get(), 0, &channelInfo)) {
+          std::string str = "Cannot set extra channel to encoder";
+          throw AnimatedEncoderError(str);
+        }
+        break;
+    }
+
+    JxlColorEncoding colorEncoding = {};
+    JxlColorEncodingSetToSRGB(&colorEncoding, pixelFormat.num_channels < 3);
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderSetColorEncoding(enc.get(), &colorEncoding)) {
+      std::string str = "Cannot set color encoding";
+      throw AnimatedEncoderError(str);
+    }
+
+    frameSettings =
+        JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
+
+    JxlBitDepth depth;
+    if (encodingPixelFormat == BINARY_16) {
+      depth.bits_per_sample = 16;
+      depth.exponent_bits_per_sample = 5;
+    } else {
+      depth.bits_per_sample = 8;
+      depth.exponent_bits_per_sample = 0;
+    }
+    depth.type = JXL_BIT_DEPTH_FROM_PIXEL_FORMAT;
+
+    if (JXL_ENC_SUCCESS != JxlEncoderSetFrameBitDepth(frameSettings, &depth)) {
+      std::string str = "Set bit depth to frame has failed";
+      throw AnimatedEncoderError(str);
+    }
+
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderSetFrameLossless(frameSettings, compressionOption == loseless)) {
+      std::string str = "Set frame to loseless has failed";
+      throw AnimatedEncoderError(str);
+    }
+
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderSetFrameDistance(frameSettings, JXLGetDistance(quality))) {
+      std::string str = "Set frame distance has failed";
+      throw AnimatedEncoderError(str);
+    }
+
+    if (JXL_ENC_SUCCESS !=
+        JxlEncoderFrameSettingsSetOption(frameSettings, JXL_ENC_FRAME_SETTING_DECODING_SPEED,
+                                         decodingSpeed)) {
+      std::string str = "Set decoding speed has failed";
+      throw AnimatedEncoderError(str);
+    }
+
+    if (pixelType == rgba) {
+      if (JXL_ENC_SUCCESS !=
+          JxlEncoderSetExtraChannelDistance(frameSettings, 0, JXLGetDistance(quality))) {
+        std::string str = "Set extra channel distance has failed";
+        throw AnimatedEncoderError(str);
+      }
+    }
+
+    if (JxlEncoderFrameSettingsSetOption(frameSettings,
+                                         JXL_ENC_FRAME_SETTING_EFFORT, effort) !=
+        JXL_ENC_SUCCESS) {
+      std::string str = "Set effort has failed";
+      throw AnimatedEncoderError(str);
+    }
+
+  }
+
+  void addFrame(std::vector<uint8_t> &data, int frameTime);
+
+  void encode(std::vector<uint8_t> &dst);
+
+  int getWidth() {
+    return width;
+  }
+
+  int getHeight() {
+    return height;
+  }
+
+  JxlPixelFormat getPixelFormat() {
+    return pixelFormat;
+  }
+
+  JxlColorPixelType getJxlPixelType() {
+    return pixelType;
+  }
+
+  ~JxlAnimatedEncoder();
+
+ private:
+  const int width;
+  const int height;
+  const int quality;
+  const int effort;
+  const JxlColorPixelType pixelType;
+  const JxlEncodingPixelDataFormat encodingPixelFormat;
+  const JxlCompressionOption compressionOption;
+  JxlPixelFormat pixelFormat;
+  int addedFrames = 0;
+
+  JxlEncoderPtr enc = JxlEncoderMake(nullptr);
+  JxlThreadParallelRunnerPtr runner = JxlThreadParallelRunnerMake(nullptr,
+                                                                  JxlThreadParallelRunnerDefaultNumWorkerThreads());
+
+  JxlBasicInfo basicInfo;
+  JxlFrameHeader header;
+  JxlEncoderFrameSettings *frameSettings;
+
+  float JXLGetDistance(const int quality) {
+    if (quality == 0)
+      return (1.0f);
+    float distance = quality >= 100 ? 0.0
+                                    : quality >= 30
+                                      ? 0.1 + (100 - quality) * 0.09
+                                      : 53.0 / 3000.0 * quality * quality -
+                23.0 / 20.0 * quality + 25.0;
+    return distance;
+  }
+
+  std::mutex lock;
 };
 
 #endif

@@ -32,19 +32,19 @@
 #include <jni.h>
 #include "SizeScaler.h"
 #include "XScaler.h"
-#include "colorspaces/HDRTransferAdapter.h"
+#include "colorspaces/GamutAdapter.h"
 
 enum PreferredColorConfig {
-    Default = 1,
-    Rgba_8888 = 2,
-    Rgba_F16 = 3,
-    Rgb_565 = 4,
-    Rgba_1010102 = 5,
-    Hardware = 6
+  Default = 1,
+  Rgba_8888 = 2,
+  Rgba_F16 = 3,
+  Rgb_565 = 4,
+  Rgba_1010102 = 5,
+  Hardware = 6
 };
 
 bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorConfig *config,
                               jint javaScaleMode, ScaleMode *scaleMode, jint javaSampler,
-                              XSampler *sampler, jint javaToneMapper, CurveToneMapper* toneMapper);
+                              XSampler *sampler, jint javaToneMapper, CurveToneMapper *toneMapper);
 
 #endif //AVIF_SUPPORT_H
