@@ -25,9 +25,9 @@ val bytes: ByteArray = JxlCoder.encode(decodedBitmap) // Encode Bitmap to JPEG X
 # Construct from JPEG or Reconstruct JPEG from JXL
 ```kotlin
 // Construct JPEG XL from JPEG data
- val encoded = JxlCoder.construct(jpegByteArray)
+ val jxlData = JxlCoder.construct(jpegByteArray)
 // Re-construct JPEG from JXL data
- val reconstruct = JxlCoder.reconstructJPEG(jxlByteArray)
+ val jpegData = JxlCoder.reconstructJPEG(jxlByteArray)
 ```
 
 # Animation Decoding
