@@ -1,13 +1,10 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
@@ -26,6 +23,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
+import com.awxkee.jxlcoder.animation.AnimatedDrawable
+import com.awxkee.jxlcoder.animation.JxlAnimatedStore
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
@@ -33,7 +32,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okio.buffer
 import okio.source
-import java.io.FileNotFoundException
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -114,49 +112,61 @@ class MainActivity : ComponentActivity() {
                     }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
+
+//                            val bufferPng = assets.open("lin.png").source().buffer().readByteArray()
+//                            val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
+//                            lifecycleScope.launch {
+//                                drawables.add(BitmapDrawable(resources, bitmap))
+//                            }
+//                            val jxlBuffer = JxlCoder.encode(bitmap)
+//                            val animated = JxlCoder.decode(jxlBuffer)
+//                            lifecycleScope.launch {
+//                                drawables.add(BitmapDrawable(resources, animated))
+//                            }
+
 //                            val buffer4 = assets.open("its_totally_safe.gif").source().buffer().readByteArray()
 //                            val jxlBuffer = JxlCoder.Convenience.gif2JXL(buffer4, quality = 55)
 //                            val animated = JxlAnimatedImage(jxlBuffer)
-//                            val drawable = animated.animatedDrawable
+//                            val drawable = AnimatedDrawable(JxlAnimatedStore(animated))
 //                            lifecycleScope.launch {
 //                                drawables.add(drawable)
 //                            }
-//
+////
 //                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
 //                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
 //                            val animated1 = JxlAnimatedImage(jxlBufferPNG)
-//                            val drawable1 = animated1.animatedDrawable
+//                            val drawable1 = AnimatedDrawable(JxlAnimatedStore(animated1))
 //                            lifecycleScope.launch {
 //                                drawables.add(drawable1)
 //                            }
-                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
-                            for (asset in assets) {
-                                try {
-                                    val buffer4 =
-                                        this@MainActivity.assets.open(asset).source().buffer()
-                                            .readByteArray()
-
-                                    val largeImageSize = JxlCoder.getSize(buffer4)
-                                    if (largeImageSize != null) {
-                                        var srcImage = JxlCoder.decodeSampled(
-                                            buffer4,
-                                            largeImageSize.width / 3,
-                                            largeImageSize.height / 3,
-                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
-                                            com.awxkee.jxlcoder.ScaleMode.FIT,
-                                            JxlResizeFilter.BICUBIC,
-                                            toneMapper = JxlToneMapper.LOGARITHMIC,
-                                        )
-                                        lifecycleScope.launch {
-                                            imagesArray.add(srcImage)
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    if (e !is FileNotFoundException) {
-                                        throw e
-                                    }
-                                }
-                            }
+//                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
+//                            for (asset in assets) {
+//                                try {
+//                                    val buffer4 =
+//                                        this@MainActivity.assets.open(asset).source().buffer()
+//                                            .readByteArray()
+//
+//                                    val largeImageSize = JxlCoder.getSize(buffer4)
+//                                    if (largeImageSize != null) {
+//                                        var srcImage = JxlCoder.decodeSampled(
+//                                            buffer4,
+//                                            largeImageSize.width / 3,
+//                                            largeImageSize.height / 3,
+//                                            preferredColorConfig = PreferredColorConfig.RGBA_8888,
+//                                            com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                            JxlResizeFilter.BICUBIC,
+//                                            toneMapper = JxlToneMapper.LOGARITHMIC,
+//                                        )
+//                                        lifecycleScope.launch {
+//                                            imagesArray.add(srcImage)
+//                                        }
+//                                    }
+//                                } catch (e: Exception) {
+//                                    if (e !is FileNotFoundException) {
+//                                        throw e
+//                                    }
+//                                }
+//                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme

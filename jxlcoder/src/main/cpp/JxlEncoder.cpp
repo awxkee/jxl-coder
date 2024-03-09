@@ -233,7 +233,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             .primaries_green_xy = {matrix(1, 0), matrix(1, 1)},
             .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
             .transfer_function = JXL_TRANSFER_FUNCTION_SRGB,
-            .gamma = 1 / 2.6
+            .gamma = 1 / 2.2
         };
       } else if (stdString == "sRGB IEC61966-2.1 (Linear)" ||
           dataSpace == ADataSpace::ADATASPACE_SCRGB_LINEAR) {

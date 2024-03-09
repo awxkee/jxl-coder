@@ -33,9 +33,9 @@ static Eigen::Matrix<float, 3, 2> getRec2020Primaries() {
 
 static const Eigen::Matrix3f getBradfordAdaptation() {
   Eigen::Matrix3f M;
-  M << 0.8951, 0.2664, -0.1614,
-      -0.7502, 1.7135, 0.0367,
-      0.0389, -0.0685, 1.0296;
+  M << 0.8446965f, -0.1179225f, 0.3948108f,
+      -0.1366303f, 1.1041226f, 0.1291718f,
+      0.0798489f, -0.1348999f, 3.1924009f;
 
   return M;
 }

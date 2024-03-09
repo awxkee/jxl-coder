@@ -212,8 +212,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
       if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
         sourceProfile = GamutRgbToXYZ(getRec2020Primaries(), getIlluminantD65());
       } else if (colorEncoding.primaries == JXL_PRIMARIES_P3) {
-        sourceProfile = GamutRgbToXYZ(getDisplayP3Primaries(), getIlluminantDCI());
-        useChromaticAdaptation = true;
+        sourceProfile = GamutRgbToXYZ(getDisplayP3Primaries(), getIlluminantD65());
       } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB) {
         sourceProfile = GamutRgbToXYZ(getSRGBPrimaries(), getIlluminantD65());
       } else {
