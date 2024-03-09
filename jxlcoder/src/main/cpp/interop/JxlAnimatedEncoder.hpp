@@ -93,7 +93,7 @@ class JxlAnimatedEncoder {
     basicInfo.xsize = width;
     basicInfo.ysize = height;
     basicInfo.bits_per_sample = 8;
-    basicInfo.uses_original_profile = compressionOption == loosy ? JXL_FALSE : JXL_TRUE;
+    basicInfo.uses_original_profile = compressionOption == lossy ? JXL_FALSE : JXL_TRUE;
     basicInfo.num_color_channels = 3;
 
     basicInfo.animation.tps_numerator = 1000;
@@ -130,14 +130,6 @@ class JxlAnimatedEncoder {
           throw AnimatedEncoderError(str);
         }
         break;
-    }
-
-    JxlColorEncoding colorEncoding = {};
-    JxlColorEncodingSetToSRGB(&colorEncoding, pixelFormat.num_channels < 3);
-    if (JXL_ENC_SUCCESS !=
-        JxlEncoderSetColorEncoding(enc.get(), &colorEncoding)) {
-      std::string str = "Cannot set color encoding";
-      throw AnimatedEncoderError(str);
     }
 
     frameSettings =
@@ -214,6 +206,13 @@ class JxlAnimatedEncoder {
     return pixelType;
   }
 
+  void setICCProfile(std::vector<uint8_t>& profile) {
+    if (!isColorEncodingSet) {
+      this->iccProfile = profile;
+      setColorEncoding();
+    }
+  }
+
   ~JxlAnimatedEncoder();
 
  private:
@@ -226,6 +225,31 @@ class JxlAnimatedEncoder {
   const JxlCompressionOption compressionOption;
   JxlPixelFormat pixelFormat;
   int addedFrames = 0;
+  std::vector<uint8_t> iccProfile;
+  bool isColorEncodingSet;
+
+  void setColorEncoding() {
+    if (isColorEncodingSet) {
+      std::string str = "Color encoding is already set.";
+      throw AnimatedEncoderError(str);
+    }
+    isColorEncodingSet = true;
+    if (iccProfile.empty()) {
+      JxlColorEncoding colorEncoding = {};
+      JxlColorEncodingSetToSRGB(&colorEncoding, pixelFormat.num_channels < 3);
+      if (JXL_ENC_SUCCESS !=
+          JxlEncoderSetColorEncoding(enc.get(), &colorEncoding)) {
+        std::string str = "Cannot set color encoding";
+        throw AnimatedEncoderError(str);
+      }
+    } else {
+      if (JXL_ENC_SUCCESS !=
+          JxlEncoderSetICCProfile(enc.get(), iccProfile.data(), iccProfile.size())) {
+        std::string str = "Failed to set ICC profile";
+        throw AnimatedEncoderError(str);
+      }
+    }
+  }
 
   JxlEncoderPtr enc = JxlEncoderMake(nullptr);
   JxlThreadParallelRunnerPtr runner = JxlThreadParallelRunnerMake(nullptr,

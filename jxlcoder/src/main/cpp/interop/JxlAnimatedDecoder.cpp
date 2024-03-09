@@ -61,6 +61,7 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
   JxlColorEncoding clr;
   bool useColorEncoding = false;
   JxlPixelFormat format = {4, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+  bool isFrameReceived = false;
   for (;;) {
     JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
     if (status == JXL_DEC_FRAME) {
@@ -71,8 +72,7 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
       }
       JxlAnimationHeader animation = info.animation;
       if (animation.tps_numerator)
-        frameTime = (int) (1000.0 * header.duration * animation.tps_denominator /
-            animation.tps_numerator);
+        frameTime = (int) (1000.0 * header.duration * animation.tps_denominator / animation.tps_numerator);
       else
         frameTime = 0;
     } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
@@ -98,6 +98,7 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
         std::string str = "Cannot decoder buffer info";
         throw AnimatedDecoderError(str);
       }
+      isFrameReceived = true;
     } else if (status == JXL_DEC_COLOR_ENCODING) {
       if (JXL_DEC_SUCCESS ==
           JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
@@ -115,6 +116,12 @@ JxlFrame JxlAnimatedDecoder::getFrame(int framePosition) {
       JxlDecoderSubscribeEvents(dec.get(), JXL_DEC_FRAME | JXL_DEC_FULL_IMAGE);
       JxlDecoderSetInput(dec.get(), data.data(), data.size());
       JxlDecoderCloseInput(dec.get());
+
+      if (!isFrameReceived) {
+        std::string str = "Cannot decode frame. Possible frame " + std::to_string(framePosition)
+            + " position is more than frames available. Also possible case is previous frame have an infinity duration.";
+        throw AnimatedDecoderError(str);
+      }
 
       std::vector<uint8_t> iccCopy;
       iccCopy = iccProfile;

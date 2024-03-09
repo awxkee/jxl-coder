@@ -22,12 +22,26 @@ val bitmap: Bitmap =
 val bytes: ByteArray = JxlCoder.encode(decodedBitmap) // Encode Bitmap to JPEG XL
 ```
 
-# Construct from JPEG or Reconstruct JPEG from JXL
+# Convenience for conversion
+
+## Construct from JPEG or Reconstruct JPEG from JXL
 ```kotlin
 // Construct JPEG XL from JPEG data
- val jxlData = JxlCoder.construct(jpegByteArray)
+ val jxlData = JxlCoder.Convenience.construct(jpegByteArray)
 // Re-construct JPEG from JXL data
- val jpegData = JxlCoder.reconstructJPEG(jxlByteArray)
+ val jpegData = JxlCoder.Convenience.reconstructJPEG(jxlByteArray)
+```
+
+## Create JPEG XL from GIF
+```kotlin
+// Construct animated JPEG XL from GIF data
+ val jxlData = JxlCoder.Convenience.gif2JXL(gifByteArray)
+```
+
+## Create JPEG XL from APNG
+```kotlin
+// Construct animated JPEG XL from APNG data
+ val jxlData = JxlCoder.Convenience.apng2JXL(gifByteArray)
 ```
 
 # Animation Decoding

@@ -35,7 +35,7 @@
 #include "colorspaces/colorspace.h"
 #include "android/bitmap.h"
 #include "ReformatBitmap.h"
-#include "CopyUnaligned.h"
+#include "imagebit/CopyUnaligned.h"
 #include "hwy/highway.h"
 
 using namespace std;

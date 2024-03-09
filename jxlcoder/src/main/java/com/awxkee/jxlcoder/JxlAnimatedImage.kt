@@ -37,6 +37,7 @@ import androidx.annotation.Keep
 import androidx.annotation.RequiresApi
 import java.io.Closeable
 import java.nio.ByteBuffer
+import kotlin.math.max
 
 @Keep
 class JxlAnimatedImage : Closeable {
@@ -106,8 +107,9 @@ class JxlAnimatedImage : Closeable {
             }
             val img = AnimationDrawable()
             for (frame in 0 until frames) {
+                val duration = getFrameDuration(frame)
                 @Suppress("DEPRECATION")
-                img.addFrame(BitmapDrawable(getFrame(frame)), getFrameDuration(frame))
+                img.addFrame(BitmapDrawable(getFrame(frame)), duration)
             }
             return img
         }

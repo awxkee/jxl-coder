@@ -138,8 +138,8 @@ class JxlAnimatedDecoder {
         JxlAnimationHeader animation = info.animation;
         int frameTime;
         if (animation.tps_numerator)
-          frameTime = (int) (1000.0 * header.duration * animation.tps_denominator /
-              animation.tps_numerator);
+          frameTime = std::roundf(1000.0f * static_cast<float>(header.duration) * static_cast<float>(animation.tps_denominator)
+                                      / static_cast<float>(animation.tps_numerator));
         else
           frameTime = 0;
         JxlFrameInfo fInfo = {.duration = frameTime};

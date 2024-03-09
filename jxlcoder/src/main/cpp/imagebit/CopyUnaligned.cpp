@@ -34,7 +34,7 @@
 using namespace std;
 
 #undef HWY_TARGET_INCLUDE
-#define HWY_TARGET_INCLUDE "CopyUnaligned.cpp"
+#define HWY_TARGET_INCLUDE "imagebit/CopyUnaligned.cpp"
 
 #include "hwy/foreach_target.h"
 #include "hwy/highway.h"

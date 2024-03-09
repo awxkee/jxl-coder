@@ -47,7 +47,7 @@ enum JxlColorPixelType {
 
 enum JxlCompressionOption {
   loseless = 1,
-  loosy = 2
+  lossy = 2
 };
 
 enum JxlEncodingPixelDataFormat {

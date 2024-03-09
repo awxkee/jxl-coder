@@ -37,7 +37,7 @@
 #include "conversion/Rgb1010102.h"
 #include "conversion/RgbaF16bitNBitU8.h"
 #include "conversion/Rgba8ToF16.h"
-#include "CopyUnaligned.h"
+#include "imagebit/CopyUnaligned.h"
 #include "JniExceptions.h"
 #include "conversion/RGBAlpha.h"
 

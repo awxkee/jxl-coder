@@ -42,7 +42,7 @@
 #include "conversion/RgbaF16bitNBitU8.h"
 #include "conversion/Rgba2Rgb.h"
 #include "conversion/Rgb565.h"
-#include "CopyUnaligned.h"
+#include "imagebit/CopyUnaligned.h"
 
 using namespace std;
 

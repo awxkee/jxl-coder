@@ -37,7 +37,7 @@
 #include "SizeScaler.h"
 #include "Support.h"
 #include "ReformatBitmap.h"
-#include "CopyUnaligned.h"
+#include "imagebit/CopyUnaligned.h"
 #include "XScaler.h"
 #include "colorspaces/ColorSpaceProfile.h"
 #include "colorspaces/GamutAdapter.h"

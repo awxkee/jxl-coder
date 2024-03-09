@@ -1,14 +1,5 @@
-# For more information about using CMake with Android Studio, read the
-# documentation: https://d.android.com/studio/projects/add-native-code.html.
-# For more examples on how to use CMake, see https://github.com/android/ndk-samples.
-
-# Sets the minimum CMake version required for this project.
 cmake_minimum_required(VERSION 3.22.1)
 
-# Declares the project name. The project name can be accessed via ${ PROJECT_NAME},
-# Since this is the top level CMakeLists.txt, the project name is also accessible
-# with ${CMAKE_PROJECT_NAME} (both CMake variables are in-sync within the top level
-# build script scope).
 project("jxlcoder")
 
 add_library(libbrotlicommon SHARED IMPORTED)
@@ -25,16 +16,19 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp conversion/HalfFloats.cpp JniExceptions.cpp interop/JxlEncoding.cpp
         interop/JxlDecoding.cpp JniDecoding.cpp conversion/Rgba2Rgb.cpp conversion/Rgb1010102toF16.cpp
         conversion/F32ToRGB1010102.cpp conversion/Rgba1010102toF32.cpp HardwareBuffersCompat.cpp SizeScaler.cpp
-        Support.cpp ReformatBitmap.cpp conversion/Rgb565.cpp conversion/Rgb1010102.cpp conversion/F32toU8.cpp conversion/Rgba8ToF16.cpp CopyUnaligned.cpp
+        Support.cpp ReformatBitmap.cpp conversion/Rgb565.cpp conversion/Rgb1010102.cpp conversion/F32toU8.cpp conversion/Rgba8ToF16.cpp imagebit/CopyUnaligned.cpp
         XScaler.cpp conversion/RgbaF16bitNBitU8.cpp conversion/RGBAlpha.cpp interop/JxlAnimatedDecoder.cpp interop/JxlAnimatedEncoder.cpp
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp colorspaces/CoderCms.cpp
-        processing/ShgStackBlur.cpp
         hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
-        hwy/timer.cc JXLJpegInterop.cpp colorspaces/GamutAdapter.cpp
+        hwy/timer.cc JXLJpegInterop.cpp colorspaces/GamutAdapter.cpp EasyGifReader.cpp JXLConventions.cpp
+        processing/Convolve1D.cpp processing/Convolve1Db16.cpp
 )
 
+add_subdirectory(giflib)
+add_subdirectory(libpng)
+
 target_include_directories("jxlcoder" PRIVATE ${CMAKE_SOURCE_DIR}/jxl ${CMAKE_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/libyuv ${CMAKE_SOURCE_DIR}/algo)
+        ${CMAKE_SOURCE_DIR}/libyuv ${CMAKE_SOURCE_DIR}/algo ${CMAKE_SOURCE_DIR}/libpng)
 
 set_target_properties(jxlcoder libbrotlicommon PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libbrotlicommon.so)
 set_target_properties(jxlcoder libbrotlidec PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libbrotlidec.so)
@@ -101,4 +95,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         libjxl_threads
         libjxl_cms
         -ljnigraphics
+        giflib
+        libpng
+        z
         log)

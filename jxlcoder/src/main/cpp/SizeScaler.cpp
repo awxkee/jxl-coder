@@ -32,6 +32,23 @@
 #include <jni.h>
 #include "JniExceptions.h"
 #include "XScaler.h"
+#include "processing/Convolve1D.h"
+#include "processing/Convolve1Db16.h"
+#include "Eigen/Eigen"
+
+static std::vector<float> compute1DGaussianKernel(int width, float sigma) {
+  std::vector<float> kernel(ceil(width));
+  int mean = ceil(width) / 2;
+  float sum = 0;
+  const float scale = 1.f / (std::sqrtf(2 * M_PI) * sigma);
+  for (int x = 0; x < width; x++) {
+    kernel[x] = std::expf(-0.5 * std::powf((x - mean) / sigma, 2.0)) * scale;
+    sum += kernel[x];
+  }
+  for (int x = 0; x < width; x++)
+    kernel[x] /= sum;
+  return std::move(kernel);
+}
 
 bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   JNIEnv *env,
@@ -90,7 +107,15 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
 
     std::vector<uint8_t> newImageData(imdStride * scaledHeight);
 
+    float ratio = std::min(static_cast<float>(scaledHeight) / static_cast<float>(imageHeight),
+                           static_cast<float>(scaledWidth) / static_cast<float>(imageWidth));
+
     if (useFloats) {
+      if (ratio < 0.5f) {
+        auto kernel = compute1DGaussianKernel(7, (7 - 1) / 6.f);
+        coder::convolve1D(reinterpret_cast<uint16_t *>(rgbaData.data()), *stride, imageWidth, imageHeight, kernel, kernel);
+      }
+
       coder::scaleImageFloat16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
                                imageWidth * 4 * (int) sizeof(uint16_t),
                                imageWidth, imageHeight,
@@ -101,6 +126,10 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                                sampler
       );
     } else {
+      if (ratio < 0.5f) {
+        auto kernel = compute1DGaussianKernel(7, (7 - 1) / 6.f);
+        coder::convolve1D(reinterpret_cast<uint8_t *>(rgbaData.data()), *stride, imageWidth, imageHeight, kernel, kernel);
+      }
       coder::scaleImageU8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
                           (int) imageWidth * 4 * (int) sizeof(uint8_t),
                           imageWidth, imageHeight,

@@ -38,7 +38,7 @@
 #include "conversion/Rgb1010102toF16.h"
 #include <android/data_space.h>
 #include "conversion/RGBAlpha.h"
-#include "CopyUnaligned.h"
+#include "imagebit/CopyUnaligned.h"
 #include "interop/JxlDefinitions.h"
 #include "conversion/Rgb565.h"
 #include <jxl/encode.h>

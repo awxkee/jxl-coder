@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -27,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okio.buffer
@@ -107,10 +109,27 @@ class MainActivity : ComponentActivity() {
                     var imagesArray = remember {
                         mutableStateListOf<Bitmap>()
                     }
+                    var drawables = remember {
+                        mutableStateListOf<Drawable>()
+                    }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
+//                            val buffer4 = assets.open("its_totally_safe.gif").source().buffer().readByteArray()
+//                            val jxlBuffer = JxlCoder.Convenience.gif2JXL(buffer4, quality = 55)
+//                            val animated = JxlAnimatedImage(jxlBuffer)
+//                            val drawable = animated.animatedDrawable
+//                            lifecycleScope.launch {
+//                                drawables.add(drawable)
+//                            }
+//
+//                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
+//                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
+//                            val animated1 = JxlAnimatedImage(jxlBufferPNG)
+//                            val drawable1 = animated1.animatedDrawable
+//                            lifecycleScope.launch {
+//                                drawables.add(drawable1)
+//                            }
                             var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
-//                            assets = assets.filter { it == "alpha_png_freepik.jxl" }.toList()
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -173,6 +192,17 @@ class MainActivity : ComponentActivity() {
                             }) {
                                 Image(
                                     bitmap = imagesArray[it].asImageBitmap(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentScale = ContentScale.FillWidth,
+                                    contentDescription = "ok"
+                                )
+                            }
+
+                            items(drawables.count(), key = {
+                                return@items UUID.randomUUID().toString()
+                            }) {
+                                Image(
+                                    painter = rememberDrawablePainter(drawable = drawables[it]),
                                     modifier = Modifier.fillMaxWidth(),
                                     contentScale = ContentScale.FillWidth,
                                     contentDescription = "ok"

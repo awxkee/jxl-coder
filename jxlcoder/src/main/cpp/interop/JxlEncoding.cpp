@@ -79,7 +79,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
   basicInfo.xsize = xsize;
   basicInfo.ysize = ysize;
   basicInfo.bits_per_sample = encodingDataFormat == BINARY_16 ? 16 : 8;
-  basicInfo.uses_original_profile = compression_option == loosy ? JXL_FALSE : JXL_TRUE;
+  basicInfo.uses_original_profile = compression_option == lossy ? JXL_FALSE : JXL_TRUE;
   if (encodingDataFormat == BINARY_16) {
     basicInfo.exponent_bits_per_sample = 5;
   }
@@ -131,7 +131,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
 
   float distance = JXLGetDistance(quality);
 
-  if (compression_option == loosy &&
+  if (compression_option == lossy &&
       JXL_ENC_SUCCESS != JxlEncoderSetFrameDistance(frameSettings, distance)) {
     return false;
   }

@@ -137,22 +137,52 @@ object JxlCoder {
         )
     }
 
-    /**
-     * @author Radzivon Bartoshyk
-     * @param fromJpegData - JPEG data that will be used for JPEG XL lossless construction
-     * @return Byte array that contains constructed JPEG XL
-     */
-    fun construct(fromJpegData: ByteArray): ByteArray {
-        return constructImpl(fromJpegData)
-    }
+    object Convenience {
 
-    /**
-     * @author Radzivon Bartoshyk
-     * @param fromJPEGXLData - JPEG XL data that will be used for JPEG lossless construction
-     * @return Byte array that contains re-constructed JPEG
-     */
-    fun reconstructJPEG(fromJPEGXLData: ByteArray): ByteArray {
-        return reconstructImpl(fromJPEGXLData)
+        /**
+         * @param gifData - byte array contains the GIF data
+         * @return Byte array contains converted JPEG XL
+         */
+        fun gif2JXL(
+            gifData: ByteArray,
+            @IntRange(from = 0, to = 100) quality: Int = 0,
+            effort: JxlEffort = JxlEffort.SQUIRREL,
+            decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.SLOWEST,
+        ): ByteArray {
+            return gif2JXLImpl(gifData, quality, effort.value, decodingSpeed.value)
+        }
+
+        /**
+         * @param apngData - byte array contains the APNG data
+         * @return Byte array contains converted JPEG XL
+         */
+        fun apng2JXL(
+            apngData: ByteArray,
+            @IntRange(from = 0, to = 100) quality: Int = 0,
+            effort: JxlEffort = JxlEffort.SQUIRREL,
+            decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.FAST,
+        ): ByteArray {
+            return apng2JXLImpl(apngData, quality, effort.value, decodingSpeed.value)
+        }
+
+        /**
+         * @author Radzivon Bartoshyk
+         * @param fromJpegData - JPEG data that will be used for JPEG XL lossless construction
+         * @return Byte array that contains constructed JPEG XL
+         */
+        fun construct(fromJpegData: ByteArray): ByteArray {
+            return constructImpl(fromJpegData)
+        }
+
+        /**
+         * @author Radzivon Bartoshyk
+         * @param fromJPEGXLData - JPEG XL data that will be used for JPEG lossless construction
+         * @return Byte array that contains re-constructed JPEG
+         */
+        fun reconstructJPEG(fromJPEGXLData: ByteArray): ByteArray {
+            return reconstructImpl(fromJPEGXLData)
+        }
+
     }
 
     /**
@@ -161,6 +191,20 @@ object JxlCoder {
     fun getSize(byteArray: ByteArray): Size? {
         return getSizeImpl(byteArray)
     }
+
+    private external fun apng2JXLImpl(
+        apngData: ByteArray,
+        quality: Int,
+        effort: Int,
+        decodingSpeed: Int,
+    ): ByteArray
+
+    private external fun gif2JXLImpl(
+        gifData: ByteArray,
+        quality: Int,
+        effort: Int,
+        decodingSpeed: Int,
+    ): ByteArray
 
     private external fun reconstructImpl(fromJPEGXLData: ByteArray): ByteArray
 
@@ -198,7 +242,6 @@ object JxlCoder {
         quality: Int,
         decodingSpeed: Int
     ): ByteArray
-
 
     private val MAGIC_1 = byteArrayOf(0xFF.toByte(), 0x0A)
     private val MAGIC_2 = byteArrayOf(
