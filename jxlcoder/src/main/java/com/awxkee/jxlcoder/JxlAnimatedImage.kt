@@ -186,4 +186,10 @@ class JxlAnimatedImage : Closeable {
     protected fun finalize() {
         close()
     }
+
+    init {
+        if (Build.VERSION.SDK_INT >= 21) {
+            System.loadLibrary("jxlcoder")
+        }
+    }
 }

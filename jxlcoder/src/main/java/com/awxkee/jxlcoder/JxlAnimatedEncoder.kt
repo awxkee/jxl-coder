@@ -29,6 +29,7 @@
 package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
+import android.os.Build
 import androidx.annotation.IntRange
 import androidx.annotation.Keep
 import java.io.Closeable
@@ -44,7 +45,7 @@ class JxlAnimatedEncoder : Closeable {
         width: Int,
         height: Int,
         numLoops: Int = 0,
-        preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
+        preferredColorConfig: JxlChannelsConfiguration = JxlChannelsConfiguration.RGBA,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         @IntRange(from = 1L, to = 9L) effort: Int = 7,
         @IntRange(from = 0, to = 100) quality: Int = 0,
@@ -111,5 +112,11 @@ class JxlAnimatedEncoder : Closeable {
 
     protected fun finalize() {
         close()
+    }
+
+    init {
+        if (Build.VERSION.SDK_INT >= 21) {
+            System.loadLibrary("jxlcoder")
+        }
     }
 }

@@ -243,7 +243,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                                  (int) info.height);
       } else if (dataPixelFormat == BINARY_16) {
         int b16Stride = (int) info.width * 4 * (int) sizeof(uint16_t);
-        vector<uint8_t> halfFloatPixels(imageStride * info.height);
+        vector<uint8_t> halfFloatPixels(b16Stride * info.height);
         coder::Rgba8ToF16(rgbaPixels.data(), imageStride,
                           reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
                           (int) info.width, (int) info.height, 8, true);

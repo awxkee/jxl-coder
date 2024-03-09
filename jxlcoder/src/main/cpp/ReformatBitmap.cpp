@@ -179,8 +179,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       }
       std::shared_ptr<AHardwareBuffer> hardwareBuffer(hdBuffer,
                                                       [](AHardwareBuffer *hdBuffer) {
-                                                        AHardwareBuffer_release_compat(
-                                                            hdBuffer);
+                                                        AHardwareBuffer_release_compat(hdBuffer);
                                                       });
       ARect rect = {0, 0, imageWidth, imageHeight};
       uint8_t *buffer;
@@ -208,6 +207,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       }
 
       jobject buf = AHardwareBuffer_toHardwareBuffer_compat(env, hardwareBuffer.get());
+
       *hwBuffer = buf;
       imageConfig = "HARDWARE";
     }
