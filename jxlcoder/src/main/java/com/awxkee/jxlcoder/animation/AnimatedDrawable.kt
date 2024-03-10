@@ -78,19 +78,31 @@ public class AnimatedDrawable(
 
     private val measuredTimesStore = mutableListOf<Int>()
 
-    private fun decodeNextFrame(nextFrameIndex: Int) {
-        val measureTime = measureTimeMillis {
-            val syncedNextFrame = syncedFrames.firstOrNull { it.frameIndex == nextFrameIndex }
-            if (syncedNextFrame == null) {
-                val nextFrame = frameStore.getFrame(nextFrameIndex)
-                val nextFrameDuration = frameStore.getFrameDuration(nextFrameIndex)
-                synchronized(lock) {
-                    syncedFrames.add(SyncedFrame(nextFrame, nextFrameDuration, nextFrameIndex))
+    private fun makeDecodingRunner(nextFrameIndex: Int): Runnable {
+        return DecodeFrameRunnable(syncedFrames, frameStore, lock, nextFrameIndex, measuredTimesStore)
+    }
+
+    private class DecodeFrameRunnable(
+        private val syncedFrames: MutableList<SyncedFrame>,
+        private val frameStore: AnimatedFrameStore,
+        private val lock: Any,
+        private val nextFrameIndex: Int,
+        private val measuredTimesStore: MutableList<Int>,
+    ) : Runnable {
+        override fun run() {
+            val measureTime = measureTimeMillis {
+                val syncedNextFrame = syncedFrames.firstOrNull { it.frameIndex == nextFrameIndex }
+                if (syncedNextFrame == null) {
+                    val nextFrame = frameStore.getFrame(nextFrameIndex)
+                    val nextFrameDuration = frameStore.getFrameDuration(nextFrameIndex)
+                    synchronized(lock) {
+                        syncedFrames.add(SyncedFrame(nextFrame, nextFrameDuration, nextFrameIndex))
+                    }
                 }
             }
-        }
-        if (measuredTimesStore.size < frameStore.framesCount) {
-            measuredTimesStore.add(measureTime.toInt())
+            if (measuredTimesStore.size < frameStore.framesCount) {
+                measuredTimesStore.add(measureTime.toInt())
+            }
         }
     }
 
@@ -101,7 +113,7 @@ public class AnimatedDrawable(
         }
 
         repeat(preheatFrames) {
-            decodeNextFrame(nextFrameIndex)
+            makeDecodingRunner(nextFrameIndex).run()
             nextFrameIndex += 1
             if (nextFrameIndex >= frameStore.framesCount) {
                 nextFrameIndex = 0
@@ -148,13 +160,13 @@ public class AnimatedDrawable(
 
         // Precache next frame
 
-        decodeNextFrame(nextFrameIndex)
+        makeDecodingRunner(nextFrameIndex).run()
         // Since we actually moving with stride *preheatFrames* we have to check if the N + stride frame also exists
-        var preheatFrame = nextFrameIndex + preheatFrames
-        if (preheatFrame >= frameStore.framesCount) {
+        var preheatFrame = nextFrameIndex - 1 + preheatFrames
+        if (preheatFrame >= frameStore.framesCount || preheatFrame < 0) {
             preheatFrame = 0
         }
-        decodeNextFrame(preheatFrame)
+        makeDecodingRunner(preheatFrame).run()
 
         val minFrameToIncrease = 1000 / 24
 
@@ -166,7 +178,7 @@ public class AnimatedDrawable(
                 if (nextFrameIndex >= frameStore.framesCount) {
                     nextFrameIndex = 0
                 }
-                decodeNextFrame(nextFrameIndex)
+                makeDecodingRunner(nextFrameIndex).run()
             }
         }
     }

@@ -70,13 +70,11 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
     if (scaleMode == Fit || scaleMode == Fill) {
       std::pair<int, int> currentSize(imageWidth, imageHeight);
       if (scaledHeight > 0 && scaledWidth < 0) {
-        auto newBounds = ResizeAspectHeight(currentSize, scaledHeight,
-                                            scaledWidth == -2);
+        auto newBounds = ResizeAspectHeight(currentSize, scaledHeight, scaledWidth == -2);
         scaledWidth = newBounds.first;
         scaledHeight = newBounds.second;
       } else if (scaledHeight < 0) {
-        auto newBounds = ResizeAspectWidth(currentSize, scaledHeight,
-                                           scaledHeight == -2);
+        auto newBounds = ResizeAspectWidth(currentSize, scaledHeight, scaledHeight == -2);
         scaledWidth = newBounds.first;
         scaledHeight = newBounds.second;
       } else {
@@ -90,10 +88,8 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
           dstSize = ResizeAspectFit(currentSize, canvasSize, &scale);
         }
 
-        xTranslation = std::max((int) (((float) dstSize.first - (float) canvasWidth) /
-            2.0f), 0);
-        yTranslation = std::max((int) (((float) dstSize.second - (float) canvasHeight) /
-            2.0f), 0);
+        xTranslation = std::max((int) (((float) dstSize.first - (float) canvasWidth) / 2.0f), 0);
+        yTranslation = std::max((int) (((float) dstSize.second - (float) canvasHeight) / 2.0f), 0);
 
         scaledWidth = dstSize.first;
         scaledHeight = dstSize.second;

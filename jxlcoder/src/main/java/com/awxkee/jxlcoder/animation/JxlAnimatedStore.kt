@@ -29,20 +29,43 @@
 package com.awxkee.jxlcoder.animation
 
 import android.graphics.Bitmap
+import android.util.Size
 import com.awxkee.jxlcoder.JxlAnimatedImage
+import com.awxkee.jxlcoder.ScaleMode
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 public class JxlAnimatedStore(
     private val jxlAnimatedImage: JxlAnimatedImage,
     val targetWidth: Int = 0,
     val targetHeight: Int = 0,
 ) : AnimatedFrameStore {
+
+    private val cachedOriginalWidth: Int = jxlAnimatedImage.getWidth()
+    private val cachedOriginalHeight: Int = jxlAnimatedImage.getHeight()
+
+    private val dstSize: Size = if (targetWidth > 0 && targetHeight > 0) {
+        val xf = targetWidth.toFloat() / cachedOriginalWidth.toFloat()
+        val yf = targetHeight.toFloat() / cachedOriginalHeight.toFloat()
+        val factor: Float = if (jxlAnimatedImage.scaleMode == ScaleMode.FILL) {
+            max(xf, yf)
+        } else {
+            min(xf, yf)
+        }
+        val newSize = Size((cachedOriginalWidth * factor).roundToInt(), (cachedOriginalHeight * factor).roundToInt())
+        newSize
+    } else {
+        Size(0,0)
+    }
+
     override val width: Int
-        get() = if (targetWidth > 0 && targetHeight > 0) targetWidth else jxlAnimatedImage.getWidth()
+        get() = if (targetWidth > 0 && targetHeight > 0) dstSize.width else cachedOriginalWidth
     override val height: Int
-        get() = if (targetWidth > 0 && targetHeight > 0) targetHeight else jxlAnimatedImage.getHeight()
+        get() = if (targetWidth > 0 && targetHeight > 0) dstSize.height else cachedOriginalHeight
 
     override fun getFrame(frame: Int): Bitmap {
-        return jxlAnimatedImage.getFrame(frame)
+        return jxlAnimatedImage.getFrame(frame, scaleWidth = targetWidth, scaleHeight = targetHeight)
     }
 
     override fun getFrameDuration(frame: Int): Int {

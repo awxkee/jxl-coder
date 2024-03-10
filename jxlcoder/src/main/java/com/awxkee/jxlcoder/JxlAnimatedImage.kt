@@ -61,6 +61,8 @@ class JxlAnimatedImage : Closeable {
         javaToneMapper: Int,
     ): Long
 
+    val scaleMode: ScaleMode
+
     @Keep
     public constructor(
         byteBuffer: ByteBuffer,
@@ -69,6 +71,7 @@ class JxlAnimatedImage : Closeable {
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
         toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
+        this.scaleMode = scaleMode
         coordinator = createCoordinator(
             byteBuffer,
             preferredColorConfig.value,
@@ -86,6 +89,7 @@ class JxlAnimatedImage : Closeable {
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
         toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
+        this.scaleMode = scaleMode
         coordinator = createCoordinatorByteArray(
             byteArray,
             preferredColorConfig.value,
