@@ -79,13 +79,13 @@ repositories {
 ```
 
 ```groovy
-implementation 'com.github.awxkee:jxl-coder:2.1.2' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder:2.1.3' // or any version above picker from release tags
 
 // Glide JPEG XL plugin if you need one
-implementation 'com.github.awxkee:jxl-coder-glide:2.1.2' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder-glide:2.1.3' // or any version above picker from release tags
 
 // Coil JPEG XL plugin if you need one
-implementation 'com.github.awxkee:jxl-coder-coil:2.1.2' // or any version above picker from release tags
+implementation 'com.github.awxkee:jxl-coder-coil:2.1.3' // or any version above picker from release tags
 ```
 
 # Self-build
