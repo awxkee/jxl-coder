@@ -151,7 +151,7 @@ class MainActivity : ComponentActivity() {
 //                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
                             val jxlBufferPNG = assets.open("rs_image.jxl").source().buffer().readByteArray()
                             val animated1 = JxlAnimatedImage(jxlBufferPNG)
-                            val drawable1 = AnimatedDrawable(JxlAnimatedStore(animated1, 488, 488))
+                            val drawable1 = AnimatedDrawable(JxlAnimatedStore(animated1, 488, 488), firstFrameAsPlaceholder = true)
                             lifecycleScope.launch {
                                 drawables.add(drawable1)
                             }

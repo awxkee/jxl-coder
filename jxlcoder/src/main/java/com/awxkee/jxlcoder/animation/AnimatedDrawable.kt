@@ -53,6 +53,7 @@ import kotlin.system.measureTimeMillis
 public class AnimatedDrawable(
     private val frameStore: AnimatedFrameStore,
     private val preheatFrames: Int = 6,
+    private val firstFrameAsPlaceholder: Boolean = false,
 ) : Drawable(), Animatable,
     Runnable {
 
@@ -108,6 +109,9 @@ public class AnimatedDrawable(
 
     private val preheatRunnable = Runnable {
         var nextFrameIndex = lastDecodedFrameIndex + 1
+        if (firstFrameAsPlaceholder) {
+            nextFrameIndex += 1
+        }
         if (nextFrameIndex >= frameStore.framesCount) {
             nextFrameIndex = 0
         }
@@ -189,6 +193,19 @@ public class AnimatedDrawable(
         handlerThread.setUncaughtExceptionHandler { _, e ->
             Log.e("AnimatedDrawable", e.message ?: "Failed to decode next frame")
         }
+
+        if (firstFrameAsPlaceholder) {
+            makeDecodingRunner(0).run()
+            synchronized(lock) {
+                if (syncedFrames.size > 0) {
+                    val syncedFrame = syncedFrames.first
+                    mCurrentFrameDuration = syncedFrame.frameDuration
+                    lastDecodedFrameIndex = syncedFrame.frameIndex
+                    currentBitmap = syncedFrame.frame
+                }
+            }
+        }
+
         mHandlerThread.post(preheatRunnable)
     }
 
