@@ -54,7 +54,7 @@ class JxlAnimatedEncoder : Closeable {
     ) {
         coordinator = createEncodeCoordinator(
             width, height, numLoops,
-            preferredColorConfig.value,
+            preferredColorConfig.cValue,
             compressionOption.cValue,
             quality,
             -1,

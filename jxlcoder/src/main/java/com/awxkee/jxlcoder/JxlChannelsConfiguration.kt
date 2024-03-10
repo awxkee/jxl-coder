@@ -28,7 +28,7 @@
 
 package com.awxkee.jxlcoder
 
-enum class JxlChannelsConfiguration(internal val value: Int) {
+enum class JxlChannelsConfiguration(internal val cValue: Int) {
     RGB(1),
     RGBA(2)
 }

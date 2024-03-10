@@ -109,7 +109,6 @@ public class AnimatedDrawable(
         }
     }
 
-
     private val decodingRunnable = Runnable {
         var nextFrameIndex = lastDecodedFrameIndex + 1
         if (nextFrameIndex >= frameStore.framesCount) {

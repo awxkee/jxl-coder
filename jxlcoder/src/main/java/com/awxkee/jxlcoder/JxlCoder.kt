@@ -127,7 +127,7 @@ object JxlCoder {
 
         return encodeImpl(
             bitmap,
-            colorSpace.value,
+            colorSpace.cValue,
             compressionOption.cValue,
             effort.value,
             bitmapColorSpace,
