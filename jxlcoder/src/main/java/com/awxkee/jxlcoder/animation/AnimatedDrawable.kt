@@ -44,9 +44,16 @@ import androidx.annotation.Keep
 import java.util.LinkedList
 import java.util.UUID
 import kotlin.math.min
+import kotlin.system.measureTimeMillis
 
 @Keep
-public class AnimatedDrawable(private val frameStore: AnimatedFrameStore) : Drawable(), Animatable,
+/**
+ * @param preheatFrames - Count of frames that will be eagerly preloaded before the render to have already some frames cached
+ */
+public class AnimatedDrawable(
+    private val frameStore: AnimatedFrameStore,
+    private val preheatFrames: Int = 6,
+) : Drawable(), Animatable,
     Runnable {
 
     data class SyncedFrame(val frame: Bitmap, val frameDuration: Int, val frameIndex: Int)
@@ -59,17 +66,49 @@ public class AnimatedDrawable(private val frameStore: AnimatedFrameStore) : Draw
             Process.THREAD_PRIORITY_DISPLAY
         )
     private val mHandlerThread: Handler
-    private val queue = LinkedList<SyncedFrame>()
+    private val syncedFrames = LinkedList<SyncedFrame>()
 
     private var currentBitmap: Bitmap? = null
 
     private var mCurrentFrameDuration = 0
-    private var lastDecodedFrameIndex: Int = 0
-
-    private val deleteQueue = LinkedList<Bitmap>()
+    private var lastDecodedFrameIndex: Int = -1
 
     private var isRunning = false
     private var lastSavedState = false
+
+    private val measuredTimesStore = mutableListOf<Int>()
+
+    private fun decodeNextFrame(nextFrameIndex: Int) {
+        val measureTime = measureTimeMillis {
+            val syncedNextFrame = syncedFrames.firstOrNull { it.frameIndex == nextFrameIndex }
+            if (syncedNextFrame == null) {
+                val nextFrame = frameStore.getFrame(nextFrameIndex)
+                val nextFrameDuration = frameStore.getFrameDuration(nextFrameIndex)
+                synchronized(lock) {
+                    syncedFrames.add(SyncedFrame(nextFrame, nextFrameDuration, nextFrameIndex))
+                }
+            }
+        }
+        if (measuredTimesStore.size < frameStore.framesCount) {
+            measuredTimesStore.add(measureTime.toInt())
+        }
+    }
+
+    private val preheatRunnable = Runnable {
+        var nextFrameIndex = lastDecodedFrameIndex + 1
+        if (nextFrameIndex >= frameStore.framesCount) {
+            nextFrameIndex = 0
+        }
+
+        repeat(preheatFrames) {
+            decodeNextFrame(nextFrameIndex)
+            nextFrameIndex += 1
+            if (nextFrameIndex >= frameStore.framesCount) {
+                nextFrameIndex = 0
+            }
+        }
+    }
+
 
     private val decodingRunnable = Runnable {
         var nextFrameIndex = lastDecodedFrameIndex + 1
@@ -77,29 +116,23 @@ public class AnimatedDrawable(private val frameStore: AnimatedFrameStore) : Draw
             nextFrameIndex = 0
         }
 
-        var toDeleteItem: Bitmap? = deleteQueue.pollFirst()
-        while (toDeleteItem != null) {
-            toDeleteItem.recycle()
-            toDeleteItem = deleteQueue.pollFirst()
-        }
-
         var haveFrameSent = false
 
-        synchronized(lock) {
-            if (queue.size > 0) {
-                val frame = queue.pop()
-                mCurrentFrameDuration = frame.frameDuration
-                lastDecodedFrameIndex = frame.frameIndex
-                currentBitmap = frame.frame
-                scheduleSelf(this, 0)
-                haveFrameSent = true
-            }
+        val syncedFrame = syncedFrames.firstOrNull { it.frameIndex == nextFrameIndex }
+
+        if (syncedFrame != null) {
+            mCurrentFrameDuration = syncedFrame.frameDuration
+            lastDecodedFrameIndex = syncedFrame.frameIndex
+            currentBitmap = syncedFrame.frame
+            scheduleSelf(this, 0)
+            haveFrameSent = true
         }
 
         if (!haveFrameSent) {
             val nextFrame = frameStore.getFrame(nextFrameIndex)
             val nextFrameDuration = frameStore.getFrameDuration(nextFrameIndex)
             synchronized(lock) {
+                syncedFrames.add(SyncedFrame(nextFrame, nextFrameDuration, nextFrameIndex))
                 mCurrentFrameDuration = nextFrameDuration
                 lastDecodedFrameIndex = nextFrameIndex
                 currentBitmap = nextFrame
@@ -110,33 +143,42 @@ public class AnimatedDrawable(private val frameStore: AnimatedFrameStore) : Draw
             nextFrameIndex += 1
         }
 
-        val maybeCachedFrames = min(14, frameStore.framesCount)
-        val vr = queue.lastOrNull()?.frameIndex
-        if (vr != null) {
-            nextFrameIndex = vr + 1
-        }
         if (nextFrameIndex >= frameStore.framesCount) {
             nextFrameIndex = 0
         }
-        while (queue.size < maybeCachedFrames) {
-            val nextFrame = frameStore.getFrame(nextFrameIndex)
-            val nextFrameDuration = frameStore.getFrameDuration(nextFrameIndex)
-            queue.add(SyncedFrame(nextFrame, nextFrameDuration, nextFrameIndex))
 
-            nextFrameIndex += 1
-            if (nextFrameIndex >= frameStore.framesCount) {
-                nextFrameIndex = 0
+        // Precache next frame
+
+        decodeNextFrame(nextFrameIndex)
+        // Since we actually moving with stride *preheatFrames* we have to check if the N + stride frame also exists
+        var preheatFrame = nextFrameIndex + preheatFrames
+        if (preheatFrame >= frameStore.framesCount) {
+            preheatFrame = 0
+        }
+        decodeNextFrame(preheatFrame)
+
+        val minFrameToIncrease = 1000 / 24
+
+        if (measuredTimesStore.size > 2) {
+            val averageDecodingTime = measuredTimesStore.average()
+            // If we decode faster than 1000/24ms then do to frames at the time
+            if (averageDecodingTime < minFrameToIncrease.toDouble()) {
+                nextFrameIndex += preheatFrames + 1
+                if (nextFrameIndex >= frameStore.framesCount) {
+                    nextFrameIndex = 0
+                }
+                decodeNextFrame(nextFrameIndex)
             }
         }
-
     }
 
     init {
         handlerThread.start()
         mHandlerThread = Handler(handlerThread.looper)
-        handlerThread.setUncaughtExceptionHandler { t, e ->
+        handlerThread.setUncaughtExceptionHandler { _, e ->
             Log.e("AnimatedDrawable", e.message ?: "Failed to decode next frame")
         }
+        mHandlerThread.post(preheatRunnable)
     }
 
     private val matrix = Matrix()

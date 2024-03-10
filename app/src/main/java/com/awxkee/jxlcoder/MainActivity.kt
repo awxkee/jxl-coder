@@ -147,44 +147,45 @@ class MainActivity : ComponentActivity() {
 //                                drawables.add(BitmapDrawable(resources, animated))
 //                            }
 ////
-//                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
-//                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
-//                            val animated1 = JxlAnimatedImage(jxlBufferPNG)
-//                            val drawable1 = AnimatedDrawable(JxlAnimatedStore(animated1))
-//                            lifecycleScope.launch {
-//                                drawables.add(drawable1)
-//                            }
-                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
-                            for (asset in assets) {
-                                try {
-                                    val buffer4 =
-                                        this@MainActivity.assets.open(asset).source().buffer()
-                                            .readByteArray()
-
-                                    val largeImageSize = JxlCoder.getSize(buffer4)
-                                    if (largeImageSize != null) {
-                                        val time = measureTimeMillis {
-                                            var srcImage = JxlCoder.decodeSampled(
-                                                buffer4,
-                                                largeImageSize.width / 3 * 2,
-                                                largeImageSize.height / 3 * 2,
-                                                preferredColorConfig = PreferredColorConfig.RGB_565,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                JxlResizeFilter.BICUBIC,
-                                                toneMapper = JxlToneMapper.LOGARITHMIC,
-                                            )
-                                            lifecycleScope.launch {
-                                                imagesArray.add(srcImage)
-                                            }
-                                        }
-                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
-                                    }
-                                } catch (e: Exception) {
-                                    if (e !is FileNotFoundException) {
-                                        throw e
-                                    }
-                                }
+                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
+                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
+                            val animated1 = JxlAnimatedImage(jxlBufferPNG)
+                            val drawable1 = AnimatedDrawable(JxlAnimatedStore(animated1))
+                            lifecycleScope.launch {
+                                drawables.add(drawable1)
                             }
+
+//                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
+//                            for (asset in assets) {
+//                                try {
+//                                    val buffer4 =
+//                                        this@MainActivity.assets.open(asset).source().buffer()
+//                                            .readByteArray()
+//
+//                                    val largeImageSize = JxlCoder.getSize(buffer4)
+//                                    if (largeImageSize != null) {
+//                                        val time = measureTimeMillis {
+//                                            var srcImage = JxlCoder.decodeSampled(
+//                                                buffer4,
+//                                                largeImageSize.width / 3 * 2,
+//                                                largeImageSize.height / 3 * 2,
+//                                                preferredColorConfig = PreferredColorConfig.RGB_565,
+//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                                JxlResizeFilter.BICUBIC,
+//                                                toneMapper = JxlToneMapper.LOGARITHMIC,
+//                                            )
+//                                            lifecycleScope.launch {
+//                                                imagesArray.add(srcImage)
+//                                            }
+//                                        }
+//                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
+//                                    }
+//                                } catch (e: Exception) {
+//                                    if (e !is FileNotFoundException) {
+//                                        throw e
+//                                    }
+//                                }
+//                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme

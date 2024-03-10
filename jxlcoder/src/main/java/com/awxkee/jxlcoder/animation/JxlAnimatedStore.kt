@@ -49,6 +49,13 @@ public class JxlAnimatedStore(
         return jxlAnimatedImage.getFrameDuration(frame)
     }
 
+    private var storedFramesCount: Int = -1
+
     override val framesCount: Int
-        get() = jxlAnimatedImage.numberOfFrames
+        get() = if (storedFramesCount == -1) {
+            storedFramesCount = jxlAnimatedImage.numberOfFrames
+            storedFramesCount
+        } else {
+            storedFramesCount
+        }
 }
