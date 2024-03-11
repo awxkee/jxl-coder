@@ -30,11 +30,12 @@
 #define AVIF_RGBAF16BITNBITU8_H
 
 #include <vector>
+#include "ConversionUtils.h"
 
 namespace coder {
-    void RGBAF16BitToNBitU8(const uint16_t *sourceData, int srcStride,
-                            uint8_t *dst, int dstStride, int width,
-                            int height, int bitDepth, const bool attenuateAlpha);
+void RGBAF16BitToNBitU8(const uint16_t *JXL_RESTRICT sourceData, const uint32_t srcStride,
+                        uint8_t *JXL_RESTRICT dst, const uint32_t dstStride, const uint32_t width,
+                        const uint32_t height, const uint32_t bitDepth, const bool attenuateAlpha);
 }
 
 #endif //AVIF_RGBAF16BITNBITU8_H

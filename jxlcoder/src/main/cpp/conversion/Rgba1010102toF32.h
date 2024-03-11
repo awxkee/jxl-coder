@@ -30,10 +30,15 @@
 #define JXLCODER_RGBA1010102TOF32_H
 
 #include <cstdint>
+#include "ConversionUtils.h"
 
 namespace coder {
-    void ConvertRGBA1010102toF32(const uint8_t *src, int srcStride, float *dst, int dstStride,
-                                 int width, int height);
+void ConvertRGBA1010102toF32(const uint8_t *JXL_RESTRICT src,
+                             const int srcStride,
+                             const float *JXL_RESTRICT dst,
+                             const int dstStride,
+                             const int width,
+                             const int height);
 }
 
 #endif //JXLCODER_RGBA1010102TOF32_H

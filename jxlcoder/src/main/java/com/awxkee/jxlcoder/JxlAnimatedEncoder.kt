@@ -35,26 +35,25 @@ import androidx.annotation.Keep
 import java.io.Closeable
 
 @Keep
-class JxlAnimatedEncoder : Closeable {
+class JxlAnimatedEncoder @Keep constructor(
+    width: Int,
+    height: Int,
+    numLoops: Int = 0,
+    channelsConfiguration: JxlChannelsConfiguration = JxlChannelsConfiguration.RGBA,
+    compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
+    @IntRange(from = 1L, to = 9L) effort: Int = 7,
+    @IntRange(from = 0, to = 100) quality: Int = 0,
+    decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.SLOWEST,
+    dataPixelFormat: JxlEncodingDataPixelFormat = JxlEncodingDataPixelFormat.UNSIGNED_8
+) : Closeable {
 
-    private var coordinator: Long = 0
+    private var coordinator: Long = -1
     private val lock = Any()
 
-    @Keep
-    constructor(
-        width: Int,
-        height: Int,
-        numLoops: Int = 0,
-        preferredColorConfig: JxlChannelsConfiguration = JxlChannelsConfiguration.RGBA,
-        compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
-        @IntRange(from = 1L, to = 9L) effort: Int = 7,
-        @IntRange(from = 0, to = 100) quality: Int = 0,
-        decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.SLOWEST,
-        dataPixelFormat: JxlEncodingDataPixelFormat = JxlEncodingDataPixelFormat.UNSIGNED_8,
-    ) {
+    init {
         coordinator = createEncodeCoordinator(
             width, height, numLoops,
-            preferredColorConfig.cValue,
+            channelsConfiguration.cValue,
             compressionOption.cValue,
             quality,
             -1,

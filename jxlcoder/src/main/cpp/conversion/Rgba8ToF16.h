@@ -30,12 +30,13 @@
 #define AVIF_RGBA8TOF16_H
 
 #include <cstdint>
+#include "ConversionUtils.h"
 
 namespace coder {
-    void Rgba8ToF16(const uint8_t *sourceData, int srcStride,
-                    uint16_t *dst, int dstStride, int width,
-                    int height, int bitDepth,
-                    const bool attenuateAlpha);
+void Rgba8ToF16(const uint8_t *JXL_RESTRICT sourceData, int srcStride,
+                uint16_t *JXL_RESTRICT dst, int dstStride, int width,
+                int height, int bitDepth,
+                const bool attenuateAlpha);
 }
 
 #endif //AVIF_RGBA8TOF16_H

@@ -53,8 +53,8 @@ using hwy::HWY_NAMESPACE::StoreInterleaved4;
 
 template<class D, typename Buf, typename T = Vec<D>>
 void
-Copy1Row(const D d, const Buf *HWY_RESTRICT src, Buf *HWY_RESTRICT dst, int width) {
-  int x = 0;
+Copy1Row(const D d, const Buf *HWY_RESTRICT src, Buf *HWY_RESTRICT dst, const uint32_t width) {
+  uint32_t x = 0;
   using VU = Vec<decltype(d)>;
   int pixels = d.MaxLanes();
   for (; x + pixels < width; x += pixels) {
@@ -76,10 +76,10 @@ Copy1Row(const D d, const Buf *HWY_RESTRICT src, Buf *HWY_RESTRICT dst, int widt
 
 void
 CopyUnalignedRGBA(const uint8_t *HWY_RESTRICT src, int srcStride, uint8_t *HWY_RESTRICT dst,
-                  int dstStride,
-                  int width,
-                  int height,
-                  int pixelSize) {
+                  const uint32_t dstStride,
+                  const uint32_t width,
+                  const uint32_t height,
+                  const uint32_t pixelSize) {
   concurrency::parallel_for(2, height, [&](int y) {
     if (pixelSize == 1) {
       const ScalableTag<uint8_t> du8;
@@ -122,10 +122,9 @@ namespace coder {
 HWY_EXPORT(CopyUnalignedRGBA);
 
 HWY_DLLEXPORT void
-CopyUnaligned(const uint8_t *HWY_RESTRICT src, int srcStride, uint8_t *HWY_RESTRICT dst,
-              int dstStride, int width,
-              int height,
-              int pixelSize) {
+CopyUnaligned(const uint8_t *HWY_RESTRICT src, const uint32_t srcStride, uint8_t *HWY_RESTRICT dst,
+              const uint32_t dstStride, const uint32_t width,
+              const uint32_t height, const uint32_t pixelSize) {
   HWY_DYNAMIC_DISPATCH(CopyUnalignedRGBA)(src, srcStride, dst, dstStride, width, height,
                                           pixelSize);
 }

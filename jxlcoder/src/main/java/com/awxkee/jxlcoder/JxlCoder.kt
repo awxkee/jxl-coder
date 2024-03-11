@@ -106,7 +106,7 @@ object JxlCoder {
 
     fun encode(
         bitmap: Bitmap,
-        colorSpace: JxlChannelsConfiguration = JxlChannelsConfiguration.RGB,
+        channelsConfiguration: JxlChannelsConfiguration = JxlChannelsConfiguration.RGB,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         effort: JxlEffort = JxlEffort.SQUIRREL,
         @IntRange(from = 0, to = 100) quality: Int = 0,
@@ -127,7 +127,7 @@ object JxlCoder {
 
         return encodeImpl(
             bitmap,
-            colorSpace.cValue,
+            channelsConfiguration.cValue,
             compressionOption.cValue,
             effort.value,
             bitmapColorSpace,

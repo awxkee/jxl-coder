@@ -31,15 +31,15 @@
 
 #include <cstdint>
 #include "conversion/half.hpp"
-
-#if HAVE_NEON
-void RgbaF32ToF16Neon(const float *src, int srcStride, uint16_t *dst, int dstStride,
-                      int width, int height) ;
-#endif
+#include "ConversionUtils.h"
 
 namespace coder {
-    void RgbaF32ToF16(const float *src, int srcStride, uint16_t *dst, int dstStride, int width,
-                      int height);
+void RgbaF32ToF16(const float *JXL_RESTRICT src,
+                  const uint32_t srcStride,
+                  uint16_t *JXL_RESTRICT dst,
+                  const uint32_t dstStride,
+                  const uint32_t width,
+                  const uint32_t height);
 }
 
 float half_to_float(const uint16_t x);

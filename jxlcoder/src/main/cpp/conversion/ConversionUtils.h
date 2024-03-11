@@ -1,10 +1,10 @@
 /*
  * MIT License
  *
- * Copyright (c) 2023 Radzivon Bartoshyk
+ * Copyright (c) 2024 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
- * Created by Radzivon Bartoshyk on 04/09/2023
+ * Created by Radzivon Bartoshyk on 10/04/2024
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,20 +26,6 @@
  *
  */
 
-#ifndef JXLCODER_RGBA2RGB_H
-#define JXLCODER_RGBA2RGB_H
+#pragma once
 
-#include <cstdint>
-#include "ConversionUtils.h"
-
-namespace coder {
-template<class T>
-void Rgba2RGB(const T *JXL_RESTRICT src,
-              const uint32_t srcStride,
-              T *JXL_RESTRICT dst,
-              const uint32_t dstStride,
-              const uint32_t width,
-              const uint32_t height);
-}
-
-#endif //JXLCODER_RGBA2RGB_H
+#define JXL_RESTRICT __restrict__

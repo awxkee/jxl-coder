@@ -41,10 +41,10 @@ enum ScaleMode {
 
 bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   JNIEnv *env,
-                  int *stride,
+                  uint32_t *stride,
                   bool useFloats,
-                  int *imageWidthPtr, int *imageHeightPtr,
-                  int scaledWidth, int scaledHeight,
+                  uint32_t *imageWidthPtr, uint32_t *imageHeightPtr,
+                  uint32_t scaledWidth, uint32_t scaledHeight,
                   bool alphaPremultiplied,
                   ScaleMode scaleMode, XSampler sampler);
 

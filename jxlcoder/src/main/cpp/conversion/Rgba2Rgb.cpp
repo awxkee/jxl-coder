@@ -42,8 +42,6 @@ using namespace std;
 #include "hwy/highway.h"
 #include "hwy/base.h"
 
-#include <android/log.h>
-
 HWY_BEFORE_NAMESPACE();
 namespace coder::HWY_NAMESPACE {
 
@@ -51,8 +49,8 @@ using namespace hwy::HWY_NAMESPACE;
 
 template<class D, typename V = VFromD<D>, typename T = TFromD<D>>
 void
-Rgba2RgbROW(D d, const T *HWY_RESTRICT src, T *HWY_RESTRICT dst, const int width) {
-  int x = 0;
+Rgba2RgbROW(D d, const T *JXL_RESTRICT src, T *JXL_RESTRICT dst, const uint32_t width) {
+  uint32_t x = 0;
   auto srcPixels = reinterpret_cast<const T *>(src);
   auto dstPixels = reinterpret_cast<T *>(dst);
   const int pixels = d.MaxLanes();
@@ -80,12 +78,12 @@ Rgba2RgbROW(D d, const T *HWY_RESTRICT src, T *HWY_RESTRICT dst, const int width
 
 template<class D, typename V = VFromD<D>, typename T = TFromD<D>>
 void Rgba2RGBHWY(D d,
-                 const T *HWY_RESTRICT src,
-                 const int srcStride,
-                 T *HWY_RESTRICT dst,
-                 const int dstStride,
-                 const int width,
-                 const int height) {
+                 const T *JXL_RESTRICT src,
+                 const uint32_t srcStride,
+                 T *JXL_RESTRICT dst,
+                 const uint32_t dstStride,
+                 const uint32_t width,
+                 const uint32_t height) {
   auto rgbaData = reinterpret_cast<const uint8_t *>(src);
   auto rgbData = reinterpret_cast<uint8_t *>(dst);
 
@@ -95,32 +93,32 @@ void Rgba2RGBHWY(D d,
   });
 }
 
-void Rgba2RGBHWYU8(const uint8_t *HWY_RESTRICT src,
-                   const int srcStride,
-                   uint8_t *HWY_RESTRICT dst,
-                   const int dstStride,
-                   const int width,
-                   const int height) {
+void Rgba2RGBHWYU8(const uint8_t *JXL_RESTRICT src,
+                   const uint32_t srcStride,
+                   uint8_t *JXL_RESTRICT dst,
+                   const uint32_t dstStride,
+                   const uint32_t width,
+                   const uint32_t height) {
   const ScalableTag<uint8_t> t;
   Rgba2RGBHWY(t, src, srcStride, dst, dstStride, height, width);
 }
 
-void Rgba2RGBHWYU16(const uint16_t *HWY_RESTRICT src,
-                    const int srcStride,
-                    uint16_t *HWY_RESTRICT dst,
-                    const int dstStride,
-                    const int width,
-                    const int height) {
+void Rgba2RGBHWYU16(const uint16_t *JXL_RESTRICT src,
+                    const uint32_t srcStride,
+                    uint16_t *JXL_RESTRICT dst,
+                    const uint32_t dstStride,
+                    const uint32_t width,
+                    const uint32_t height) {
   const ScalableTag<uint16_t> t;
   Rgba2RGBHWY(t, src, srcStride, dst, dstStride, height, width);
 }
 
-void Rgba2RGBHWYF32(const hwy::float32_t *HWY_RESTRICT src,
-                    const int srcStride,
-                    hwy::float32_t *HWY_RESTRICT dst,
-                    const int dstStride,
-                    const int width,
-                    const int height) {
+void Rgba2RGBHWYF32(const hwy::float32_t *JXL_RESTRICT src,
+                    const uint32_t srcStride,
+                    hwy::float32_t *JXL_RESTRICT dst,
+                    const uint32_t dstStride,
+                    const uint32_t width,
+                    const uint32_t height) {
   const ScalableTag<hwy::float32_t> t;
   Rgba2RGBHWY(t, src, srcStride, dst, dstStride, height, width);
 }
@@ -136,13 +134,13 @@ HWY_EXPORT(Rgba2RGBHWYU16);
 HWY_EXPORT(Rgba2RGBHWYF32);
 
 template<class T>
-HWY_DLLEXPORT void Rgba2RGB(const T *HWY_RESTRICT src,
-                            const int srcStride,
-                            T *HWY_RESTRICT dst,
-                            const int dstStride,
-                            const int width,
-                            const int height) {
-  if (std::is_same<T, uint8_t>::value) {
+HWY_DLLEXPORT void Rgba2RGB(const T *JXL_RESTRICT src,
+                            const uint32_t srcStride,
+                            T *JXL_RESTRICT dst,
+                            const uint32_t dstStride,
+                            const uint32_t width,
+                            const uint32_t height) {
+  if (std::is_same<T, uint8_t>::value || std::is_same<T, int8_t>::value || std::is_same<T, char>::value) {
     HWY_DYNAMIC_DISPATCH(Rgba2RGBHWYU8)(reinterpret_cast<const uint8_t *>(src),
                                         srcStride,
                                         reinterpret_cast<uint8_t *>(dst),
@@ -166,29 +164,43 @@ HWY_DLLEXPORT void Rgba2RGB(const T *HWY_RESTRICT src,
   }
 }
 
-template void Rgba2RGB(const uint8_t *HWY_RESTRICT src,
-                       const int srcStride,
-                       uint8_t *HWY_RESTRICT dst,
-                       const int dstStride,
-                       const int width,
-                       const int height);
+template void Rgba2RGB(const char *JXL_RESTRICT src,
+                       const uint32_t srcStride,
+                       char *JXL_RESTRICT dst,
+                       const uint32_t dstStride,
+                       const uint32_t width,
+                       const uint32_t height);
 
-template void Rgba2RGB(const uint16_t *HWY_RESTRICT src,
-                       const int srcStride,
-                       uint16_t *HWY_RESTRICT dst,
-                       const int dstStride,
-                       const int width,
-                       const int height);
+template void Rgba2RGB(const int8_t *JXL_RESTRICT src,
+                       const uint32_t srcStride,
+                       int8_t *JXL_RESTRICT dst,
+                       const uint32_t dstStride,
+                       const uint32_t width,
+                       const uint32_t height);
 
-template void Rgba2RGB(const hwy::float16_t *HWY_RESTRICT src,
-                       const int srcStride,
-                       hwy::float16_t *HWY_RESTRICT dst,
-                       const int dstStride, const int width, const int height);
+template void Rgba2RGB(const uint8_t *JXL_RESTRICT src,
+                       const uint32_t srcStride,
+                       uint8_t *JXL_RESTRICT dst,
+                       const uint32_t dstStride,
+                       const uint32_t width,
+                       const uint32_t height);
 
-template void Rgba2RGB(const float *HWY_RESTRICT src,
-                       const int srcStride,
-                       float *HWY_RESTRICT dst,
-                       const int dstStride, const int width, const int height);
+template void Rgba2RGB(const uint16_t *JXL_RESTRICT src,
+                       const uint32_t srcStride,
+                       uint16_t *JXL_RESTRICT dst,
+                       const uint32_t dstStride,
+                       const uint32_t width,
+                       const uint32_t height);
+
+template void Rgba2RGB(const hwy::float16_t *JXL_RESTRICT src,
+                       const uint32_t srcStride,
+                       hwy::float16_t *JXL_RESTRICT dst,
+                       const uint32_t dstStride, const uint32_t width, const uint32_t height);
+
+template void Rgba2RGB(const float *JXL_RESTRICT src,
+                       const uint32_t srcStride,
+                       float *JXL_RESTRICT dst,
+                       const uint32_t dstStride, const uint32_t width, const uint32_t height);
 
 }
 

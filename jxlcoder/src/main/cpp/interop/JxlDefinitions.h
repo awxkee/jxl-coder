@@ -42,7 +42,8 @@ enum JxlColorMatrix {
 
 enum JxlColorPixelType {
   rgb = 1,
-  rgba = 2
+  rgba = 2,
+  mono = 3
 };
 
 enum JxlCompressionOption {

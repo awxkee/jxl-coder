@@ -43,8 +43,8 @@
 
 void
 ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &imageConfig,
-                    PreferredColorConfig preferredColorConfig, int depth,
-                    int imageWidth, int imageHeight, int *stride, bool *useFloats,
+                    PreferredColorConfig preferredColorConfig, uint32_t depth,
+                    uint32_t imageWidth, uint32_t imageHeight, uint32_t *stride, bool *useFloats,
                     jobject *hwBuffer, bool alphaPremultiplied, const bool hasAlphaInOrigin) {
   *hwBuffer = nullptr;
   if (preferredColorConfig == Default) {
@@ -110,7 +110,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
         imageData = rgb565Data;
         break;
       } else {
-        int dstStride = imageWidth * (int) sizeof(uint16_t);
+        uint32_t dstStride = imageWidth * (uint32_t) sizeof(uint16_t);
         std::vector<uint8_t> rgb565Data(dstStride * imageHeight);
         coder::Rgba8To565(imageData.data(), *stride,
                           reinterpret_cast<uint16_t *>(rgb565Data.data()), dstStride,
@@ -181,7 +181,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                                                       [](AHardwareBuffer *hdBuffer) {
                                                         AHardwareBuffer_release_compat(hdBuffer);
                                                       });
-      ARect rect = {0, 0, imageWidth, imageHeight};
+      ARect rect = {0, 0, static_cast<int>(imageWidth), static_cast<int>(imageHeight)};
       uint8_t *buffer;
 
       status = AHardwareBuffer_lock_compat(hardwareBuffer.get(),

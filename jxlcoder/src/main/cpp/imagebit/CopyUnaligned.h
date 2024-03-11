@@ -33,11 +33,8 @@
 
 namespace coder {
 void
-CopyUnaligned(const uint8_t *__restrict__ src, int srcStride, uint8_t *__restrict__ dst,
-              const int dstStride,
-              const int width,
-              const int height,
-              const int pixelSize);
+CopyUnaligned(const uint8_t *__restrict__ src, const uint32_t srcStride, uint8_t *__restrict__ dst,
+              const uint32_t dstStride, const uint32_t width, const uint32_t height, const uint32_t pixelSize);
 }
 
 #endif //JXL_COPYUNALIGNEDRGBA_H

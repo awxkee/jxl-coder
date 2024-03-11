@@ -92,11 +92,11 @@ class JxlAnimatedDecoderCoordinator {
     return sampler;
   }
 
-  int getWidth() {
+  size_t getWidth() {
     return decoder->getWidth();
   }
 
-  int getHeight() {
+  size_t getHeight() {
     return decoder->getHeight();
   }
 

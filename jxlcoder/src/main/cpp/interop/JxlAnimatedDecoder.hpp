@@ -182,11 +182,11 @@ class JxlAnimatedDecoder {
     return loopCount;
   }
 
-  int getWidth() {
+  uint32_t getWidth() {
     return info.xsize;
   }
 
-  int getHeight() {
+  uint32_t getHeight() {
     return info.ysize;
   }
 

@@ -21,7 +21,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp colorspaces/CoderCms.cpp
         hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
         hwy/timer.cc JXLJpegInterop.cpp colorspaces/GamutAdapter.cpp EasyGifReader.cpp JXLConventions.cpp
-        processing/Convolve1D.cpp processing/Convolve1Db16.cpp
+        processing/Convolve1D.cpp processing/Convolve1Db16.cpp conversion/RgbChannels.cpp
 )
 
 add_subdirectory(giflib)

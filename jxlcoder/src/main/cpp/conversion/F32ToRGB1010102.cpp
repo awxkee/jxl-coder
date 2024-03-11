@@ -68,7 +68,7 @@ using hwy::HWY_NAMESPACE::Round;
 using hwy::float32_t;
 
 void
-F32ToRGBA1010102RowC(const float *HWY_RESTRICT data, uint8_t *HWY_RESTRICT dst, int width,
+F32ToRGBA1010102RowC(const float *HWY_RESTRICT data, uint8_t *HWY_RESTRICT dst, const uint32_t width,
                      const int *permuteMap) {
   float range10 = powf(2, 10) - 1;
   const FixedTag<float32_t, 4> df;
@@ -79,7 +79,7 @@ F32ToRGBA1010102RowC(const float *HWY_RESTRICT data, uint8_t *HWY_RESTRICT dst, 
   const auto vRange10 = Set(df, range10);
   const auto zeros = Zero(df);
   const auto alphaMax = Set(df, 3.0);
-  int x = 0;
+  uint32_t x = 0;
   auto dst32 = reinterpret_cast<uint32_t *>(dst);
   auto src = reinterpret_cast<const float32_t *>(data);
   int pixels = 4;
@@ -130,10 +130,9 @@ F32ToRGBA1010102RowC(const float *HWY_RESTRICT data, uint8_t *HWY_RESTRICT dst, 
 }
 
 void
-F32ToRGBA1010102HWY(vector <uint8_t> &data, int srcStride, int *HWY_RESTRICT dstStride,
-                    int width,
-                    int height) {
-  int newStride = (int) width * 4 * (int) sizeof(uint8_t);
+F32ToRGBA1010102HWY(vector <uint8_t> &data, const uint32_t srcStride, uint32_t *HWY_RESTRICT dstStride,
+                    const uint32_t width, const uint32_t height) {
+  uint32_t newStride = (uint32_t) width * 4 * (uint32_t) sizeof(uint8_t);
   *dstStride = newStride;
   vector<uint8_t> newData(newStride * height);
   int permuteMap[4] = {3, 2, 1, 0};
@@ -161,9 +160,7 @@ HWY_AFTER_NAMESPACE();
 namespace coder {
 HWY_EXPORT(F32ToRGBA1010102HWY);
 HWY_DLLEXPORT void
-F32ToRGBA1010102(std::vector<uint8_t> &data, int srcStride, int *HWY_RESTRICT dstStride,
-                 int width,
-                 int height) {
+F32ToRGBA1010102(std::vector<uint8_t> &data, const uint32_t srcStride, uint32_t *HWY_RESTRICT dstStride, const int width, const uint32_t height) {
   HWY_DYNAMIC_DISPATCH(F32ToRGBA1010102HWY)(data, srcStride, dstStride, width, height);
 }
 }

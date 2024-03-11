@@ -3,6 +3,7 @@ package com.awxkee.jxlcoder
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
@@ -149,11 +150,25 @@ class MainActivity : ComponentActivity() {
 ////
 //                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
 //                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
-                            val jxlBufferPNG = assets.open("rs_image.jxl").source().buffer().readByteArray()
-                            val animated1 = JxlAnimatedImage(jxlBufferPNG)
-                            val drawable1 = AnimatedDrawable(JxlAnimatedStore(animated1, 488, 488), firstFrameAsPlaceholder = true)
+                            val buffer = assets.open("lin.png").source().buffer().readByteArray()
+                            val bitmap = BitmapFactory.decodeByteArray(buffer, 0, buffer.size)
+                            val encoded =
+                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.MONOCHROME)
+                            val decoded = JxlCoder.decode(encoded)
                             lifecycleScope.launch {
-                                drawables.add(drawable1)
+                                drawables.add(BitmapDrawable(resources, decoded))
+                            }
+
+                            val animatedEncoder = JxlAnimatedEncoder(
+                                bitmap.width,
+                                bitmap.height,
+                                channelsConfiguration = JxlChannelsConfiguration.MONOCHROME,
+                                dataPixelFormat = JxlEncodingDataPixelFormat.BINARY_16,
+                            )
+                            animatedEncoder.addFrame(bitmap, 50)
+                            val decoded1 = JxlCoder.decode(animatedEncoder.encode())
+                            lifecycleScope.launch {
+                                drawables.add(BitmapDrawable(resources, decoded1))
                             }
 
 //                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()

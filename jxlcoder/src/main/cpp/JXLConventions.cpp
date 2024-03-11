@@ -373,8 +373,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_apng2JXLImpl(JNIEnv *env,
     encoder.encode(buffer);
     jbyteArray byteArray = env->NewByteArray((jsize) buffer.size());
     char *memBuf = reinterpret_cast<char *>(buffer.data());
-    env->SetByteArrayRegion(byteArray, 0, (jint) buffer.size(),
-                            reinterpret_cast<const jbyte *>(memBuf));
+    env->SetByteArrayRegion(byteArray, 0, (jint) buffer.size(), reinterpret_cast<const jbyte *>(memBuf));
     buffer.clear();
     return byteArray;
   } catch (std::bad_alloc &err) {

@@ -43,6 +43,7 @@
 #include "conversion/Rgb565.h"
 #include <jxl/encode.h>
 #include "colorspaces/ColorSpaceProfile.h"
+#include "conversion/RgbChannels.h"
 
 using namespace std;
 
@@ -91,8 +92,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         info.format != ANDROID_BITMAP_FORMAT_RGBA_F16 &&
         info.format != ANDROID_BITMAP_FORMAT_RGBA_1010102 &&
         info.format != ANDROID_BITMAP_FORMAT_RGB_565) {
-      string msg(
-          "Currently support encoding only RGBA_8888, RGBA_F16, RGBA_1010102, RBR_565 images pixel format");
+      string msg("Currently support encoding only RGBA_8888, RGBA_F16, RGBA_1010102, RGB_565 images pixel format");
       throwException(env, msg);
       return static_cast<jbyteArray>(nullptr);
     }
@@ -112,10 +112,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
       return static_cast<jbyteArray>(nullptr);
     }
 
-    int imageStride = (int) info.stride;
+    uint32_t imageStride = info.stride;
 
     if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
-      imageStride = (int) info.width * 4 * (int) sizeof(uint16_t);
+      imageStride = info.width * 4 * sizeof(uint16_t);
       vector<uint8_t> halfFloatPixels(imageStride * info.height);
       coder::ConvertRGBA1010102toF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
                                      (int) info.stride,
@@ -125,12 +125,12 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                                      (int) info.height);
       rgbaPixels = halfFloatPixels;
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
-      int newStride = (int) info.width * 4 * (int) sizeof(uint8_t);
+      uint32_t newStride = info.width * 4 * (uint32_t) sizeof(uint8_t);
       std::vector<uint8_t> rgba8888Pixels(newStride * info.height);
       coder::Rgb565ToUnsigned8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                               (int) info.stride,
+                               (uint32_t) info.stride,
                                rgba8888Pixels.data(), newStride,
-                               (int) info.width, (int) info.height, 8, 255);
+                               (uint32_t) info.width, (uint32_t) info.height, 8, 255);
       imageStride = newStride;
       rgbaPixels = rgba8888Pixels;
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888) {
@@ -143,18 +143,39 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
     bool useFloat16 = info.format == ANDROID_BITMAP_FORMAT_RGBA_F16 ||
         info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102;
 
+    const bool isImageMono = colorspace == mono;
+
     std::vector<uint8_t> rgbPixels;
     switch (colorspace) {
-      case rgb: {
-        int requiredStride = (int) info.width * 3 *
+      case mono: {
+        int requiredStride = (int) info.width * 1 *
             (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
         rgbPixels.resize(info.height * requiredStride);
         if (useFloat16) {
+          coder::RGBAPickChannel(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                                 (int) imageStride,
+                                 reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                                 (int) requiredStride,
+                                 (int) info.width, (int) info.height, 0);
+        } else {
+          coder::RGBAPickChannel(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
+                                 reinterpret_cast<uint8_t *>(rgbPixels.data()),
+                                 static_cast<int>(requiredStride),
+                                 static_cast<int>(info.width),
+                                 static_cast<int>(info.height), 0);
+        }
+        imageStride = requiredStride;
+      }
+        break;
+      case rgb: {
+        uint32_t requiredStride = (uint32_t) info.width * 3 * (uint32_t) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
+        rgbPixels.resize(info.height * requiredStride);
+        if (useFloat16) {
           coder::Rgba2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                          (int) imageStride,
+                          (uint32_t) imageStride,
                           reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                          (int) requiredStride,
-                          (int) info.width, (int) info.height);
+                          (uint32_t) requiredStride,
+                          (uint32_t) info.width, (int) info.height);
         } else {
           coder::Rgba2RGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
                           reinterpret_cast<uint8_t *>(rgbPixels.data()),
@@ -176,8 +197,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                                requiredStride,
                                (int) info.width * 4,
                                (int) info.height,
-                               (int) (useFloat16 ? sizeof(uint16_t)
-                                                 : sizeof(uint8_t)));
+                               (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t)));
         }
         imageStride = requiredStride;
       }
@@ -327,10 +347,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             .gamma = 0.45f
         };
       } else {
-        JxlColorEncodingSetToSRGB(&colorEncoding, JXL_FALSE);
+        JxlColorEncodingSetToSRGB(&colorEncoding, isImageMono);
       }
     } else {
-      JxlColorEncodingSetToSRGB(&colorEncoding, JXL_FALSE);
+      JxlColorEncodingSetToSRGB(&colorEncoding, isImageMono);
     }
 
     JxlEncodingPixelDataFormat dataPixelFormat = useFloat16 ? BINARY_16 : UNSIGNED_8;

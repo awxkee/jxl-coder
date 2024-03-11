@@ -47,63 +47,62 @@ HWY_BEFORE_NAMESPACE();
 
 namespace coder::HWY_NAMESPACE {
 
-    using hwy::HWY_NAMESPACE::FixedTag;
-    using hwy::HWY_NAMESPACE::Vec;
-    using hwy::HWY_NAMESPACE::LoadInterleaved4;
-    using hwy::HWY_NAMESPACE::Rebind;
-    using hwy::HWY_NAMESPACE::Store;
-    using hwy::HWY_NAMESPACE::BitCast;
-    using hwy::HWY_NAMESPACE::StoreInterleaved4;
+using hwy::HWY_NAMESPACE::FixedTag;
+using hwy::HWY_NAMESPACE::Vec;
+using hwy::HWY_NAMESPACE::LoadInterleaved4;
+using hwy::HWY_NAMESPACE::Rebind;
+using hwy::HWY_NAMESPACE::Store;
+using hwy::HWY_NAMESPACE::BitCast;
+using hwy::HWY_NAMESPACE::StoreInterleaved4;
 
-    void RGBAF32ToF16RowHWY(const float *HWY_RESTRICT src, uint16_t *dst, int width) {
-        const FixedTag<float, 4> df32;
-        const FixedTag<hwy::float16_t, 4> df16;
-        const FixedTag<uint16_t, 4> du16;
-        using V32 = Vec<decltype(df32)>;
-        using V16 = Vec<decltype(df16)>;
-        const Rebind<hwy::float16_t, FixedTag<float, 4>> dfc16;
-        int x = 0;
-        int pixelsCount = 4;
-        for (x = 0; x + pixelsCount < width; x += pixelsCount) {
-            V32 pixels1;
-            V32 pixels2;
-            V32 pixels3;
-            V32 pixels4;
-            LoadInterleaved4(df32, src, pixels1, pixels2, pixels3, pixels4);
-            auto pixeld1 = BitCast(du16, DemoteTo(dfc16, pixels1));
-            auto pixeld2 = BitCast(du16, DemoteTo(dfc16, pixels2));
-            auto pixeld3 = BitCast(du16, DemoteTo(dfc16, pixels3));
-            auto pixeld4 = BitCast(du16, DemoteTo(dfc16, pixels4));
-            StoreInterleaved4(pixeld1, pixeld2, pixeld3, pixeld4, du16,
-                              reinterpret_cast<uint16_t *>(dst));
-            src += 4 * pixelsCount;
-            dst += 4 * pixelsCount;
-        }
+void RGBAF32ToF16RowHWY(const float *JXL_RESTRICT src, uint16_t *JXL_RESTRICT dst, const uint32_t width) {
+  const FixedTag<float, 4> df32;
+  const FixedTag<hwy::float16_t, 4> df16;
+  const FixedTag<uint16_t, 4> du16;
+  using V32 = Vec<decltype(df32)>;
+  using V16 = Vec<decltype(df16)>;
+  const Rebind<hwy::float16_t, FixedTag<float, 4>> dfc16;
+  uint32_t x = 0;
+  int pixelsCount = 4;
+  for (x = 0; x + pixelsCount < width; x += pixelsCount) {
+    V32 pixels1;
+    V32 pixels2;
+    V32 pixels3;
+    V32 pixels4;
+    LoadInterleaved4(df32, src, pixels1, pixels2, pixels3, pixels4);
+    auto pixeld1 = BitCast(du16, DemoteTo(dfc16, pixels1));
+    auto pixeld2 = BitCast(du16, DemoteTo(dfc16, pixels2));
+    auto pixeld3 = BitCast(du16, DemoteTo(dfc16, pixels3));
+    auto pixeld4 = BitCast(du16, DemoteTo(dfc16, pixels4));
+    StoreInterleaved4(pixeld1, pixeld2, pixeld3, pixeld4, du16,
+                      reinterpret_cast<uint16_t *>(dst));
+    src += 4 * pixelsCount;
+    dst += 4 * pixelsCount;
+  }
 
-        for (; x < width; ++x) {
-            dst[0] = half(src[0]).data_;
-            dst[1] = half(src[1]).data_;
-            dst[2] = half(src[2]).data_;
-            dst[3] = half(src[3]).data_;
+  for (; x < width; ++x) {
+    dst[0] = half(src[0]).data_;
+    dst[1] = half(src[1]).data_;
+    dst[2] = half(src[2]).data_;
+    dst[3] = half(src[3]).data_;
 
-            src += 4;
-            dst += 4;
-        }
-    }
+    src += 4;
+    dst += 4;
+  }
+}
 
-    void
-    RgbaF32ToF16H(const float *HWY_RESTRICT src, int srcStride, uint16_t *HWY_RESTRICT dst,
-                  int dstStride, int width,
-                  int height) {
-        auto srcPixels = reinterpret_cast<const uint8_t *>(src);
-        auto dstPixels = reinterpret_cast<uint8_t *>(dst);
+void
+RgbaF32ToF16H(const float *JXL_RESTRICT src, const int srcStride, uint16_t *JXL_RESTRICT dst,
+              const uint32_t dstStride, const uint32_t width, const uint32_t height) {
+  auto srcPixels = reinterpret_cast<const uint8_t *>(src);
+  auto dstPixels = reinterpret_cast<uint8_t *>(dst);
 
-        concurrency::parallel_for(2, height, [&](int y) {
-            RGBAF32ToF16RowHWY(reinterpret_cast<const float *>(srcPixels + srcStride * y),
-                    reinterpret_cast<uint16_t *>(dstPixels + dstStride * y),
-                    width);
-        });
-    }
+  concurrency::parallel_for(2, height, [&](int y) {
+    RGBAF32ToF16RowHWY(reinterpret_cast<const float *>(srcPixels + srcStride * y),
+                       reinterpret_cast<uint16_t *>(dstPixels + dstStride * y),
+                       width);
+  });
+}
 }
 
 HWY_AFTER_NAMESPACE();
@@ -111,27 +110,27 @@ HWY_AFTER_NAMESPACE();
 #if HWY_ONCE
 
 uint as_uint(const float x) {
-    return *(uint *) &x;
+  return *(uint * ) & x;
 }
 
 float as_float(const uint x) {
-    return *(float *) &x;
+  return *(float *) &x;
 }
 
 uint16_t float_to_half(
-        const float x) { // IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
-    const uint b =
-            as_uint(x) + 0x00001000; // round-to-nearest-even: add last bit after truncated mantissa
-    const uint e = (b & 0x7F800000) >> 23; // exponent
-    const uint m = b &
-                   0x007FFFFF; // mantissa; in line below: 0x007FF000 = 0x00800000-0x00001000 = decimal indicator flag - initial rounding
-    return (b & 0x80000000) >> 16 | (e > 112) * ((((e - 112) << 10) & 0x7C00) | m >> 13) |
-           ((e < 113) & (e > 101)) * ((((0x007FF000 + m) >> (125 - e)) + 1) >> 1) |
-           (e > 143) * 0x7FFF; // sign : normalized : denormalized : saturate
+    const float x) { // IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
+  const uint b =
+      as_uint(x) + 0x00001000; // round-to-nearest-even: add last bit after truncated mantissa
+  const uint e = (b & 0x7F800000) >> 23; // exponent
+  const uint m = b &
+      0x007FFFFF; // mantissa; in line below: 0x007FF000 = 0x00800000-0x00001000 = decimal indicator flag - initial rounding
+  return (b & 0x80000000) >> 16 | (e > 112) * ((((e - 112) << 10) & 0x7C00) | m >> 13) |
+      ((e < 113) & (e > 101)) * ((((0x007FF000 + m) >> (125 - e)) + 1) >> 1) |
+      (e > 143) * 0x7FFF; // sign : normalized : denormalized : saturate
 }
 
 float half_to_float(
-        const uint16_t x) { // IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
+    const uint16_t x) { // IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
 //    const uint e = (x & 0x7C00) >> 10; // exponent
 //    const uint m = (x & 0x03FF) << 13; // mantissa
 //    const uint v = as_uint((float) m)
@@ -140,19 +139,19 @@ float half_to_float(
 //                                                                            ((v - 37) << 23 |
 //                                                                             ((m << (150 - v)) &
 //                                                                              0x007FE000))); // sign : normalized : denormalized
-    half f;
-    f.data_ = x;
-    return f;
+  half f;
+  f.data_ = x;
+  return f;
 }
 
 namespace coder {
-    HWY_EXPORT(RgbaF32ToF16H);
-    HWY_DLLEXPORT void
-    RgbaF32ToF16(const float *HWY_RESTRICT src, int srcStride, uint16_t *HWY_RESTRICT dst,
-                 int dstStride, int width,
-                 int height) {
-        HWY_DYNAMIC_DISPATCH(RgbaF32ToF16H)(src, srcStride, dst, dstStride, width, height);
-    }
+HWY_EXPORT(RgbaF32ToF16H);
+HWY_DLLEXPORT void
+RgbaF32ToF16(const float *JXL_RESTRICT src, const uint32_t srcStride, uint16_t *JXL_RESTRICT dst,
+             const uint32_t dstStride, const uint32_t width,
+             const uint32_t height) {
+  HWY_DYNAMIC_DISPATCH(RgbaF32ToF16H)(src, srcStride, dst, dstStride, width, height);
+}
 }
 
 #endif

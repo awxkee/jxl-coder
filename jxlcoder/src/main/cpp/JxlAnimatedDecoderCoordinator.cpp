@@ -180,15 +180,15 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
     auto preferEncoding = frame.preferColorEncoding;
     auto colorEncoding = frame.colorEncoding;
 
-    int stride = (int) coordinator->getWidth() * 4 *
-        (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
+    uint32_t stride = coordinator->getWidth() * 4 * static_cast<uint32_t>(useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
 
     if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
         colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
         colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI ||
         colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709 ||
         colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA ||
-        colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)) {
+        colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)
+        && colorEncoding.color_space == JXL_COLOR_SPACE_RGB) {
       Eigen::Matrix3f sourceProfile;
       GamutTransferFunction function = SKIP;
       GammaCurve gammaCurve = sRGB;
@@ -267,18 +267,17 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                                   iccProfile.size(),
                                   useFloat16);
     }
-    int scaledWidth = scaleWidth;
-    int scaledHeight = scaleHeight;
-    bool useSampler =
-        (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
+    uint32_t scaledWidth = scaleWidth;
+    uint32_t scaledHeight = scaleHeight;
+    bool useSampler = (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
 
-    int finalWidth = (int) coordinator->getWidth();
-    int finalHeight = (int) coordinator->getHeight();
+    uint32_t finalWidth = coordinator->getWidth();
+    uint32_t finalHeight = coordinator->getHeight();
 
     if (useSampler && scaledHeight > 0 && scaledWidth > 0) {
       auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useFloat16,
-                                      reinterpret_cast<int *>(&finalWidth),
-                                      reinterpret_cast<int *>(&finalHeight),
+                                      reinterpret_cast<uint32_t *>(&finalWidth),
+                                      reinterpret_cast<uint32_t *>(&finalHeight),
                                       scaledWidth, scaledHeight, alphaPremultiplied,
                                       coordinator->getScaleMode(),
                                       coordinator->getSampler());

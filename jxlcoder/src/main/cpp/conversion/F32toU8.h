@@ -30,11 +30,12 @@
 #define AVIF_RGBAF16BITNBITU8_H
 
 #include <vector>
+#include "ConversionUtils.h"
 
 namespace coder {
-    void F32toU8(const float *sourceData, int srcStride,
-                 uint8_t *dst, int dstStride, int width,
-                 int height, int bitDepth);
+void F32toU8(const float *JXL_RESTRICT sourceData, const uint32_t srcStride,
+             uint8_t *JXL_RESTRICT dst, const uint32_t dstStride, const uint32_t width,
+             const uint32_t height, const uint32_t bitDepth);
 }
 
 #endif //AVIF_RGBAF16BITNBITU8_H

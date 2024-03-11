@@ -91,29 +91,29 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   imageData.clear();
 
   if (!iccProfile.empty()) {
-    int stride = (int) xsize * 4 *
-        (int) (useBitmapFloats ? sizeof(uint16_t)
-                               : sizeof(uint8_t));
+    size_t stride = (size_t) xsize * 4 * (size_t) (useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
     convertUseDefinedColorSpace(rgbaPixels,
                                 stride,
-                                (int) xsize,
-                                (int) ysize, iccProfile.data(),
+                                static_cast<size_t>(xsize),
+                                static_cast<size_t>(ysize),
+                                iccProfile.data(),
                                 iccProfile.size(),
                                 useBitmapFloats);
   }
 
-  bool useSampler =
-      (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
+  bool useSampler = (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
 
-  int finalWidth = (int) xsize;
-  int finalHeight = (int) ysize;
-  int stride = finalWidth * 4 * (int) (useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+  uint32_t finalWidth = xsize;
+  uint32_t finalHeight = ysize;
+  uint32_t stride = static_cast<uint32_t >(finalWidth) * 4 * static_cast<uint32_t >(useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
 
   if (useSampler) {
     auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useBitmapFloats,
-                                    reinterpret_cast<int *>(&finalWidth),
-                                    reinterpret_cast<int *>(&finalHeight),
-                                    scaledWidth, scaledHeight, alphaPremultiplied, scaleMode,
+                                    reinterpret_cast<uint32_t *>(&finalWidth),
+                                    reinterpret_cast<uint32_t *>(&finalHeight),
+                                    static_cast<uint32_t >(scaledWidth),
+                                    static_cast<uint32_t >(scaledHeight),
+                                    alphaPremultiplied, scaleMode,
                                     sampler);
     if (!scaleResult) {
       return nullptr;
@@ -125,7 +125,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI ||
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709 ||
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA ||
-      colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)) {
+      colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)
+      && colorEncoding.color_space == JXL_COLOR_SPACE_RGB) {
     Eigen::Matrix3f sourceProfile;
     GamutTransferFunction function = SKIP;
     GammaCurve gammaCurve = sRGB;

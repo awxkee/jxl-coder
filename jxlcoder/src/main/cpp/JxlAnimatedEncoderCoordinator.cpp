@@ -42,6 +42,7 @@
 #include "conversion/RgbaF16bitNBitU8.h"
 #include "conversion/Rgba2Rgb.h"
 #include "conversion/Rgb565.h"
+#include "conversion/RgbChannels.h"
 #include "imagebit/CopyUnaligned.h"
 
 using namespace std;
@@ -172,7 +173,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
         info.format != ANDROID_BITMAP_FORMAT_RGBA_1010102 &&
         info.format != ANDROID_BITMAP_FORMAT_RGB_565) {
       string msg(
-          "Currently support encoding only RGBA_8888, RGBA_F16, RGBA_1010102, RBR_565 images pixel format");
+          "Currently support encoding only RGBA_8888, RGBA_F16, RGBA_1010102, RGB_565 images pixel format");
       throwException(env, msg);
       return;
     }
@@ -193,27 +194,27 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
     }
 
     JxlEncodingPixelDataFormat dataPixelFormat = coordinator->getDataPixelFormat();
-    int imageStride = (int) info.stride;
+    uint32_t imageStride = info.stride;
     if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
       if (dataPixelFormat == BINARY_16) {
-        imageStride = (int) info.width * 4 * (int) sizeof(uint16_t);
+        imageStride = info.width * 4 * sizeof(uint16_t);
         vector<uint8_t> halfFloatPixels(imageStride * info.height);
         coder::ConvertRGBA1010102toF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
-                                       (int) info.stride,
+                                       (uint32_t) info.stride,
                                        reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
-                                       (int) imageStride,
-                                       (int) info.width,
-                                       (int) info.height);
+                                       (uint32_t) imageStride,
+                                       (uint32_t) info.width,
+                                       (uint32_t) info.height);
         rgbaPixels = halfFloatPixels;
       } else {
-        imageStride = (int) info.width * 4 * (int) sizeof(uint8_t);
+        imageStride = info.width * 4 * sizeof(uint8_t);
         vector<uint8_t> u8PixelsData(imageStride * info.height);
         coder::RGBA1010102ToUnsigned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
-                                     (int) info.stride,
+                                     (uint32_t) info.stride,
                                      reinterpret_cast<uint8_t *>(u8PixelsData.data()),
-                                     (int) imageStride,
-                                     (int) info.width,
-                                     (int) info.height, 8);
+                                     (uint32_t) imageStride,
+                                     (uint32_t) info.width,
+                                     (uint32_t) info.height, 8);
         rgbaPixels = u8PixelsData;
       }
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
@@ -267,6 +268,26 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
     std::vector<uint8_t> rgbPixels;
     JxlColorPixelType colorPixelType = coordinator->getColorPixelType();
     switch (colorPixelType) {
+      case mono: {
+        size_t requiredStride = (size_t) info.width * 1 *
+            (size_t) (dataPixelFormat == BINARY_16 ? sizeof(uint16_t) : sizeof(uint8_t));
+        rgbPixels.resize(info.height * requiredStride);
+        if (dataPixelFormat == BINARY_16) {
+          coder::RGBAPickChannel(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                                 (int) imageStride,
+                                 reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                                 (int) requiredStride,
+                                 (int) info.width, (int) info.height, 0);
+        } else {
+          coder::RGBAPickChannel(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
+                                 reinterpret_cast<uint8_t *>(rgbPixels.data()),
+                                 static_cast<int>(requiredStride),
+                                 static_cast<int>(info.width),
+                                 static_cast<int>(info.height), 0);
+        }
+        imageStride = requiredStride;
+      }
+        break;
       case rgb: {
         int requiredStride = (int) info.width * 3 *
             (int) (dataPixelFormat == BINARY_16 ? sizeof(uint16_t)
@@ -274,16 +295,16 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
         rgbPixels.resize(info.height * requiredStride);
         if (dataPixelFormat == BINARY_16) {
           coder::Rgba2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                          (int) imageStride,
+                          (uint32_t) imageStride,
                           reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                          (int) requiredStride,
-                          (int) info.width, (int) info.height);
+                          (uint32_t) requiredStride,
+                          (uint32_t) info.width, (uint32_t) info.height);
         } else {
-          coder::Rgba2RGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
+          coder::Rgba2RGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<uint32_t>(imageStride),
                           reinterpret_cast<uint8_t *>(rgbPixels.data()),
-                          static_cast<int>(requiredStride),
-                          static_cast<int>(info.width),
-                          static_cast<int>(info.height));
+                          static_cast<uint32_t>(requiredStride),
+                          static_cast<uint32_t>(info.width),
+                          static_cast<uint32_t>(info.height));
         }
         imageStride = requiredStride;
       }

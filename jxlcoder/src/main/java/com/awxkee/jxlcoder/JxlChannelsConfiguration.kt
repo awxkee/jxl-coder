@@ -30,5 +30,11 @@ package com.awxkee.jxlcoder
 
 enum class JxlChannelsConfiguration(internal val cValue: Int) {
     RGB(1),
-    RGBA(2)
+    RGBA(2),
+
+    /**
+     * If mono selected from RGBA channels will be picked only R channel since it's considered that when image is MONO then all the gamut channels are the same,
+     * so it's your responsibility to ensure that image is correctly grayed before sending it is as mono and R channel contains required intensity values
+     */
+    MONOCHROME(3),
 }

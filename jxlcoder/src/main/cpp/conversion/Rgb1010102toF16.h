@@ -30,10 +30,11 @@
 #define JXLCODER_RGB1010102TOF16_H
 
 #include <cstdint>
+#include "ConversionUtils.h"
 
 namespace coder {
-    void ConvertRGBA1010102toF16(const uint8_t *src, int srcStride, uint16_t *dst, int dstStride,
-                                 int width, int height);
+void ConvertRGBA1010102toF16(const uint8_t *JXL_RESTRICT src, const int srcStride, uint16_t *JXL_RESTRICT dst, const uint32_t dstStride,
+                             const uint32_t width, const uint32_t height);
 }
 
 #endif //JXLCODER_RGB1010102TOF16_H

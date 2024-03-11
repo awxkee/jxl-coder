@@ -60,19 +60,23 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     return false;
   }
 
-  JxlPixelFormat pixelFormat;
+  JxlPixelFormat pixelFormat = {1, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+  int channelsCount = 1;
   switch (colorspace) {
-    case rgb:
-      pixelFormat = {3, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
-                     JXL_NATIVE_ENDIAN,
-                     0};
+    case mono: {
+      channelsCount = 1;
+    }
       break;
-    case rgba:
-      pixelFormat = {4, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8,
-                     JXL_NATIVE_ENDIAN,
-                     0};
+    case rgb: {
+      channelsCount = 3;
+    }
+      break;
+    case rgba: {
+      channelsCount = 4;
+    }
       break;
   }
+  pixelFormat.num_channels = channelsCount;
 
   JxlBasicInfo basicInfo;
   JxlEncoderInitBasicInfo(&basicInfo);
@@ -83,7 +87,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
   if (encodingDataFormat == BINARY_16) {
     basicInfo.exponent_bits_per_sample = 5;
   }
-  basicInfo.num_color_channels = 3;
+  basicInfo.num_color_channels = channelsCount;
   basicInfo.alpha_premultiplied = false;
 
   if (colorspace == rgba) {
@@ -99,9 +103,16 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
   }
 
   switch (colorspace) {
-    case rgb:basicInfo.num_color_channels = 3;
+    case mono: {
+      basicInfo.num_color_channels = 1;
+    }
       break;
-    case rgba:basicInfo.num_color_channels = 4;
+    case rgb: {
+      basicInfo.num_color_channels = 3;
+    }
+      break;
+    case rgba: {
+      basicInfo.num_color_channels = 4;
       JxlExtraChannelInfo channelInfo;
       JxlEncoderInitExtraChannelInfo(JXL_CHANNEL_ALPHA, &channelInfo);
       channelInfo.bits_per_sample = encodingDataFormat == BINARY_16 ? 16 : 8;
@@ -109,6 +120,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
       if (JXL_ENC_SUCCESS != JxlEncoderSetExtraChannelInfo(enc.get(), 0, &channelInfo)) {
         return false;
       }
+    }
       break;
   }
 

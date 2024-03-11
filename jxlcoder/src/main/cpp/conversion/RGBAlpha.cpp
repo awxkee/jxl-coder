@@ -17,213 +17,213 @@ HWY_BEFORE_NAMESPACE();
 
 namespace coder::HWY_NAMESPACE {
 
-    using namespace hwy;
-    using namespace hwy::HWY_NAMESPACE;
+using namespace hwy;
+using namespace hwy::HWY_NAMESPACE;
 
-    HWY_INLINE HWY_FLATTEN Vec<FixedTag<uint16_t, 8>>
-    RearrangeVec(Vec<FixedTag<uint16_t, 8>> vec) {
-        const FixedTag<uint16_t, 8> du16x8;
-        const FixedTag<uint16_t, 4> du16x4;
-        const FixedTag<uint32_t, 4> du32x4;
-        const FixedTag<float, 4> df32x4;
-        const Rebind<int32_t, decltype(df32x4)> ru32;
-        using VF = Vec<decltype(df32x4)>;
-        const VF mult255 = Set(df32x4, 1.f / 255);
-        return Combine(du16x8, DemoteTo(du16x4, ConvertTo(ru32, Round(Mul(ConvertTo(df32x4,
-                                                                                    PromoteUpperTo(
-                                                                                            du32x4,
-                                                                                            vec)),
-                                                                          mult255)))),
-                       DemoteTo(du16x4, ConvertTo(ru32, Round(Mul(ConvertTo(df32x4,
-                                                                            PromoteLowerTo(
-                                                                                    du32x4,
-                                                                                    vec)),
-                                                                  mult255)))));
+HWY_INLINE HWY_FLATTEN Vec<FixedTag<uint16_t, 8>>
+RearrangeVec(Vec<FixedTag<uint16_t, 8>> vec) {
+  const FixedTag<uint16_t, 8> du16x8;
+  const FixedTag<uint16_t, 4> du16x4;
+  const FixedTag<uint32_t, 4> du32x4;
+  const FixedTag<float, 4> df32x4;
+  const Rebind<int32_t, decltype(df32x4)> ru32;
+  using VF = Vec<decltype(df32x4)>;
+  const VF mult255 = Set(df32x4, 1.f / 255);
+  return Combine(du16x8, DemoteTo(du16x4, ConvertTo(ru32, Round(Mul(ConvertTo(df32x4,
+                                                                              PromoteUpperTo(
+                                                                                  du32x4,
+                                                                                  vec)),
+                                                                    mult255)))),
+                 DemoteTo(du16x4, ConvertTo(ru32, Round(Mul(ConvertTo(df32x4,
+                                                                      PromoteLowerTo(
+                                                                          du32x4,
+                                                                          vec)),
+                                                            mult255)))));
+}
+
+HWY_INLINE HWY_FLATTEN Vec<FixedTag<uint16_t, 8>>
+RearrangeVecAlpha(Vec<FixedTag<uint16_t, 8>> vec, Vec<FixedTag<uint16_t, 8>> alphas) {
+  const FixedTag<uint16_t, 8> du16x8;
+  const FixedTag<uint16_t, 4> du16x4;
+  const FixedTag<uint32_t, 4> du32x4;
+  const FixedTag<float, 4> df32x4;
+  const Rebind<int32_t, decltype(df32x4)> ru32;
+  using VF32 = Vec<decltype(df32x4)>;
+  const auto ones = Set(df32x4, 1.0f);
+  const auto zeros = Zero(df32x4);
+  VF32 lowDiv = ConvertTo(df32x4, PromoteLowerTo(du32x4, alphas));
+  VF32 highDiv = ConvertTo(df32x4, PromoteUpperTo(du32x4, alphas));
+  lowDiv = IfThenElse(lowDiv == zeros, ones, lowDiv);
+  highDiv = IfThenElse(highDiv == zeros, ones, highDiv);
+  return Combine(du16x8, DemoteTo(du16x4, ConvertTo(ru32, Round(Div(ConvertTo(df32x4,
+                                                                              PromoteUpperTo(
+                                                                                  du32x4,
+                                                                                  vec)),
+                                                                    highDiv)))),
+                 DemoteTo(du16x4, ConvertTo(ru32, Round(Div(ConvertTo(df32x4,
+                                                                      PromoteLowerTo(
+                                                                          du32x4,
+                                                                          vec)),
+                                                            lowDiv)))));
+}
+
+void UnpremultiplyRGBA_HWY(const uint8_t *JXL_RESTRICT src, const uint32_t srcStride,
+                           uint8_t *JXL_RESTRICT dst, const uint32_t dstStride, const uint32_t width,
+                           const uint32_t height) {
+  const FixedTag<uint8_t, 16> du8x16;
+  const FixedTag<uint16_t, 8> du16x8;
+  const FixedTag<uint8_t, 8> du8x8;
+
+  using VU8x16 = Vec<decltype(du8x16)>;
+  using VU16x8 = Vec<decltype(du16x8)>;
+
+  const VU16x8 mult255 = Set(du16x8, 255);
+
+  concurrency::parallel_for(2, height, [&](int y) {
+    const int pixels = 16;
+
+    auto mSrc = reinterpret_cast<const uint8_t *>(src + y * srcStride);
+    auto mDst = reinterpret_cast<uint8_t *>(dst + y * dstStride);
+
+    uint32_t x = 0;
+
+    for (; x + pixels < width; x += pixels) {
+      VU8x16 r8, g8, b8, a8;
+      LoadInterleaved4(du8x16, mSrc, r8, g8, b8, a8);
+
+      VU16x8 aLow = PromoteLowerTo(du16x8, a8);
+      VU16x8 rLow = PromoteLowerTo(du16x8, r8);
+      VU16x8 gLow = PromoteLowerTo(du16x8, g8);
+      VU16x8 bLow = PromoteLowerTo(du16x8, b8);
+      auto lowADivider = ShiftRight<1>(aLow);
+      VU16x8 tmp = Add(Mul(Min(rLow, aLow), mult255), lowADivider);
+      rLow = RearrangeVecAlpha(tmp, aLow);
+      tmp = Add(Mul(Min(gLow, aLow), mult255), lowADivider);
+      gLow = RearrangeVecAlpha(tmp, aLow);
+      tmp = Add(Mul(Min(bLow, aLow), mult255), lowADivider);
+      bLow = RearrangeVecAlpha(tmp, aLow);
+
+      VU16x8 aHigh = PromoteUpperTo(du16x8, a8);
+      VU16x8 rHigh = PromoteUpperTo(du16x8, r8);
+      VU16x8 gHigh = PromoteUpperTo(du16x8, g8);
+      VU16x8 bHigh = PromoteUpperTo(du16x8, b8);
+      auto highADivider = ShiftRight<1>(aHigh);
+      tmp = Add(Mul(Min(rHigh, aHigh), mult255), highADivider);
+      rHigh = RearrangeVecAlpha(tmp, aHigh);
+      tmp = Add(Mul(Min(gHigh, aHigh), mult255), highADivider);
+      gHigh = RearrangeVecAlpha(tmp, aHigh);
+      tmp = Add(Mul(Min(bHigh, aHigh), mult255), highADivider);
+      bHigh = RearrangeVecAlpha(tmp, aHigh);
+
+      r8 = Combine(du8x16, DemoteTo(du8x8, rHigh), DemoteTo(du8x8, rLow));
+      g8 = Combine(du8x16, DemoteTo(du8x8, gHigh), DemoteTo(du8x8, gLow));
+      b8 = Combine(du8x16, DemoteTo(du8x8, bHigh), DemoteTo(du8x8, bLow));
+
+      StoreInterleaved4(r8, g8, b8, a8, du8x16, mDst);
+
+      mSrc += pixels * 4;
+      mDst += pixels * 4;
     }
 
-    HWY_INLINE HWY_FLATTEN Vec<FixedTag<uint16_t, 8>>
-    RearrangeVecAlpha(Vec<FixedTag<uint16_t, 8>> vec, Vec<FixedTag<uint16_t, 8>> alphas) {
-        const FixedTag<uint16_t, 8> du16x8;
-        const FixedTag<uint16_t, 4> du16x4;
-        const FixedTag<uint32_t, 4> du32x4;
-        const FixedTag<float, 4> df32x4;
-        const Rebind<int32_t, decltype(df32x4)> ru32;
-        using VF32 = Vec<decltype(df32x4)>;
-        const auto ones = Set(df32x4, 1.0f);
-        const auto zeros = Zero(df32x4);
-        VF32 lowDiv = ConvertTo(df32x4, PromoteLowerTo(du32x4, alphas));
-        VF32 highDiv = ConvertTo(df32x4, PromoteUpperTo(du32x4, alphas));
-        lowDiv = IfThenElse(lowDiv == zeros, ones, lowDiv);
-        highDiv = IfThenElse(highDiv == zeros, ones, highDiv);
-        return Combine(du16x8, DemoteTo(du16x4, ConvertTo(ru32, Round(Div(ConvertTo(df32x4,
-                                                                                    PromoteUpperTo(
-                                                                                            du32x4,
-                                                                                            vec)),
-                                                                          highDiv)))),
-                       DemoteTo(du16x4, ConvertTo(ru32, Round(Div(ConvertTo(df32x4,
-                                                                            PromoteLowerTo(
-                                                                                    du32x4,
-                                                                                    vec)),
-                                                                  lowDiv)))));
+    for (; x < width; ++x) {
+      uint8_t alpha = mSrc[3];
+      if (alpha != 0) {
+        mDst[0] = (min(mSrc[0], alpha) * 255 + alpha / 2) / alpha;
+        mDst[1] = (min(mSrc[1], alpha) * 255 + alpha / 2) / alpha;
+        mDst[2] = (min(mSrc[2], alpha) * 255 + alpha / 2) / alpha;
+      }
+      mDst[3] = alpha;
+      mSrc += 4;
+      mDst += 4;
+    }
+  });
+}
+
+void PremultiplyRGBA_HWY(const uint8_t *JXL_RESTRICT src, const uint32_t srcStride,
+                         uint8_t *JXL_RESTRICT dst, const uint32_t dstStride, const uint32_t width,
+                         const uint32_t height) {
+  const FixedTag<uint8_t, 16> du8x16;
+  const FixedTag<uint16_t, 8> du16x8;
+  const FixedTag<uint8_t, 8> du8x8;
+
+  using VU8x16 = Vec<decltype(du8x16)>;
+  using VU16x8 = Vec<decltype(du16x8)>;
+
+  VU16x8 mult255d2 = Set(du16x8, 255 / 2);
+
+  concurrency::parallel_for(2, height, [&](int y) {
+    auto mSrc = reinterpret_cast<const uint8_t *>(src + y * srcStride);
+    auto mDst = reinterpret_cast<uint8_t *>(dst + y * dstStride);
+
+    uint32_t x = 0;
+    int pixels = 16;
+
+    for (; x + pixels < width; x += pixels) {
+      VU8x16 r8, g8, b8, a8;
+      LoadInterleaved4(du8x16, mSrc, r8, g8, b8, a8);
+
+      VU16x8 aLow = PromoteLowerTo(du16x8, a8);
+      VU16x8 rLow = PromoteLowerTo(du16x8, r8);
+      VU16x8 gLow = PromoteLowerTo(du16x8, g8);
+      VU16x8 bLow = PromoteLowerTo(du16x8, b8);
+      VU16x8 tmp = Add(Mul(rLow, aLow), mult255d2);
+      rLow = RearrangeVec(tmp);
+      tmp = Add(Mul(gLow, aLow), mult255d2);
+      gLow = RearrangeVec(tmp);
+      tmp = Add(Mul(bLow, aLow), mult255d2);
+      bLow = RearrangeVec(tmp);
+
+      VU16x8 aHigh = PromoteUpperTo(du16x8, a8);
+      VU16x8 rHigh = PromoteUpperTo(du16x8, r8);
+      VU16x8 gHigh = PromoteUpperTo(du16x8, g8);
+      VU16x8 bHigh = PromoteUpperTo(du16x8, b8);
+      tmp = Add(Mul(rHigh, aHigh), mult255d2);
+      rHigh = RearrangeVec(tmp);
+      tmp = Add(Mul(gHigh, aHigh), mult255d2);
+      gHigh = RearrangeVec(tmp);
+      tmp = Add(Mul(bHigh, aHigh), mult255d2);
+      bHigh = RearrangeVec(tmp);
+
+      r8 = Combine(du8x16, DemoteTo(du8x8, rHigh), DemoteTo(du8x8, rLow));
+      g8 = Combine(du8x16, DemoteTo(du8x8, gHigh), DemoteTo(du8x8, gLow));
+      b8 = Combine(du8x16, DemoteTo(du8x8, bHigh), DemoteTo(du8x8, bLow));
+
+      StoreInterleaved4(r8, g8, b8, a8, du8x16, mDst);
+
+      mSrc += pixels * 4;
+      mDst += pixels * 4;
     }
 
-    void UnpremultiplyRGBA_HWY(const uint8_t *src, int srcStride,
-                               uint8_t *dst, int dstStride, int width,
-                               int height) {
-        const FixedTag<uint8_t, 16> du8x16;
-        const FixedTag<uint16_t, 8> du16x8;
-        const FixedTag<uint8_t, 8> du8x8;
-
-        using VU8x16 = Vec<decltype(du8x16)>;
-        using VU16x8 = Vec<decltype(du16x8)>;
-
-        const VU16x8 mult255 = Set(du16x8, 255);
-
-        concurrency::parallel_for(2, height, [&](int y) {
-            const int pixels = 16;
-
-            auto mSrc = reinterpret_cast<const uint8_t *>(src + y * srcStride);
-            auto mDst = reinterpret_cast<uint8_t *>(dst + y * dstStride);
-
-            int x = 0;
-
-            for (; x + pixels < width; x += pixels) {
-                VU8x16 r8, g8, b8, a8;
-                LoadInterleaved4(du8x16, mSrc, r8, g8, b8, a8);
-
-                VU16x8 aLow = PromoteLowerTo(du16x8, a8);
-                VU16x8 rLow = PromoteLowerTo(du16x8, r8);
-                VU16x8 gLow = PromoteLowerTo(du16x8, g8);
-                VU16x8 bLow = PromoteLowerTo(du16x8, b8);
-                auto lowADivider = ShiftRight<1>(aLow);
-                VU16x8 tmp = Add(Mul(Min(rLow, aLow), mult255), lowADivider);
-                rLow = RearrangeVecAlpha(tmp, aLow);
-                tmp = Add(Mul(Min(gLow, aLow), mult255), lowADivider);
-                gLow = RearrangeVecAlpha(tmp, aLow);
-                tmp = Add(Mul(Min(bLow, aLow), mult255), lowADivider);
-                bLow = RearrangeVecAlpha(tmp, aLow);
-
-                VU16x8 aHigh = PromoteUpperTo(du16x8, a8);
-                VU16x8 rHigh = PromoteUpperTo(du16x8, r8);
-                VU16x8 gHigh = PromoteUpperTo(du16x8, g8);
-                VU16x8 bHigh = PromoteUpperTo(du16x8, b8);
-                auto highADivider = ShiftRight<1>(aHigh);
-                tmp = Add(Mul(Min(rHigh, aHigh), mult255), highADivider);
-                rHigh = RearrangeVecAlpha(tmp, aHigh);
-                tmp = Add(Mul(Min(gHigh, aHigh), mult255), highADivider);
-                gHigh = RearrangeVecAlpha(tmp, aHigh);
-                tmp = Add(Mul(Min(bHigh, aHigh), mult255), highADivider);
-                bHigh = RearrangeVecAlpha(tmp, aHigh);
-
-                r8 = Combine(du8x16, DemoteTo(du8x8, rHigh), DemoteTo(du8x8, rLow));
-                g8 = Combine(du8x16, DemoteTo(du8x8, gHigh), DemoteTo(du8x8, gLow));
-                b8 = Combine(du8x16, DemoteTo(du8x8, bHigh), DemoteTo(du8x8, bLow));
-
-                StoreInterleaved4(r8, g8, b8, a8, du8x16, mDst);
-
-                mSrc += pixels * 4;
-                mDst += pixels * 4;
-            }
-
-            for (; x < width; ++x) {
-                uint8_t alpha = mSrc[3];
-                if (alpha != 0) {
-                    mDst[0] = (min(mSrc[0], alpha) * 255 + alpha / 2) / alpha;
-                    mDst[1] = (min(mSrc[1], alpha) * 255 + alpha / 2) / alpha;
-                    mDst[2] = (min(mSrc[2], alpha) * 255 + alpha / 2) / alpha;
-                }
-                mDst[3] = alpha;
-                mSrc += 4;
-                mDst += 4;
-            }
-        });
+    for (; x < width; ++x) {
+      uint8_t alpha = mSrc[3];
+      mDst[0] = (mSrc[0] * alpha + 127) / 255;
+      mDst[1] = (mSrc[1] * alpha + 127) / 255;
+      mDst[2] = (mSrc[2] * alpha + 127) / 255;
+      mDst[3] = alpha;
+      mSrc += 4;
+      mDst += 4;
     }
-
-    void PremultiplyRGBA_HWY(const uint8_t *src, int srcStride,
-                             uint8_t *dst, int dstStride, int width,
-                             int height) {
-        const FixedTag<uint8_t, 16> du8x16;
-        const FixedTag<uint16_t, 8> du16x8;
-        const FixedTag<uint8_t, 8> du8x8;
-
-        using VU8x16 = Vec<decltype(du8x16)>;
-        using VU16x8 = Vec<decltype(du16x8)>;
-
-        VU16x8 mult255d2 = Set(du16x8, 255 / 2);
-
-        concurrency::parallel_for(2, height, [&](int y) {
-            auto mSrc = reinterpret_cast<const uint8_t *>(src + y * srcStride);
-            auto mDst = reinterpret_cast<uint8_t *>(dst + y * dstStride);
-
-            int x = 0;
-            int pixels = 16;
-
-            for (; x + pixels < width; x += pixels) {
-                VU8x16 r8, g8, b8, a8;
-                LoadInterleaved4(du8x16, mSrc, r8, g8, b8, a8);
-
-                VU16x8 aLow = PromoteLowerTo(du16x8, a8);
-                VU16x8 rLow = PromoteLowerTo(du16x8, r8);
-                VU16x8 gLow = PromoteLowerTo(du16x8, g8);
-                VU16x8 bLow = PromoteLowerTo(du16x8, b8);
-                VU16x8 tmp = Add(Mul(rLow, aLow), mult255d2);
-                rLow = RearrangeVec(tmp);
-                tmp = Add(Mul(gLow, aLow), mult255d2);
-                gLow = RearrangeVec(tmp);
-                tmp = Add(Mul(bLow, aLow), mult255d2);
-                bLow = RearrangeVec(tmp);
-
-                VU16x8 aHigh = PromoteUpperTo(du16x8, a8);
-                VU16x8 rHigh = PromoteUpperTo(du16x8, r8);
-                VU16x8 gHigh = PromoteUpperTo(du16x8, g8);
-                VU16x8 bHigh = PromoteUpperTo(du16x8, b8);
-                tmp = Add(Mul(rHigh, aHigh), mult255d2);
-                rHigh = RearrangeVec(tmp);
-                tmp = Add(Mul(gHigh, aHigh), mult255d2);
-                gHigh = RearrangeVec(tmp);
-                tmp = Add(Mul(bHigh, aHigh), mult255d2);
-                bHigh = RearrangeVec(tmp);
-
-                r8 = Combine(du8x16, DemoteTo(du8x8, rHigh), DemoteTo(du8x8, rLow));
-                g8 = Combine(du8x16, DemoteTo(du8x8, gHigh), DemoteTo(du8x8, gLow));
-                b8 = Combine(du8x16, DemoteTo(du8x8, bHigh), DemoteTo(du8x8, bLow));
-
-                StoreInterleaved4(r8, g8, b8, a8, du8x16, mDst);
-
-                mSrc += pixels * 4;
-                mDst += pixels * 4;
-            }
-
-            for (; x < width; ++x) {
-                uint8_t alpha = mSrc[3];
-                mDst[0] = (mSrc[0] * alpha + 127) / 255;
-                mDst[1] = (mSrc[1] * alpha + 127) / 255;
-                mDst[2] = (mSrc[2] * alpha + 127) / 255;
-                mDst[3] = alpha;
-                mSrc += 4;
-                mDst += 4;
-            }
-        });
-    }
+  });
+}
 }
 
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
 namespace coder {
-    HWY_EXPORT(UnpremultiplyRGBA_HWY);
-    HWY_EXPORT(PremultiplyRGBA_HWY);
+HWY_EXPORT(UnpremultiplyRGBA_HWY);
+HWY_EXPORT(PremultiplyRGBA_HWY);
 
-    HWY_DLLEXPORT void UnpremultiplyRGBA(const uint8_t *src, int srcStride,
-                                         uint8_t *dst, int dstStride, int width,
-                                         int height) {
-        HWY_DYNAMIC_DISPATCH(UnpremultiplyRGBA_HWY)(src, srcStride, dst, dstStride, width, height);
-    }
+HWY_DLLEXPORT void UnpremultiplyRGBA(const uint8_t *JXL_RESTRICT src, uint32_t srcStride,
+                                     uint8_t *JXL_RESTRICT dst, uint32_t dstStride, uint32_t width,
+                                     uint32_t height) {
+  HWY_DYNAMIC_DISPATCH(UnpremultiplyRGBA_HWY)(src, srcStride, dst, dstStride, width, height);
+}
 
-    HWY_DLLEXPORT void PremultiplyRGBA(const uint8_t *src, int srcStride,
-                                       uint8_t *dst, int dstStride, int width,
-                                       int height) {
-        HWY_DYNAMIC_DISPATCH(PremultiplyRGBA_HWY)(src, srcStride, dst, dstStride, width, height);
-    }
+HWY_DLLEXPORT void PremultiplyRGBA(const uint8_t *JXL_RESTRICT src, uint32_t srcStride,
+                                   uint8_t *JXL_RESTRICT dst, uint32_t dstStride, uint32_t width,
+                                   uint32_t height) {
+  HWY_DYNAMIC_DISPATCH(PremultiplyRGBA_HWY)(src, srcStride, dst, dstStride, width, height);
+}
 }
 #endif

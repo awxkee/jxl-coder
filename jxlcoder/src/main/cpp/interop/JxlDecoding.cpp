@@ -109,7 +109,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
           JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                                              &clr)) {
         *colorEncoding = clr;
-        if (clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
+        if (clr.color_space == JXL_COLOR_SPACE_RGB && clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
             clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
             clr.transfer_function == JXL_TRANSFER_FUNCTION_DCI ||
             clr.transfer_function == JXL_TRANSFER_FUNCTION_709 ||

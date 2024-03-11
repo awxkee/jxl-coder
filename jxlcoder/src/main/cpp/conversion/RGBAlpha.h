@@ -6,15 +6,16 @@
 #define JXLCODER_RGBALPHA_H
 
 #include <cstdint>
+#include "ConversionUtils.h"
 
 namespace coder {
-    void UnpremultiplyRGBA(const uint8_t *src, int srcStride,
-                    uint8_t *dst, int dstStride, int width,
-                    int height);
+void UnpremultiplyRGBA(const uint8_t *JXL_RESTRICT src, uint32_t srcStride,
+                       uint8_t *JXL_RESTRICT dst, uint32_t dstStride, uint32_t width,
+                       uint32_t height);
 
-    void PremultiplyRGBA(const uint8_t *src, int srcStride,
-                           uint8_t *dst, int dstStride, int width,
-                           int height);
+void PremultiplyRGBA(const uint8_t *JXL_RESTRICT src, uint32_t srcStride,
+                     uint8_t *JXL_RESTRICT dst, uint32_t dstStride, uint32_t width,
+                     uint32_t height);
 }
 
 #endif //JXLCODER_RGBALPHA_H
