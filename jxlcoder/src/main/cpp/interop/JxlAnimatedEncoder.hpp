@@ -78,17 +78,21 @@ class JxlAnimatedEncoder {
     uint32_t channelsCount = 3;
 
     pixelFormat = {channelsCount, JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+    uint32_t baseChannelsCount = 1;
     switch (pixelType) {
       case mono: {
         channelsCount = 1;
+        baseChannelsCount = 1;
       }
         break;
       case rgb: {
         channelsCount = 3;
+        baseChannelsCount = 3;
       }
         break;
       case rgba: {
         channelsCount = 4;
+        baseChannelsCount = 3;
       }
         break;
     }
@@ -105,7 +109,7 @@ class JxlAnimatedEncoder {
     basicInfo.ysize = height;
     basicInfo.bits_per_sample = 8;
     basicInfo.uses_original_profile = compressionOption == lossy ? JXL_FALSE : JXL_TRUE;
-    basicInfo.num_color_channels = channelsCount;
+    basicInfo.num_color_channels = baseChannelsCount;
 
     basicInfo.animation.tps_numerator = 1000;
     basicInfo.animation.tps_denominator = 1;

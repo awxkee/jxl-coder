@@ -153,10 +153,18 @@ class MainActivity : ComponentActivity() {
                             val buffer = assets.open("lin.png").source().buffer().readByteArray()
                             val bitmap = BitmapFactory.decodeByteArray(buffer, 0, buffer.size)
                             val encoded =
-                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.MONOCHROME)
+                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.RGBA)
                             val decoded = JxlCoder.decode(encoded)
                             lifecycleScope.launch {
                                 drawables.add(BitmapDrawable(resources, decoded))
+                            }
+
+                            val bitmap1 = BitmapFactory.decodeByteArray(buffer, 0, buffer.size)
+                            val encoded1 =
+                                JxlCoder.encode(bitmap1, channelsConfiguration = JxlChannelsConfiguration.RGB)
+                            val decoded2 = JxlCoder.decode(encoded)
+                            lifecycleScope.launch {
+                                drawables.add(BitmapDrawable(resources, decoded2))
                             }
 
                             val animatedEncoder = JxlAnimatedEncoder(

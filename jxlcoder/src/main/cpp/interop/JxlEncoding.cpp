@@ -61,18 +61,22 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
   }
 
   JxlPixelFormat pixelFormat = {1, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
-  int channelsCount = 1;
+  uint32_t channelsCount = 1;
+  uint32_t baseChannelsCount = 1;
   switch (colorspace) {
     case mono: {
       channelsCount = 1;
+      baseChannelsCount = 1;
     }
       break;
     case rgb: {
       channelsCount = 3;
+      baseChannelsCount = 3;
     }
       break;
     case rgba: {
       channelsCount = 4;
+      baseChannelsCount = 3;
     }
       break;
   }
@@ -87,7 +91,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
   if (encodingDataFormat == BINARY_16) {
     basicInfo.exponent_bits_per_sample = 5;
   }
-  basicInfo.num_color_channels = channelsCount;
+  basicInfo.num_color_channels = baseChannelsCount;
   basicInfo.alpha_premultiplied = false;
 
   if (colorspace == rgba) {
