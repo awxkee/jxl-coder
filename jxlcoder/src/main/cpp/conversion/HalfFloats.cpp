@@ -97,11 +97,11 @@ RgbaF32ToF16H(const float *JXL_RESTRICT src, const int srcStride, uint16_t *JXL_
   auto srcPixels = reinterpret_cast<const uint8_t *>(src);
   auto dstPixels = reinterpret_cast<uint8_t *>(dst);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     RGBAF32ToF16RowHWY(reinterpret_cast<const float *>(srcPixels + srcStride * y),
                        reinterpret_cast<uint16_t *>(dstPixels + dstStride * y),
                        width);
-  });
+  }
 }
 }
 

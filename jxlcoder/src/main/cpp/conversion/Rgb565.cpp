@@ -101,9 +101,9 @@ Rgba8To565HWYRow(const uint8_t *JXL_RESTRICT source, uint16_t *JXL_RESTRICT dest
     uint8_t b = src[2];
 
     if (attenuateAlpha) {
-      r = (r * alpha + 127) / 255;
-      g = (g * alpha + 127) / 255;
-      b = (b * alpha + 127) / 255;
+      r = (static_cast<uint16_t>(r) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
+      g = (static_cast<uint16_t>(g) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
+      b = (static_cast<uint16_t>(b) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
     }
 
     uint16_t red565 = (r >> 3) << 11;
@@ -130,7 +130,7 @@ Rgb565ToF16HWYRow(const uint16_t *JXL_RESTRICT source, uint16_t *JXL_RESTRICT de
   using VF = Vec<decltype(df)>;
 
   int x = 0;
-  int pixels = 8;
+  const int pixels = 8;
 
   auto src = reinterpret_cast<const uint16_t *>(source);
   auto dst = reinterpret_cast<uint16_t *>(destination);
@@ -285,11 +285,11 @@ void Rgba8To565HWY(const uint8_t *JXL_RESTRICT sourceData, const uint32_t srcStr
   auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
   auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     Rgba8To565HWYRow(reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
                      reinterpret_cast<uint16_t *>(mDst + dstStride * y),
                      width, attenuateAlpha);
-  });
+  }
 }
 
 inline Vec<FixedTag<uint8_t, 8>>
@@ -456,31 +456,31 @@ RGBAF32To565RowHWY(const float *JXL_RESTRICT source, uint16_t *JXL_RESTRICT dest
 void RGBAF16To565HWY(const uint16_t *JXL_RESTRICT sourceData, const uint32_t srcStride,
                      uint16_t *JXL_RESTRICT dst, const uint32_t dstStride, const uint32_t width,
                      const uint32_t height) {
-  float maxColors = powf(2, (float) 8) - 1;
+  const float maxColors = std::powf(2.f, 8.f) - 1;
 
   auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
   auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     RGBAF16To565RowHWY(reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
                        reinterpret_cast<uint16_t *>(mDst + dstStride * y),
                        width, maxColors);
-  });
+  }
 }
 
 void RGBAF32To565HWY(const float *JXL_RESTRICT sourceData, const uint32_t srcStride,
                      uint16_t *JXL_RESTRICT dst, const uint32_t dstStride, const uint32_t width, const uint32_t height) {
-  float maxColors = std::powf(2.f, (float) 8.f) - 1.f;
+  const float maxColors = std::powf(2.f, (float) 8.f) - 1.f;
 
   auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
   auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     RGBAF32To565RowHWY(
         reinterpret_cast<const float *>(mSrc + srcStride * y),
         reinterpret_cast<uint16_t *>(mDst + dstStride * y),
         width, maxColors);
-  });
+  }
 }
 
 void Rgb565ToF16HWY(const uint16_t *JXL_RESTRICT sourceData, const uint32_t srcStride,
@@ -490,12 +490,12 @@ void Rgb565ToF16HWY(const uint16_t *JXL_RESTRICT sourceData, const uint32_t srcS
   auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
   auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     Rgb565ToF16HWYRow(
         reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
         reinterpret_cast<uint16_t *>(mDst + dstStride * y),
         width, permuteMap);
-  });
+  }
 }
 
 void Rgb565ToU8HWY(const uint16_t *JXL_RESTRICT sourceData, const uint32_t srcStride,
@@ -505,12 +505,12 @@ void Rgb565ToU8HWY(const uint16_t *JXL_RESTRICT sourceData, const uint32_t srcSt
   auto mSrc = reinterpret_cast<const uint8_t *>(sourceData);
   auto mDst = reinterpret_cast<uint8_t *>(dst);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     Rgb565ToU8HWYRow(
         reinterpret_cast<const uint16_t *>(mSrc + srcStride * y),
         reinterpret_cast<uint8_t *>(mDst + dstStride * y),
         width, permuteMap, bgColor);
-  });
+  }
 }
 }
 

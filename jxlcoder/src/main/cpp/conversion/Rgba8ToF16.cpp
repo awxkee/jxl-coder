@@ -158,9 +158,9 @@ Rgba8ToF16HWYRow(const uint8_t *JXL_RESTRICT source, uint16_t *JXL_RESTRICT dest
     uint8_t b = src[2];
 
     if (attenuateAlpha) {
-      r = (r * alpha + 127) / 255;
-      g = (g * alpha + 127) / 255;
-      b = (b * alpha + 127) / 255;
+      r = (static_cast<uint16_t>(r) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
+      g = (static_cast<uint16_t>(g) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
+      b = (static_cast<uint16_t>(b) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
     }
 
     uint16_t tmpR = (uint16_t) half((float) (r) * scale).data_;
@@ -189,12 +189,11 @@ void Rgba8ToF16HWY(const uint8_t *JXL_RESTRICT sourceData, int srcStride,
 
   const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-  concurrency::parallel_for(2, height, [&](int y) {
-    Rgba8ToF16HWYRow(
-        reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
+  for (uint32_t y = 0; y < height; ++y) {
+    Rgba8ToF16HWYRow(reinterpret_cast<const uint8_t *>(mSrc + srcStride * y),
         reinterpret_cast<uint16_t *>(mDst + dstStride * y), width,
         scale, permuteMap, attenuateAlpha);
-  });
+  }
 }
 }
 

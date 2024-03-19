@@ -124,6 +124,15 @@ HWY_FAST_MATH_INLINE V Pow(const DF df, V val, V n) {
   return Exp2f(df, Mul(n, Lognf(df, val)));
 }
 
+template<class D, HWY_IF_U16_D(D)>
+HWY_FAST_MATH_INLINE Vec<D> DivBy255(D d, Vec<D> x) {
+  const auto rounding = Set(d, 1 << 7);
+  x = Add(x, rounding);
+  const auto multiplier = Set(d, 0x8080);
+  x = MulHigh(x, multiplier);
+  return ShiftRight<7>(x);
+}
+
 // Computes base-2 logarithm like std::log2. Undefined if negative / NaN.
 // L1 error ~3.9E-6
 template<class DF, class V>

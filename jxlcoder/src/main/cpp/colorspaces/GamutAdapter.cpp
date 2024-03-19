@@ -69,8 +69,7 @@ struct ChromaAdaptation {
       scaleColors(1.f / maxColors) {
     const float lumaPrimaries[3] = {0.2627f, 0.6780f, 0.0593f};
     if (curveToneMapper == LOGARITHMIC) {
-      mapper.reset(new LogarithmicToneMapper<Rebind<hwy::float32_t, decltype(d)>>(
-          lumaPrimaries));
+      mapper.reset(new LogarithmicToneMapper<Rebind<hwy::float32_t, decltype(d)>>(lumaPrimaries));
     } else if (curveToneMapper == REC2408) {
       mapper.reset(new Rec2408PQToneMapper<Rebind<hwy::float32_t, decltype(d)>>(1000,
                                                                                 250.0f,
@@ -84,9 +83,7 @@ struct ChromaAdaptation {
   template<typename T = Vec<Rebind<hwy::float32_t, D>>>
   void TransferRow(const GammaCurve &gammaCorrection,
                    const GamutTransferFunction function,
-                   T &R,
-                   T &G,
-                   T &B) {
+                   T &R, T &G, T &B) {
 
     T pqR;
     T pqG;
@@ -628,8 +625,7 @@ ProcessGamutHighwayF16(hwy::float16_t *data, const int width, const int height,
       std::min(static_cast<int>(std::thread::hardware_concurrency()),
                height * width / (256 * 256)), 1, 12);
   concurrency::parallel_for(threadCount, height, [&](int y) {
-    auto ptr16 = reinterpret_cast<hwy::float16_t *>(reinterpret_cast<uint8_t *>(data) +
-        y * stride);
+    auto ptr16 = reinterpret_cast<hwy::float16_t *>(reinterpret_cast<uint8_t *>(data) + y * stride);
     const FixedTag<hwy::float16_t, 8> df;
     ProcessDoubleRow(df, reinterpret_cast<hwy::float16_t *>(ptr16), width,
                      gammaCorrection, function, curveToneMapper,

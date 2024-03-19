@@ -87,10 +87,10 @@ void Rgba2RGBHWY(D d,
   auto rgbaData = reinterpret_cast<const uint8_t *>(src);
   auto rgbData = reinterpret_cast<uint8_t *>(dst);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     Rgba2RgbROW(d, reinterpret_cast<const T *>(rgbaData + srcStride * y),
                 reinterpret_cast<T *>(rgbData + dstStride * y), width);
-  });
+  }
 }
 
 void Rgba2RGBHWYU8(const uint8_t *JXL_RESTRICT src,

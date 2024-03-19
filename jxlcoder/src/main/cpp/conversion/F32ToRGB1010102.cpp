@@ -117,10 +117,10 @@ F32ToRGBA1010102RowC(const float *HWY_RESTRICT data, uint8_t *HWY_RESTRICT dst, 
     auto R16 = (float) src[permuteMap[1]];
     auto G16 = (float) src[permuteMap[2]];
     auto B16 = (float) src[permuteMap[3]];
-    auto R10 = (uint32_t) (clamp(R16 * range10, 0.0f, (float) range10));
-    auto G10 = (uint32_t) (clamp(G16 * range10, 0.0f, (float) range10));
-    auto B10 = (uint32_t) (clamp(B16 * range10, 0.0f, (float) range10));
-    auto A10 = (uint32_t) clamp(round(A16 * 3), 0.0f, 3.0f);
+    auto R10 = (uint32_t) (std::clamp(R16 * range10, 0.0f, (float) range10));
+    auto G10 = (uint32_t) (std::clamp(G16 * range10, 0.0f, (float) range10));
+    auto B10 = (uint32_t) (std::clamp(B16 * range10, 0.0f, (float) range10));
+    auto A10 = (uint32_t) std::clamp(std::round(A16 * 3), 0.0f, 3.0f);
 
     dst32[0] = (A10 << 30) | (R10 << 20) | (G10 << 10) | B10;
 
@@ -140,12 +140,11 @@ F32ToRGBA1010102HWY(vector <uint8_t> &data, const uint32_t srcStride, uint32_t *
   auto src = data.data();
   auto dst = newData.data();
 
-  concurrency::parallel_for(2, height, [&](int y) {
-    F32ToRGBA1010102RowC(
-        reinterpret_cast<const float *>(src + srcStride * y),
+  for (uint32_t y = 0; y < height; ++y) {
+    F32ToRGBA1010102RowC(reinterpret_cast<const float *>(src + srcStride * y),
         reinterpret_cast<uint8_t *>(dst + (*dstStride) * y),
         width, &permuteMap[0]);
-  });
+  }
 
   data = newData;
 }

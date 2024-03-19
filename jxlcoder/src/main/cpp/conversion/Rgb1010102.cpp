@@ -359,9 +359,9 @@ Rgba8ToRGBA1010102HWYRow(const uint8_t *JXL_RESTRICT data, uint32_t *JXL_RESTRIC
     uint8_t b = data[permute3Value];
 
     if (attenuateAlpha) {
-      r = (r * alpha + 127) / 255;
-      g = (g * alpha + 127) / 255;
-      b = (b * alpha + 127) / 255;
+      r = (static_cast<uint16_t>(r) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
+      g = (static_cast<uint16_t>(g) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
+      b = (static_cast<uint16_t>(b) * static_cast<uint16_t>(alpha)) / static_cast<uint16_t >(255);
     }
 
     auto A16 = ((uint32_t) alpha * 3 + 127) >> 8;
@@ -383,16 +383,16 @@ Rgba8ToRGBA1010102HWY(const uint8_t *JXL_RESTRICT source,
                       int width,
                       int height,
                       const bool attenuateAlpha) {
-  int permuteMap[4] = {3, 2, 1, 0};
+  const int permuteMap[4] = {3, 2, 1, 0};
 
   auto src = reinterpret_cast<const uint8_t *>(source);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     Rgba8ToRGBA1010102HWYRow(
         reinterpret_cast<const uint8_t *>(src + srcStride * y),
         reinterpret_cast<uint32_t *>(destination + dstStride * y),
         width, &permuteMap[0], attenuateAlpha);
-  });
+  }
 }
 
 void
@@ -402,15 +402,15 @@ F16ToRGBA1010102HWY(const uint16_t *JXL_RESTRICT source,
                     const uint32_t dstStride,
                     const uint32_t width,
                     const uint32_t height) {
-  int permuteMap[4] = {3, 2, 1, 0};
+  const int permuteMap[4] = {3, 2, 1, 0};
   auto src = reinterpret_cast<const uint8_t *>(source);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     F16ToRGBA1010102HWYRow(
         reinterpret_cast<const uint16_t *>(src + srcStride * y),
         reinterpret_cast<uint32_t *>(destination + dstStride * y),
         width, &permuteMap[0]);
-  });
+  }
 }
 
 void
@@ -424,12 +424,12 @@ F32ToRGBA1010102HWY(const float *JXL_RESTRICT source,
   auto src = reinterpret_cast<const uint8_t *>(source);
   auto dst = reinterpret_cast<uint8_t *>(destination);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     F32ToRGBA1010102HWYRow(
         reinterpret_cast<const float *>(src + srcStride * y),
         reinterpret_cast<uint32_t *>(dst + dstStride * y),
         width, &permuteMap[0]);
-  });
+  }
 }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)

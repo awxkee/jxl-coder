@@ -142,12 +142,12 @@ void RGBAF32BitToNBitU8(const float *JXL_RESTRICT sourceData, const uint32_t src
 
   const float scale = 1.0f / float((1 << bitDepth) - 1);
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     RGBAF32BitToNBitRowU8(
         reinterpret_cast<const float *>(mSrc + srcStride * y),
         reinterpret_cast<uint8_t *>(mDst + dstStride * y),
         width, scale, maxColors);
-  });
+  }
 }
 }
 

@@ -150,9 +150,9 @@ RGBAF16BitToNBitRowU8(const uint16_t *JXL_RESTRICT source, uint8_t *JXL_RESTRICT
     auto tmpA = (uint8_t) clamp(round(half_to_float(src[3]) * maxColors), 0.0f, maxColors);
 
     if (attenuateAlpha) {
-      tmpR = (tmpR * tmpA + 127) / 255;
-      tmpG = (tmpG * tmpA + 127) / 255;
-      tmpB = (tmpB * tmpA + 127) / 255;
+      tmpR = (static_cast<uint16_t>(tmpR) * static_cast<uint16_t>(tmpA)) / static_cast<uint16_t >(255);
+      tmpG = (static_cast<uint16_t>(tmpG) * static_cast<uint16_t>(tmpA)) / static_cast<uint16_t >(255);
+      tmpB = (static_cast<uint16_t>(tmpB) * static_cast<uint16_t>(tmpA)) / static_cast<uint16_t >(255);
     }
 
     dst[0] = tmpR;

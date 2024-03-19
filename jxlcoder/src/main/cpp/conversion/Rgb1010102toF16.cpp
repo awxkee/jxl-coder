@@ -159,13 +159,13 @@ ConvertRGBA1010102toF16(const uint8_t *JXL_RESTRICT src, const int srcStride, ui
     littleEndian = false;
   }
 
-  concurrency::parallel_for(2, height, [&](int y) {
+  for (uint32_t y = 0; y < height; ++y) {
     ConvertRGBA1010102toF16HWYRow(
         reinterpret_cast<const uint8_t *>(mSrcPointer + y * srcStride),
         reinterpret_cast<uint16_t *>(mDstPointer + y * dstStride),
         width,
         littleEndian);
-  });
+  }
 }
 
 }
