@@ -35,8 +35,12 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okio.buffer
+import okio.sink
 import okio.source
+import java.io.ByteArrayInputStream
+import java.io.File
 import java.io.FileNotFoundException
+import java.io.FileOutputStream
 import java.util.UUID
 import kotlin.system.measureTimeMillis
 
@@ -137,17 +141,17 @@ class MainActivity : ComponentActivity() {
 //                                imagesArray.add(animated)
 //                            }
 
-//                            val bufferPng = assets.open("lin.png").source().buffer().readByteArray()
-//                            val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
-//                            lifecycleScope.launch {
-//                                drawables.add(BitmapDrawable(resources, bitmap))
-//                            }
-//                            val jxlBuffer = JxlCoder.encode(bitmap)
-//                            val animated = JxlCoder.decode(jxlBuffer)
-//                            lifecycleScope.launch {
-//                                drawables.add(BitmapDrawable(resources, animated))
-//                            }
-////
+                            val bufferPng = assets.open("pexels_house_wall_p3.jpg").source().buffer().readByteArray()
+                            val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
+                            lifecycleScope.launch {
+                                drawables.add(BitmapDrawable(resources, bitmap))
+                            }
+                            val jxlBuffer = JxlCoder.encode(bitmap)
+                            val decodedEncoded = JxlCoder.decode(jxlBuffer)
+                            lifecycleScope.launch {
+                                drawables.add(BitmapDrawable(resources, decodedEncoded))
+                            }
+//
 //                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
 //                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
 //                            val buffer = assets.open("abstract_alpha.png").source().buffer().readByteArray()

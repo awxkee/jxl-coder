@@ -193,11 +193,7 @@ struct ChromaAdaptation {
       }
     }
 
-    if (gammaCorrection == Rec2020) {
-      pqR = bt2020GammaCorrection(df32, pqR);
-      pqG = bt2020GammaCorrection(df32, pqG);
-      pqB = bt2020GammaCorrection(df32, pqB);
-    } else if (gammaCorrection == DCIP3) {
+    if (gammaCorrection == DCIP3) {
       pqR = dciP3PQGammaCorrection(df32, pqR);
       pqG = dciP3PQGammaCorrection(df32, pqG);
       pqB = dciP3PQGammaCorrection(df32, pqB);
@@ -206,10 +202,10 @@ struct ChromaAdaptation {
       pqR = gammaOtf(df32, pqR, gammaEval);
       pqG = gammaOtf(df32, pqG, gammaEval);
       pqB = gammaOtf(df32, pqB, gammaEval);
-    } else if (gammaCorrection == Rec709) {
-      pqR = LinearITUR709ToITUR709(df32, pqR);
-      pqG = LinearITUR709ToITUR709(df32, pqG);
-      pqB = LinearITUR709ToITUR709(df32, pqB);
+    } else if (gammaCorrection == Rec709 || gammaCorrection == Rec2020) {
+      pqR = Rec709Oetf(df32, pqR);
+      pqG = Rec709Oetf(df32, pqG);
+      pqB = Rec709Oetf(df32, pqB);
     } else if (gammaCorrection == sRGB) {
       pqR = SRGBOetf(df32, pqR);
       pqG = SRGBOetf(df32, pqG);

@@ -175,7 +175,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     }
 
     Eigen::Matrix3f dstProfile = GamutRgbToXYZ(getRec709Primaries(), getIlluminantD65());
-    Eigen::Matrix3f conversion = sourceProfile * dstProfile.inverse();
+    Eigen::Matrix3f conversion = dstProfile.inverse() * sourceProfile;
 
     if (useBitmapFloats) {
       coder::GamutAdapter<hwy::float16_t> adapter(reinterpret_cast<hwy::float16_t *>(rgbaPixels.data()), stride,

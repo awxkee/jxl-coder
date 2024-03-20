@@ -100,14 +100,12 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
       // Get the ICC color profile of the pixel data
       size_t iccSize;
       if (JXL_DEC_SUCCESS !=
-          JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
-                                      &iccSize)) {
+          JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,&iccSize)) {
         return false;
       }
       JxlColorEncoding clr;
       if (JXL_DEC_SUCCESS ==
-          JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
-                                             &clr)) {
+          JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,&clr)) {
         *colorEncoding = clr;
         if (clr.color_space == JXL_COLOR_SPACE_RGB && clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
             clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||

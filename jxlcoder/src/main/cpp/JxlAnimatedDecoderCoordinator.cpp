@@ -232,7 +232,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
       }
 
       Eigen::Matrix3f dstProfile = GamutRgbToXYZ(getRec709Primaries(), getIlluminantD65());
-      Eigen::Matrix3f conversion = sourceProfile.inverse() * dstProfile;
+      Eigen::Matrix3f conversion = dstProfile.inverse() * sourceProfile;
 
       if (useFloat16) {
         coder::GamutAdapter<hwy::float16_t> adapter(reinterpret_cast<hwy::float16_t *>(rgbaPixels.data()), stride,

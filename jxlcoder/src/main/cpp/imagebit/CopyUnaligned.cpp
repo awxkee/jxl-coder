@@ -125,8 +125,7 @@ HWY_DLLEXPORT void
 CopyUnaligned(const uint8_t *HWY_RESTRICT src, const uint32_t srcStride, uint8_t *HWY_RESTRICT dst,
               const uint32_t dstStride, const uint32_t width,
               const uint32_t height, const uint32_t pixelSize) {
-  HWY_DYNAMIC_DISPATCH(CopyUnalignedRGBA)(src, srcStride, dst, dstStride, width, height,
-                                          pixelSize);
+  HWY_DYNAMIC_DISPATCH(CopyUnalignedRGBA)(src, srcStride, dst, dstStride, width, height, pixelSize);
 }
 
 }
