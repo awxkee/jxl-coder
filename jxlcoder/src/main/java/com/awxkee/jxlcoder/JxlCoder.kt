@@ -38,6 +38,12 @@ import java.nio.ByteBuffer
 @Keep
 object JxlCoder {
 
+    init {
+        if (Build.VERSION.SDK_INT >= 21) {
+            System.loadLibrary("jxlcoder")
+        }
+    }
+
     /**
      * @author Radzivon Bartoshyk
      */
@@ -258,12 +264,6 @@ object JxlCoder {
         0x87.toByte(),
         0x0A
     )
-
-    init {
-        if (Build.VERSION.SDK_INT >= 21) {
-            System.loadLibrary("jxlcoder")
-        }
-    }
 
     fun isJXL(byteArray: ByteArray): Boolean {
         if (byteArray.size < MAGIC_2.size) {

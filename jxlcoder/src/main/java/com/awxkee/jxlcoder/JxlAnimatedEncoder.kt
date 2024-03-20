@@ -51,6 +51,9 @@ class JxlAnimatedEncoder @Keep constructor(
     private val lock = Any()
 
     init {
+        if (Build.VERSION.SDK_INT >= 21) {
+            System.loadLibrary("jxlcoder")
+        }
         coordinator = createEncodeCoordinator(
             width, height, numLoops,
             channelsConfiguration.cValue,
@@ -111,11 +114,5 @@ class JxlAnimatedEncoder @Keep constructor(
 
     protected fun finalize() {
         close()
-    }
-
-    init {
-        if (Build.VERSION.SDK_INT >= 21) {
-            System.loadLibrary("jxlcoder")
-        }
     }
 }

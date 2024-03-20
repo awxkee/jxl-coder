@@ -163,37 +163,36 @@ class MainActivity : ComponentActivity() {
 //                                drawables.add(BitmapDrawable(resources, decoded))
 //                            }
 
-                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
-                            for (asset in assets) {
-                                try {
-                                    val buffer4 =
-                                        this@MainActivity.assets.open(asset).source().buffer()
-                                            .readByteArray()
-
-                                    val largeImageSize = JxlCoder.getSize(buffer4)
-                                    if (largeImageSize != null) {
-                                        val time = measureTimeMillis {
-                                            var srcImage = JxlCoder.decodeSampled(
-                                                buffer4,
-                                                largeImageSize.width / 3 * 2,
-                                                largeImageSize.height / 3 * 2,
-                                                preferredColorConfig = PreferredColorConfig.DEFAULT,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                JxlResizeFilter.BICUBIC,
-                                                toneMapper = JxlToneMapper.LOGARITHMIC,
-                                            )
-                                            lifecycleScope.launch {
-                                                imagesArray.add(srcImage)
-                                            }
-                                        }
-                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
-                                    }
-                                } catch (e: Exception) {
-                                    if (e !is FileNotFoundException) {
-                                        throw e
-                                    }
-                                }
-                            }
+//                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
+//                            for (asset in assets) {
+//                                try {
+//                                    val buffer4 =
+//                                        this@MainActivity.assets.open(asset).source().buffer().readByteArray()
+//
+//                                    val largeImageSize = JxlCoder.getSize(buffer4)
+//                                    if (largeImageSize != null) {
+//                                        val time = measureTimeMillis {
+//                                            var srcImage = JxlCoder.decodeSampled(
+//                                                buffer4,
+//                                                largeImageSize.width / 3 * 2,
+//                                                largeImageSize.height / 3 * 2,
+//                                                preferredColorConfig = PreferredColorConfig.DEFAULT,
+//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                                JxlResizeFilter.BICUBIC,
+//                                                toneMapper = JxlToneMapper.LOGARITHMIC,
+//                                            )
+//                                            lifecycleScope.launch {
+//                                                imagesArray.add(srcImage)
+//                                            }
+//                                        }
+//                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
+//                                    }
+//                                } catch (e: Exception) {
+//                                    if (e !is FileNotFoundException) {
+//                                        throw e
+//                                    }
+//                                }
+//                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme
