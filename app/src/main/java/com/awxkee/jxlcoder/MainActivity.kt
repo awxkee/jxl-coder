@@ -1,5 +1,6 @@
 package com.awxkee.jxlcoder
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -27,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.graphics.scale
 import androidx.lifecycle.lifecycleScope
+import com.awxkee.aire.Aire
 import com.awxkee.jxlcoder.animation.AnimatedDrawable
 import com.awxkee.jxlcoder.animation.JxlAnimatedStore
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
@@ -141,16 +143,28 @@ class MainActivity : ComponentActivity() {
 //                                imagesArray.add(animated)
 //                            }
 
-                            val bufferPng = assets.open("pexels_house_wall_p3.jpg").source().buffer().readByteArray()
-                            val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
-                            lifecycleScope.launch {
-                                drawables.add(BitmapDrawable(resources, bitmap))
+                            fun simpleRoundTrip(image: String) {
+                                val bufferPng = assets.open(image).source().buffer().readByteArray()
+                                val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
+                                lifecycleScope.launch {
+                                    drawables.add(BitmapDrawable(resources, bitmap))
+                                }
+                                val jxlBuffer = JxlCoder.encode(bitmap,
+                                    channelsConfiguration = JxlChannelsConfiguration.RGBA,
+                                    compressionOption = JxlCompressionOption.LOSSLESS,
+                                    effort = JxlEffort.LIGHTNING,
+                                    decodingSpeed = JxlDecodingSpeed.SLOW)
+                                val decodedEncoded = JxlCoder.decode(jxlBuffer,
+                                    preferredColorConfig = PreferredColorConfig.RGBA_8888)
+                                lifecycleScope.launch {
+                                    drawables.add(BitmapDrawable(resources, decodedEncoded))
+                                }
                             }
-                            val jxlBuffer = JxlCoder.encode(bitmap)
-                            val decodedEncoded = JxlCoder.decode(jxlBuffer)
-                            lifecycleScope.launch {
-                                drawables.add(BitmapDrawable(resources, decodedEncoded))
-                            }
+
+                            simpleRoundTrip("screen_discord_4.jpg")
+//                            simpleRoundTrip("screen_discord_3.png")
+//                            simpleRoundTrip("screen_discord.png")
+//                            simpleRoundTrip("screen_discord_2.png")
 //
 //                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
 //                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)

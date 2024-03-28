@@ -333,7 +333,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
             .primaries_blue_xy = {matrix(2, 0), matrix(2, 1)},
             .transfer_function = JXL_TRANSFER_FUNCTION_709
         };
-      } else if (dataSpace & ADataSpace::STANDARD_BT470M) {
+      } else if (dataSpace == ADataSpace::STANDARD_BT470M) {
         auto matrix = getBT470MPrimaries();
         colorEncoding = {
             .color_space = JXL_COLOR_SPACE_RGB,

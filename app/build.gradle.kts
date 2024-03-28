@@ -73,6 +73,8 @@ dependencies {
 
     implementation("com.squareup.okio:okio:3.3.0")
 
+    implementation("com.github.awxkee:aire:0.9.90")
+
     implementation("com.github.bumptech.glide:glide:4.16.0")
     ksp("com.github.bumptech.glide:ksp:4.16.0")
     implementation("com.github.bumptech.glide:compose:1.0.0-alpha.5")

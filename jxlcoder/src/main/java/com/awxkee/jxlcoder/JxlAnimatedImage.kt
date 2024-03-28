@@ -92,6 +92,9 @@ class JxlAnimatedImage : Closeable {
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
         toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
+        if (Build.VERSION.SDK_INT >= 21) {
+            System.loadLibrary("jxlcoder")
+        }
         this.scaleMode = scaleMode
         coordinator = createCoordinatorByteArray(
             byteArray,
