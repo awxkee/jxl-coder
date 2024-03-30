@@ -118,6 +118,8 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_createEncodeCoordinator(JNIEnv *env,
                                                          dataPixelFormat,
                                                          compressionOption, numLoops, jQuality,
                                                          effort, decodingSpeed);
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "MemoryLeak"
     JxlAnimatedEncoderCoordinator *coordinator = new JxlAnimatedEncoderCoordinator(encoder,
                                                                                    colorspace,
                                                                                    compressionOption,

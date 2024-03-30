@@ -15,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 import okio.buffer
 import okio.sink
 import okio.source
+import okio.use
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileNotFoundException
@@ -151,17 +153,23 @@ class MainActivity : ComponentActivity() {
                                 }
                                 val jxlBuffer = JxlCoder.encode(bitmap,
                                     channelsConfiguration = JxlChannelsConfiguration.RGBA,
-                                    compressionOption = JxlCompressionOption.LOSSLESS,
+                                    compressionOption = JxlCompressionOption.LOSSY,
                                     effort = JxlEffort.LIGHTNING,
                                     decodingSpeed = JxlDecodingSpeed.SLOW)
-                                val decodedEncoded = JxlCoder.decode(jxlBuffer,
-                                    preferredColorConfig = PreferredColorConfig.RGBA_8888)
+//                                val decodedEncoded = JxlCoder.decode(jxlBuffer,
+//                                    preferredColorConfig = PreferredColorConfig.RGBA_1010102)
+                                val decodedEncoded = JxlAnimatedImage(jxlBuffer).getFrame(0)
                                 lifecycleScope.launch {
                                     drawables.add(BitmapDrawable(resources, decodedEncoded))
                                 }
+                                val fos = FileOutputStream(File(cacheDir, image))
+                                fos.sink().buffer().use {
+                                    it.writeAll(ByteArrayInputStream(jxlBuffer).source().buffer())
+                                    it.flush()
+                                }
                             }
 
-                            simpleRoundTrip("screen_discord_4.jpg")
+                            simpleRoundTrip("screenshot_discord_5.png")
 //                            simpleRoundTrip("screen_discord_3.png")
 //                            simpleRoundTrip("screen_discord.png")
 //                            simpleRoundTrip("screen_discord_2.png")
@@ -237,7 +245,7 @@ class MainActivity : ComponentActivity() {
 //                            contentScale = ContentScale.FillWidth,
 //                            contentDescription = "ok"
 //                        )
-                        LazyColumn(
+                        LazyRow(
                             modifier = Modifier
                                 .fillMaxWidth()
                         ) {

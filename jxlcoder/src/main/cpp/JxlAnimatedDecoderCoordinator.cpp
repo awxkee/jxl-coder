@@ -193,19 +193,24 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
       GamutTransferFunction function = SKIP;
       GammaCurve gammaCurve = sRGB;
       bool useChromaticAdaptation = false;
+      CurveToneMapper toneMapper = coordinator->getToneMapper();
       float gamma = 2.2f;
       if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
         function = HLG;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
+        toneMapper = TONE_SKIP;
         function = SMPTE428;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
         function = PQ;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
+        toneMapper = TONE_SKIP;
         function = EOTF_GAMMA;
         gamma = 1.f / colorEncoding.gamma;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
+        toneMapper = TONE_SKIP;
         function = EOTF_BT709;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
+        toneMapper = TONE_SKIP;
         function = EOTF_SRGB;
       }
 
@@ -225,10 +230,11 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
             static_cast<float>(colorEncoding.primaries_blue_xy[1]);
         Eigen::Vector2f whitePoint = {static_cast<float>(colorEncoding.white_point_xy[0]),
                                       static_cast<float>(colorEncoding.white_point_xy[1])};
-        sourceProfile = GamutRgbToXYZ(primaries, whitePoint);
         if (whitePoint != getIlluminantD65()) {
           useChromaticAdaptation = true;
         }
+        sourceProfile = GamutRgbToXYZ(primaries, whitePoint);
+        gammaCurve = sRGB;
       }
 
       Eigen::Matrix3f dstProfile = GamutRgbToXYZ(getRec709Primaries(), getIlluminantD65());
@@ -240,7 +246,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                                                     (int) coordinator->getHeight(),
                                                     16,
                                                     gammaCurve, function,
-                                                    coordinator->getToneMapper(),
+                                                    toneMapper,
                                                     &conversion,
                                                     gamma,
                                                     useChromaticAdaptation);
@@ -251,7 +257,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                                              (int) coordinator->getHeight(),
                                              8,
                                              gammaCurve, function,
-                                             coordinator->getToneMapper(),
+                                             toneMapper,
                                              &conversion,
                                              gamma,
                                              useChromaticAdaptation);
