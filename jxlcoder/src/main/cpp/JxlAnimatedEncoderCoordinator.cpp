@@ -35,15 +35,9 @@
 #include "JniExceptions.h"
 #include <android/data_space.h>
 #include <android/bitmap.h>
-#include "conversion/Rgb1010102toF16.h"
-#include "conversion/Rgba8ToF16.h"
-#include "conversion/RGBAlpha.h"
-#include "conversion/Rgb1010102.h"
-#include "conversion/RgbaF16bitNBitU8.h"
-#include "conversion/Rgba2Rgb.h"
-#include "conversion/Rgb565.h"
 #include "conversion/RgbChannels.h"
 #include "imagebit/CopyUnaligned.h"
+#include "sparkyuv/sparkyuv.h"
 
 using namespace std;
 
@@ -201,55 +195,58 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
       if (dataPixelFormat == BINARY_16) {
         imageStride = info.width * 4 * sizeof(uint16_t);
         vector<uint8_t> halfFloatPixels(imageStride * info.height);
-        coder::ConvertRGBA1010102toF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
+        sparkyuv::RGBA1010102ToRGBAF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
                                        (uint32_t) info.stride,
                                        reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
-                                       (uint32_t) imageStride,
-                                       (uint32_t) info.width,
-                                       (uint32_t) info.height);
+                                       imageStride,
+                                       info.width,
+                                       info.height);
         rgbaPixels = halfFloatPixels;
       } else {
         imageStride = info.width * 4 * sizeof(uint8_t);
         vector<uint8_t> u8PixelsData(imageStride * info.height);
-        coder::RGBA1010102ToUnsigned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
-                                     (uint32_t) info.stride,
-                                     reinterpret_cast<uint8_t *>(u8PixelsData.data()),
-                                     (uint32_t) imageStride,
-                                     (uint32_t) info.width,
-                                     (uint32_t) info.height, 8);
+        sparkyuv::RGBA1010102ToRGBA(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
+                                    info.stride,
+                                    reinterpret_cast<uint8_t *>(u8PixelsData.data()),
+                                    imageStride,
+                                    info.width,
+                                    info.height);
         rgbaPixels = u8PixelsData;
       }
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
       int newStride = (int) info.width * 4 * (int) sizeof(uint8_t);
       vector<uint8_t> rgba8888Pixels(newStride * info.height);
       if (dataPixelFormat == UNSIGNED_8) {
-        coder::Rgb565ToUnsigned8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                                 (int) info.stride,
-                                 rgba8888Pixels.data(), newStride,
-                                 (int) info.width, (int) info.height, 8, 255);
+        sparkyuv::RGB565ToRGBA(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                               info.stride,
+                               rgba8888Pixels.data(), newStride,
+                               info.width, info.height);
         imageStride = newStride;
         rgbaPixels = rgba8888Pixels;
       } else {
         int b16Stride = (int) info.width * 4 * (int) sizeof(uint16_t);
         vector<uint8_t> halfFloatPixels(imageStride * info.height);
-        coder::Rgb565ToF16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), newStride,
-                           reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
-                           (int) info.width, (int) info.height);
+        sparkyuv::RGB565ToRGBAF16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), newStride,
+                                  reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
+                                  info.width, info.height);
         imageStride = b16Stride;
         rgbaPixels = halfFloatPixels;
       }
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888) {
       if (dataPixelFormat == UNSIGNED_8) {
-        coder::UnpremultiplyRGBA(rgbaPixels.data(), imageStride,
-                                 rgbaPixels.data(), imageStride,
-                                 (int) info.width,
-                                 (int) info.height);
+        sparkyuv::RGBAUnpremultiplyAlpha(rgbaPixels.data(), imageStride,
+                                         rgbaPixels.data(), imageStride,
+                                         (uint32_t) info.width,
+                                         (uint32_t) info.height);
       } else if (dataPixelFormat == BINARY_16) {
         int b16Stride = (int) info.width * 4 * (int) sizeof(uint16_t);
         vector<uint8_t> halfFloatPixels(b16Stride * info.height);
-        coder::Rgba8ToF16(rgbaPixels.data(), imageStride,
-                          reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
-                          (int) info.width, (int) info.height, 8, true);
+        sparkyuv::RGBAPremultiplyAlpha(rgbaPixels.data(), imageStride,
+                                       rgbaPixels.data(), imageStride,
+                                       info.width, info.height);
+        sparkyuv::RGBAToRGBAF16(rgbaPixels.data(), imageStride,
+                                reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
+                                info.width, info.height);
         imageStride = b16Stride;
         rgbaPixels = halfFloatPixels;
       }
@@ -257,11 +254,14 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
       if (dataPixelFormat == UNSIGNED_8) {
         int b16Stride = (int) info.width * 4 * (int) sizeof(uint8_t);
         vector<uint8_t> u8PixelsData(imageStride * info.height);
-        coder::RGBAF16BitToNBitU8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                                  imageStride,
-                                  reinterpret_cast<uint8_t *>(u8PixelsData.data()),
-                                  b16Stride,
-                                  (int) info.width, (int) info.height, 8, true);
+        sparkyuv::RGBAF16ToRGBA(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                                imageStride,
+                                reinterpret_cast<uint8_t *>(u8PixelsData.data()),
+                                b16Stride,
+                                info.width, info.height);
+        sparkyuv::RGBAPremultiplyAlpha(rgbaPixels.data(), imageStride,
+                                       rgbaPixels.data(), imageStride,
+                                       info.width, info.height);
         imageStride = b16Stride;
         rgbaPixels = u8PixelsData;
       }
@@ -296,17 +296,17 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                                                 : sizeof(uint8_t));
         rgbPixels.resize(info.height * requiredStride);
         if (dataPixelFormat == BINARY_16) {
-          coder::Rgba2RGB(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                          (uint32_t) imageStride,
-                          reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                          (uint32_t) requiredStride,
-                          (uint32_t) info.width, (uint32_t) info.height);
+          sparkyuv::RGBAF16ToRGBF16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                                    imageStride,
+                                    reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                                    requiredStride,
+                                    info.width, info.height);
         } else {
-          coder::Rgba2RGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<uint32_t>(imageStride),
-                          reinterpret_cast<uint8_t *>(rgbPixels.data()),
-                          static_cast<uint32_t>(requiredStride),
-                          static_cast<uint32_t>(info.width),
-                          static_cast<uint32_t>(info.height));
+          sparkyuv::RGBAToRGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<uint32_t>(imageStride),
+                              reinterpret_cast<uint8_t *>(rgbPixels.data()),
+                              static_cast<uint32_t>(requiredStride),
+                              static_cast<uint32_t>(info.width),
+                              static_cast<uint32_t>(info.height));
         }
         imageStride = requiredStride;
       }

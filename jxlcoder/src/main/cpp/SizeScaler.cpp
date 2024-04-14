@@ -35,6 +35,7 @@
 #include "processing/Convolve1D.h"
 #include "processing/Convolve1Db16.h"
 #include "Eigen/Eigen"
+#include "sparkyuv/sparkyuv.h"
 
 static std::vector<float> compute1DGaussianKernel(int width, float sigma) {
   std::vector<float> kernel(ceil(width));
@@ -106,34 +107,75 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
     float ratio = std::min(static_cast<float>(scaledHeight) / static_cast<float>(imageHeight),
                            static_cast<float>(scaledWidth) / static_cast<float>(imageWidth));
 
+    sparkyuv::SparkYuvSampler sparkSampler = sparkyuv::bilinear;
+    switch (sampler) {
+      case bilinear: {
+        sparkSampler = sparkyuv::bilinear;
+      }
+        break;
+      case nearest: {
+        sparkSampler = sparkyuv::nearest;
+      }
+        break;
+      case cubic: {
+        sparkSampler = sparkyuv::cubic;
+      }
+        break;
+      case mitchell: {
+        sparkSampler = sparkyuv::mitchell;
+      }
+        break;
+      case lanczos: {
+        sparkSampler = sparkyuv::lanczos;
+      }
+        break;
+      case catmullRom: {
+        sparkSampler = sparkyuv::catmullRom;
+      }
+        break;
+      case hermite: {
+        sparkSampler = sparkyuv::hermite;
+      }
+        break;
+      case bSpline: {
+        sparkSampler = sparkyuv::bSpline;
+      }
+        break;
+      case hann: {
+        sparkSampler = sparkyuv::lanczos;
+      }
+        break;
+      case bicubic: {
+        sparkSampler = sparkyuv::bicubic;
+      }
+        break;
+    }
+
     if (useFloats) {
       if (ratio < 0.5f) {
         auto kernel = compute1DGaussianKernel(7, (7 - 1) / 6.f);
         coder::convolve1D(reinterpret_cast<uint16_t *>(rgbaData.data()), *stride, imageWidth, imageHeight, kernel, kernel);
       }
 
-      coder::scaleImageFloat16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
-                               imageWidth * 4 * (int) sizeof(uint16_t),
-                               imageWidth, imageHeight,
-                               reinterpret_cast<uint16_t *>(newImageData.data()),
-                               imdStride,
-                               scaledWidth, scaledHeight,
-                               4,
-                               sampler
-      );
+      sparkyuv::ScaleRGBAF16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
+                             imageWidth * 4 * (int) sizeof(uint16_t),
+                             imageWidth, imageHeight,
+                             reinterpret_cast<uint16_t *>(newImageData.data()),
+                             imdStride,
+                             scaledWidth, scaledHeight, sparkSampler);
     } else {
       if (ratio < 0.5f) {
         auto kernel = compute1DGaussianKernel(7, (7 - 1) / 6.f);
         coder::convolve1D(reinterpret_cast<uint8_t *>(rgbaData.data()), *stride, imageWidth, imageHeight, kernel, kernel);
       }
-      coder::scaleImageU8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
+
+      sparkyuv::ScaleRGBA(reinterpret_cast<const uint8_t *>(rgbaData.data()),
                           (int) imageWidth * 4 * (int) sizeof(uint8_t),
                           imageWidth, imageHeight,
                           reinterpret_cast<uint8_t *>(newImageData.data()),
                           imdStride,
-                          scaledWidth, scaledHeight,
-                          4, 8,
-                          sampler);
+                          scaledWidth, scaledHeight, sparkSampler);
+
     }
 
     imageWidth = scaledWidth;

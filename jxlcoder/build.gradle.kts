@@ -1,30 +1,69 @@
+import com.android.build.gradle.internal.tasks.factory.dependsOn
+import com.vanniktech.maven.publish.AndroidMultiVariantLibrary
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("maven-publish")
+    id("signing")
+    id("com.vanniktech.maven.publish") version "0.28.0"
 }
 
-//val androidSourcesJar by tasks.registering(Jar::class) {
-//    archiveClassifier.set("sources")
-//    from(android.sourceSets.named("main"))
-//}
+mavenPublishing {
+    configure(
+        AndroidMultiVariantLibrary(
+        sourcesJar = true,
+        publishJavadocJar = true,
+    )
+    )
 
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("mavenJava") {
-                groupId = "com.github.awxkee"
-                artifactId = "jxl-coder"
-                version = "2.1.10"
-                from(components["release"])
-//                artifact(androidSourcesJar)
+    coordinates("io.github.awxkee", "jxl-coder", System.getenv("VERSION_NAME") ?: "0.0.10")
+
+    pom {
+        name.set("Jxl Coder")
+        description.set("A description of what my library does.")
+        inceptionYear.set("2023")
+        url.set("https://github.com/awxkee/jxl-coder")
+        licenses {
+            license {
+                name.set("The Apache License, Version 2.0")
+                url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                distribution.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
             }
+            license {
+                name.set("The 3-Clause BSD License")
+            }
+        }
+        developers {
+            developer {
+                id.set("awxkee")
+                name.set("Radzivon Bartoshyk")
+                url.set("https://github.com/username/")
+                email.set("radzivon.bartoshyk@proton.me")
+            }
+        }
+        scm {
+            url.set("https://github.com/awxkee/jxl-coder")
+            connection.set("scm:git:git@github.com:awxkee/jxl-coder.git")
+            developerConnection.set("scm:git:ssh://git@github.com/axkeee/jxl-coder.git")
         }
     }
 }
 
+val preSyncTask by tasks.registering(Exec::class) {
+    doFirst {
+        workingDir = File(rootProject.rootDir, "jxlcoder")
+        commandLine("bash", "download_deps.sh")
+    }
+}
+
+tasks.register("DownloadDeps") {
+    dependsOn(preSyncTask)
+}
+
 android {
-    namespace = "com.awxkee.jxlcoder"
+    project.tasks.preBuild.dependsOn("DownloadDeps")
+    namespace = "io.github.awxkee.jxlcoder"
     compileSdk = 34
 
     defaultConfig {

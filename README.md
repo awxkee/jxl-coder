@@ -70,7 +70,7 @@ encoder.addFrame(secondFrame, duration = 2000) // Duration in ms
 val compressedBuffer: ByteArray = encoder.encode() // Do something with buffer
 ```
 
-# Add Jitpack repository
+## Add Jitpack repository
 
 ```groovy
 repositories {
@@ -128,4 +128,4 @@ animated images, and embedded previews. It has features aimed at web delivery su
 progressive decoding[13] and minimal header overhead, as well as features aimed at image editing and
 digital printing, such as support for multiple layers, CMYK, and spot colors. It is specifically
 designed to seamlessly handle wide color gamut color spaces with high dynamic range such as Rec.
-2100 with the PQ or HLG transfer function. 
+2100 with the PQ or HLG transfer function.

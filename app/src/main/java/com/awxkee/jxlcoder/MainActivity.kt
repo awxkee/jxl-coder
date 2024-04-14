@@ -148,11 +148,12 @@ class MainActivity : ComponentActivity() {
                             fun simpleRoundTrip(image: String) {
                                 val bufferPng = assets.open(image).source().buffer().readByteArray()
                                 val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
+                                    .copy(Bitmap.Config.RGBA_1010102, true)
                                 lifecycleScope.launch {
                                     drawables.add(BitmapDrawable(resources, bitmap))
                                 }
                                 val jxlBuffer = JxlCoder.encode(bitmap,
-                                    channelsConfiguration = JxlChannelsConfiguration.RGBA,
+                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
                                     compressionOption = JxlCompressionOption.LOSSY,
                                     effort = JxlEffort.LIGHTNING,
                                     decodingSpeed = JxlDecodingSpeed.SLOW)
@@ -170,9 +171,8 @@ class MainActivity : ComponentActivity() {
                             }
 
                             simpleRoundTrip("screenshot_discord_5.png")
-//                            simpleRoundTrip("screen_discord_3.png")
-//                            simpleRoundTrip("screen_discord.png")
-//                            simpleRoundTrip("screen_discord_2.png")
+                            simpleRoundTrip("screen_discord.png")
+                            simpleRoundTrip("screen_discord_2.png")
 //
 //                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
 //                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
@@ -202,7 +202,7 @@ class MainActivity : ComponentActivity() {
 //                                                buffer4,
 //                                                largeImageSize.width / 3 * 2,
 //                                                largeImageSize.height / 3 * 2,
-//                                                preferredColorConfig = PreferredColorConfig.DEFAULT,
+//                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
 //                                                com.awxkee.jxlcoder.ScaleMode.FIT,
 //                                                JxlResizeFilter.BICUBIC,
 //                                                toneMapper = JxlToneMapper.LOGARITHMIC,
@@ -245,7 +245,7 @@ class MainActivity : ComponentActivity() {
 //                            contentScale = ContentScale.FillWidth,
 //                            contentDescription = "ok"
 //                        )
-                        LazyRow(
+                        LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
                         ) {

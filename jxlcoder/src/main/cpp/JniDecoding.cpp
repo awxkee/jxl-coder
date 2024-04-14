@@ -33,7 +33,6 @@
 #include "colorspaces/colorspace.h"
 #include "conversion/HalfFloats.h"
 #include "android/bitmap.h"
-#include "conversion/F32ToRGB1010102.h"
 #include "SizeScaler.h"
 #include "Support.h"
 #include "ReformatBitmap.h"

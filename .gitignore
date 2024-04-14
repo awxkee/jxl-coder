@@ -21,3 +21,5 @@ local.properties
 build
 .idea
 /app/release/output-metadata.json
+libsparkyuv.a
+jxlcoder/src/main/cpp/sparkyuv

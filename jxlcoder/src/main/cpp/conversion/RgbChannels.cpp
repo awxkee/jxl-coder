@@ -23,7 +23,7 @@ RgbaPickChannelRowHWY(D d, const T *JXL_RESTRICT src, T *JXL_RESTRICT dst, const
   uint32_t x = 0;
   auto srcPixels = reinterpret_cast<const T *>(src);
   auto dstPixels = reinterpret_cast<T *>(dst);
-  const int pixels = d.MaxLanes();
+  const int pixels = Lanes(d);
   for (; x + pixels < width; x += pixels) {
     V pixels1;
     V pixels2;

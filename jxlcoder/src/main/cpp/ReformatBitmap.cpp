@@ -30,16 +30,12 @@
 #include <string>
 #include "Support.h"
 #include "conversion/HalfFloats.h"
-#include "conversion/Rgb565.h"
 #include <android/bitmap.h>
 #include <HardwareBuffersCompat.h>
 #include <mutex>
-#include "conversion/Rgb1010102.h"
-#include "conversion/RgbaF16bitNBitU8.h"
-#include "conversion/Rgba8ToF16.h"
 #include "imagebit/CopyUnaligned.h"
 #include "JniExceptions.h"
-#include "conversion/RGBAlpha.h"
+#include "sparkyuv/sparkyuv.h"
 
 void
 ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &imageConfig,
@@ -64,18 +60,23 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       if (*useFloats) {
         int dstStride = imageWidth * 4 * (int) sizeof(uint8_t);
         std::vector<uint8_t> rgba8888Data(dstStride * imageHeight);
-        coder::RGBAF16BitToNBitU8(reinterpret_cast<const uint16_t *>(imageData.data()),
-                                  *stride, rgba8888Data.data(), dstStride, imageWidth,
-                                  imageHeight, 8, !alphaPremultiplied);
+        sparkyuv::RGBAF16ToRGBA(reinterpret_cast<const uint16_t *>(imageData.data()),
+                                *stride, rgba8888Data.data(), dstStride, imageWidth,
+                                imageHeight);
+        if (!alphaPremultiplied) {
+          sparkyuv::RGBAPremultiplyAlpha(imageData.data(), *stride, imageData.data(), *stride,
+                                         imageWidth,
+                                         imageHeight);
+        }
         *stride = dstStride;
         *useFloats = false;
         imageConfig = "ARGB_8888";
         imageData = rgba8888Data;
       } else {
         if (!alphaPremultiplied) {
-          coder::PremultiplyRGBA(imageData.data(), *stride, imageData.data(), *stride,
-                                 imageWidth,
-                                 imageHeight);
+          sparkyuv::RGBAPremultiplyAlpha(imageData.data(), *stride, imageData.data(), *stride,
+                                         imageWidth,
+                                         imageHeight);
         }
       }
       break;
@@ -87,10 +88,14 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       } else {
         int dstStride = imageWidth * 4 * (int) sizeof(uint16_t);
         std::vector<uint8_t> rgbaF16Data(dstStride * imageHeight);
-        coder::Rgba8ToF16(imageData.data(), *stride,
+        if (!alphaPremultiplied) {
+          sparkyuv::RGBAPremultiplyAlpha(imageData.data(), *stride,
+                                         imageData.data(), *stride,
+                                         imageWidth, imageHeight);
+        }
+        sparkyuv::RGBAToRGBAF16(imageData.data(), *stride,
                           reinterpret_cast<uint16_t *>(rgbaF16Data.data()), dstStride,
-                          imageWidth, imageHeight,
-                          depth, !alphaPremultiplied);
+                          imageWidth, imageHeight);
         *stride = dstStride;
         *useFloats = true;
         imageConfig = "RGBA_F16";
@@ -101,9 +106,9 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       if (*useFloats) {
         int dstStride = imageWidth * (int) sizeof(uint16_t);
         std::vector<uint8_t> rgb565Data(dstStride * imageHeight);
-        coder::RGBAF16To565(reinterpret_cast<const uint16_t *>(imageData.data()), *stride,
-                            reinterpret_cast<uint16_t *>(rgb565Data.data()), dstStride,
-                            imageWidth, imageHeight);
+        sparkyuv::RGBAF16ToRGB565(reinterpret_cast<const uint16_t *>(imageData.data()), *stride,
+                                  reinterpret_cast<uint16_t *>(rgb565Data.data()), dstStride,
+                                  imageWidth, imageHeight);
         *stride = dstStride;
         *useFloats = false;
         imageConfig = "RGB_565";
@@ -112,10 +117,15 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       } else {
         uint32_t dstStride = imageWidth * (uint32_t) sizeof(uint16_t);
         std::vector<uint8_t> rgb565Data(dstStride * imageHeight);
-        coder::Rgba8To565(imageData.data(), *stride,
-                          reinterpret_cast<uint16_t *>(rgb565Data.data()), dstStride,
-                          imageWidth, imageHeight, depth,
-                          !alphaPremultiplied);
+        if (!alphaPremultiplied) {
+          sparkyuv::RGBAPremultiplyAlpha(imageData.data(), *stride,
+                                         imageData.data(), *stride,
+                                         imageWidth,
+                                         imageHeight);
+        }
+        sparkyuv::RGBAToRGB565(imageData.data(), *stride,
+                               reinterpret_cast<uint16_t *>(rgb565Data.data()), dstStride,
+                               imageWidth, imageHeight);
         *stride = dstStride;
         *useFloats = false;
         imageConfig = "RGB_565";
@@ -126,11 +136,16 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       if (*useFloats) {
         int dstStride = imageWidth * 4 * (int) sizeof(uint8_t);
         std::vector<uint8_t> rgba1010102Data(dstStride * imageHeight);
-        coder::F16ToRGBA1010102(reinterpret_cast<const uint16_t *>(imageData.data()),
-                                *stride,
-                                reinterpret_cast<uint8_t *>(rgba1010102Data.data()),
-                                dstStride,
-                                imageWidth, imageHeight);
+//        coder::F16ToRGBA1010102(reinterpret_cast<const uint16_t *>(imageData.data()),
+//                                *stride,
+//                                reinterpret_cast<uint8_t *>(rgba1010102Data.data()),
+//                                dstStride,
+//                                imageWidth, imageHeight);
+        sparkyuv::RGBAF16ToRGBA1010102(reinterpret_cast<const uint16_t *>(imageData.data()),
+                                       *stride,
+                                       reinterpret_cast<uint8_t *>(rgba1010102Data.data()),
+                                       dstStride,
+                                       imageWidth, imageHeight);
         *stride = dstStride;
         *useFloats = false;
         imageConfig = "RGBA_1010102";
@@ -139,11 +154,17 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       } else {
         int dstStride = imageWidth * 4 * (int) sizeof(uint8_t);
         std::vector<uint8_t> rgba1010102Data(dstStride * imageHeight);
-        coder::Rgba8ToRGBA1010102(reinterpret_cast<const uint8_t *>(imageData.data()),
-                                  *stride,
-                                  reinterpret_cast<uint8_t *>(rgba1010102Data.data()),
-                                  dstStride,
-                                  imageWidth, imageHeight, !alphaPremultiplied);
+        if (!alphaPremultiplied) {
+          sparkyuv::RGBAPremultiplyAlpha(imageData.data(), *stride,
+                                         imageData.data(), *stride,
+                                         imageWidth,
+                                         imageHeight);
+        }
+        sparkyuv::RGBAToRGBA1010102(reinterpret_cast<const uint8_t *>(imageData.data()),
+                                    *stride,
+                                    reinterpret_cast<uint8_t *>(rgba1010102Data.data()),
+                                    dstStride,
+                                    imageWidth, imageHeight);
         *stride = dstStride;
         *useFloats = false;
         imageConfig = "RGBA_1010102";
@@ -165,10 +186,10 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       bufferDesc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
 
       if (!*useFloats && !alphaPremultiplied) {
-        coder::PremultiplyRGBA(imageData.data(), *stride,
-                               imageData.data(), *stride,
-                               imageWidth,
-                               imageHeight);
+        sparkyuv::RGBAPremultiplyAlpha(imageData.data(), *stride,
+                                       imageData.data(), *stride,
+                                       imageWidth,
+                                       imageHeight);
       }
 
       AHardwareBuffer *hdBuffer = nullptr;
