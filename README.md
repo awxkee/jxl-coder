@@ -70,7 +70,19 @@ encoder.addFrame(secondFrame, duration = 2000) // Duration in ms
 val compressedBuffer: ByteArray = encoder.encode() // Do something with buffer
 ```
 
-## Add Jitpack repository
+# Add to project
+
+```groovy
+implementation 'io.github.awxkee:jxl-coder:2.2.0' // or any version above picker from release tags
+
+// Glide JPEG XL plugin if you need one
+implementation 'io.github.awxkee:jxl-coder-glide:2.2.0' // or any version above picker from release tags
+
+// Coil JPEG XL plugin if you need one
+implementation 'io.github.awxkee:jxl-coder-coil:2.2.0' // or any version above picker from release tags
+```
+
+### ~~Add Jitpack repository~~ Deprecated since 2.2.0, from 2.2.0 only Maven central will receive support
 
 ```groovy
 repositories {
