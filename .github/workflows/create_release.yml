@@ -32,6 +32,23 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEYID }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEYPASSWORD }}
         run: bash ./gradlew jxlCoder:publishAllPublicationsToMavenCentralRepository
+
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs:
+      - build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Compress Sources
+        uses: a7ul/tar-action@v1.1.0
+        id: compress
+        with:
+          command: c
+          files: |
+            ../jxl-coder
+          outPath: jxlcoder.tar.gz
       - uses: ncipollo/release-action@v1
         with:
           bodyFile: 'CHANGELOG.md'
