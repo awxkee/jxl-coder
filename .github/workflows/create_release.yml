@@ -1,5 +1,9 @@
 name: Create Release
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     tags:
@@ -27,7 +31,7 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEYID }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEYPASSWORD }}
-      - run: bash ./gradlew jxlCoder:publishAllPublicationsToMavenCentralRepository
+        run: bash ./gradlew jxlCoder:publishAllPublicationsToMavenCentralRepository
       - uses: ncipollo/release-action@v1
         with:
           bodyFile: 'CHANGELOG.md'

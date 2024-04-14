@@ -21,7 +21,7 @@ mavenPublishing {
 
     pom {
         name.set("Jxl Coder")
-        description.set("A description of what my library does.")
+        description.set("JPEG XL encoder/decoder for Android")
         inceptionYear.set("2023")
         url.set("https://github.com/awxkee/jxl-coder")
         licenses {
@@ -32,20 +32,22 @@ mavenPublishing {
             }
             license {
                 name.set("The 3-Clause BSD License")
+                url.set("https://opensource.org/license/bsd-3-clause")
+                description.set("https://opensource.org/license/bsd-3-clause")
             }
         }
         developers {
             developer {
                 id.set("awxkee")
                 name.set("Radzivon Bartoshyk")
-                url.set("https://github.com/username/")
+                url.set("https://github.com/awxkee")
                 email.set("radzivon.bartoshyk@proton.me")
             }
         }
         scm {
             url.set("https://github.com/awxkee/jxl-coder")
             connection.set("scm:git:git@github.com:awxkee/jxl-coder.git")
-            developerConnection.set("scm:git:ssh://git@github.com/axkeee/jxl-coder.git")
+            developerConnection.set("scm:git:ssh://git@github.com/awxkee/jxl-coder.git")
         }
     }
 }

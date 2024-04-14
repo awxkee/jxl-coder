@@ -1,5 +1,9 @@
 name: Build to Maven Local
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -15,7 +19,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: CENTRAL-RELEASE
+    environment: Maven Local
     steps:
       - uses: actions/checkout@v3
       - name: set up JDK 17
