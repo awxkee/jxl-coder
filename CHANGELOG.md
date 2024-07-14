@@ -1,2 +1,1 @@
-Reworking to libsparkyuv,
-Changes releases to maven central
+Upgrade libjxl, speed improvements and stability
