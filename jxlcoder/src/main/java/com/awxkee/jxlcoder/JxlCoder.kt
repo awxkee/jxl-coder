@@ -51,7 +51,7 @@ object JxlCoder {
         byteArray: ByteArray,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
+        toneMapper: JxlToneMapper = JxlToneMapper.REC2408,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
@@ -73,8 +73,8 @@ object JxlCoder {
         height: Int,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
-        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
+        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
+        toneMapper: JxlToneMapper = JxlToneMapper.REC2408,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
@@ -97,7 +97,7 @@ object JxlCoder {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
-        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
+        toneMapper: JxlToneMapper = JxlToneMapper.REC2408,
     ): Bitmap {
         return decodeByteBufferSampledImpl(
             byteArray,

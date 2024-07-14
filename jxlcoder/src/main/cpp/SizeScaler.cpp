@@ -142,14 +142,14 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                       imageWidth, imageHeight,
                       reinterpret_cast<uint16_t *>(newImageData.data()),
                       imdStride,
-                      scaledWidth, scaledHeight, ScalingFunction::BSpline /*static_cast<ScalingFunction>(sparkSampler)*/);
+                      scaledWidth, scaledHeight, static_cast<ScalingFunction>(sparkSampler));
     } else {
       weave_scale_u8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
                      (int) imageWidth * 4 * (int) sizeof(uint8_t),
                      imageWidth, imageHeight,
                      reinterpret_cast<uint8_t *>(newImageData.data()),
                      imdStride,
-                     scaledWidth, scaledHeight, ScalingFunction::BSpline /*static_cast<ScalingFunction>(sparkSampler)*/);
+                     scaledWidth, scaledHeight, static_cast<ScalingFunction>(sparkSampler));
 
     }
 
