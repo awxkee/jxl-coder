@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "Running pre-sync script..."
 
-SPARKYUV_RELEASE_VERSION="0.8.15"
+SPARKYUV_RELEASE_VERSION="0.8.25"
 
 ABI_LIST="armeabi-v7a arm64-v8a x86 x86_64"
 

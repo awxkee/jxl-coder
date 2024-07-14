@@ -81,6 +81,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
       }
       *xsize = info.xsize;
       *ysize = info.ysize;
+
       *alphaPremultiplied = info.alpha_premultiplied;
       *bitDepth = (int) info.bits_per_sample;
       *jxlOrientation = info.orientation;
@@ -92,6 +93,15 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
         *useFloats = false;
         useBitmapHalfFloats = false;
       }
+
+      uint64_t maxSize = std::numeric_limits<int32_t>::max();
+      uint64_t
+          currentSize = static_cast<uint64_t >(info.xsize) * static_cast<uint64_t >(info.ysize) * 4
+          * static_cast<uint64_t >((useBitmapHalfFloats ? sizeof(uint16_t) : sizeof(uint8_t)));
+      if (currentSize >= maxSize) {
+        throw InvalidImageSizeException(info.xsize, info.ysize);
+      }
+
       *hasAlphaInOrigin = info.num_extra_channels > 0 && info.alpha_bits > 0;
       JxlResizableParallelRunnerSetThreads(
           runner.get(),
@@ -100,12 +110,12 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
       // Get the ICC color profile of the pixel data
       size_t iccSize;
       if (JXL_DEC_SUCCESS !=
-          JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,&iccSize)) {
+          JxlDecoderGetICCProfileSize(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA, &iccSize)) {
         return false;
       }
       JxlColorEncoding clr;
       if (JXL_DEC_SUCCESS ==
-          JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,&clr)) {
+          JxlDecoderGetColorAsEncodedProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA, &clr)) {
         *colorEncoding = clr;
         if (clr.color_space == JXL_COLOR_SPACE_RGB && clr.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
             clr.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||

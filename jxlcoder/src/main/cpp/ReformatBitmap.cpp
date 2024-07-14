@@ -33,7 +33,6 @@
 #include <android/bitmap.h>
 #include <HardwareBuffersCompat.h>
 #include <mutex>
-#include "imagebit/CopyUnaligned.h"
 #include "JniExceptions.h"
 #include "sparkyuv/sparkyuv.h"
 
@@ -94,8 +93,8 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
                                          imageWidth, imageHeight);
         }
         sparkyuv::RGBAToRGBAF16(imageData.data(), *stride,
-                          reinterpret_cast<uint16_t *>(rgbaF16Data.data()), dstStride,
-                          imageWidth, imageHeight);
+                                reinterpret_cast<uint16_t *>(rgbaF16Data.data()), dstStride,
+                                imageWidth, imageHeight);
         *stride = dstStride;
         *useFloats = true;
         imageConfig = "RGBA_F16";
@@ -216,11 +215,17 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
 
       int pixelSize = (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t);
 
-      coder::CopyUnaligned(imageData.data(), *stride, buffer,
-                           (int) bufferDesc.stride * 4 * pixelSize,
-                           (int) bufferDesc.width * 4,
-                           (int) bufferDesc.height,
-                           (*useFloats) ? sizeof(uint16_t) : sizeof(uint8_t));
+      if (*useFloats) {
+        sparkyuv::CopyRGBA16(reinterpret_cast<uint16_t *>(imageData.data()), *stride,
+                             reinterpret_cast<uint16_t *>(buffer), (int) bufferDesc.stride * 4 * pixelSize,
+                             bufferDesc.width,
+                             bufferDesc.height);
+      } else {
+        sparkyuv::CopyRGBA(reinterpret_cast<uint8_t *>(imageData.data()), *stride,
+                           reinterpret_cast<uint8_t *>(buffer), (int) bufferDesc.stride * 4 * pixelSize,
+                           bufferDesc.width,
+                           bufferDesc.height);
+      }
 
       status = AHardwareBuffer_unlock_compat(hardwareBuffer.get(), nullptr);
       if (status != 0) {

@@ -36,7 +36,6 @@
 #include <android/data_space.h>
 #include <android/bitmap.h>
 #include "conversion/RgbChannels.h"
-#include "imagebit/CopyUnaligned.h"
 #include "sparkyuv/sparkyuv.h"
 
 using namespace std;
@@ -319,10 +318,15 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
           rgbPixels = rgbaPixels;
         } else {
           rgbPixels.resize(requiredStride * (int) info.height);
-          coder::CopyUnaligned(rgbaPixels.data(), imageStride, rgbPixels.data(),
-                               requiredStride, (int) info.width * 4, (int) info.height,
-                               (int) (dataPixelFormat == BINARY_16 ? sizeof(uint16_t)
-                                                                   : sizeof(uint8_t)));
+          if (dataPixelFormat == BINARY_16) {
+            sparkyuv::CopyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), imageStride,
+                                 reinterpret_cast<uint16_t *>(rgbPixels.data()), requiredStride,
+                                 info.width, info.height);
+          } else {
+            sparkyuv::CopyRGBA(reinterpret_cast<uint8_t *>(rgbaPixels.data()), imageStride,
+                               reinterpret_cast<uint8_t *>(rgbPixels.data()), requiredStride,
+                               info.width, info.height);
+          }
         }
         imageStride = requiredStride;
       }

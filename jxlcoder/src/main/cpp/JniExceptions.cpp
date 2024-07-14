@@ -29,6 +29,12 @@
 #include "JniExceptions.h"
 #include <string>
 
+jint throwImageSizeException(JNIEnv *env, const char* message) {
+  jclass exClass;
+  exClass = env->FindClass("com/awxkee/jxlcoder/InvalidImageSizeException");
+  return env->ThrowNew(exClass, message);
+}
+
 jint throwInvalidJXLException(JNIEnv *env) {
   jclass exClass;
   exClass = env->FindClass("com/awxkee/jxlcoder/InvalidJXLException");

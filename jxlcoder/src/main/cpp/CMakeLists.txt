@@ -8,6 +8,7 @@ add_library(libbrotlienc SHARED IMPORTED)
 add_library(libjxl SHARED IMPORTED)
 add_library(libjxl_threads SHARED IMPORTED)
 add_library(libjxl_cms SHARED IMPORTED)
+add_library(weaver SHARED IMPORTED)
 add_library(libsparkyuv STATIC IMPORTED)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
@@ -17,12 +18,12 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         icc/cmswtpnt.c icc/cmsxform.c colorspaces/colorspace.cpp conversion/HalfFloats.cpp JniExceptions.cpp interop/JxlEncoding.cpp
         interop/JxlDecoding.cpp JniDecoding.cpp
         HardwareBuffersCompat.cpp SizeScaler.cpp
-        Support.cpp ReformatBitmap.cpp imagebit/CopyUnaligned.cpp
+        Support.cpp ReformatBitmap.cpp
         XScaler.cpp interop/JxlAnimatedDecoder.cpp interop/JxlAnimatedEncoder.cpp
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp colorspaces/CoderCms.cpp
         hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
         hwy/timer.cc JXLJpegInterop.cpp colorspaces/GamutAdapter.cpp EasyGifReader.cpp JXLConventions.cpp
-        processing/Convolve1D.cpp processing/Convolve1Db16.cpp conversion/RgbChannels.cpp
+        conversion/RgbChannels.cpp
 )
 
 add_subdirectory(giflib)
@@ -38,6 +39,7 @@ set_target_properties(jxlcoder libjxl PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURC
 set_target_properties(jxlcoder libjxl_threads PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_threads.so)
 set_target_properties(jxlcoder libjxl_cms PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libjxl_cms.so)
 set_target_properties(jxlcoder libsparkyuv PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libsparkyuv.a)
+set_target_properties(jxlcoder weaver PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libweaver.so)
 
 add_library(cpufeatures STATIC ${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c)
 target_include_directories(cpufeatures PUBLIC ${ANDROID_NDK}/sources/android/cpufeatures)
@@ -100,5 +102,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         giflib
         libpng
         libsparkyuv
+        weaver
         z
         log)

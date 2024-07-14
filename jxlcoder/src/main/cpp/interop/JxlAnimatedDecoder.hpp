@@ -118,6 +118,15 @@ class JxlAnimatedDecoder {
         numer = info.have_animation ? info.animation.tps_numerator : 1;
         alphaPremultiplied = info.alpha_premultiplied;
 
+        uint64_t maxSize = std::numeric_limits<int32_t>::max();
+        uint64_t
+            currentSize = static_cast<uint64_t >(info.xsize) * static_cast<uint64_t >(info.ysize) * 4;
+        if (currentSize >= maxSize) {
+          std::string errorMessage =
+              "Invalid image size exceed allowance, current size w: " + std::to_string(info.xsize) + ", h: " + std::to_string(info.ysize);
+          throw AnimatedDecoderError(strdup(errorMessage.c_str()));
+        }
+
         JxlResizableParallelRunnerSetThreads(
             runner.get(),
             JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize));

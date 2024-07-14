@@ -145,34 +145,34 @@ class MainActivity : ComponentActivity() {
 //                                imagesArray.add(animated)
 //                            }
 
-                            fun simpleRoundTrip(image: String) {
-                                val bufferPng = assets.open(image).source().buffer().readByteArray()
-                                val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
-                                    .copy(Bitmap.Config.RGBA_1010102, true)
-                                lifecycleScope.launch {
-                                    drawables.add(BitmapDrawable(resources, bitmap))
-                                }
-                                val jxlBuffer = JxlCoder.encode(bitmap,
-                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
-                                    compressionOption = JxlCompressionOption.LOSSY,
-                                    effort = JxlEffort.LIGHTNING,
-                                    decodingSpeed = JxlDecodingSpeed.SLOW)
-//                                val decodedEncoded = JxlCoder.decode(jxlBuffer,
-//                                    preferredColorConfig = PreferredColorConfig.RGBA_1010102)
-                                val decodedEncoded = JxlAnimatedImage(jxlBuffer).getFrame(0)
-                                lifecycleScope.launch {
-                                    drawables.add(BitmapDrawable(resources, decodedEncoded))
-                                }
-                                val fos = FileOutputStream(File(cacheDir, image))
-                                fos.sink().buffer().use {
-                                    it.writeAll(ByteArrayInputStream(jxlBuffer).source().buffer())
-                                    it.flush()
-                                }
-                            }
-
-                            simpleRoundTrip("screenshot_discord_5.png")
-                            simpleRoundTrip("screen_discord.png")
-                            simpleRoundTrip("screen_discord_2.png")
+//                            fun simpleRoundTrip(image: String) {
+//                                val bufferPng = assets.open(image).source().buffer().readByteArray()
+//                                val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
+//                                    .copy(Bitmap.Config.RGBA_F16,true)
+//                                lifecycleScope.launch {
+//                                    drawables.add(BitmapDrawable(resources, bitmap))
+//                                }
+//                                val jxlBuffer = JxlCoder.encode(bitmap,
+//                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
+//                                    compressionOption = JxlCompressionOption.LOSSY,
+//                                    effort = JxlEffort.LIGHTNING,
+//                                    decodingSpeed = JxlDecodingSpeed.SLOW)
+////                                val decodedEncoded = JxlCoder.decode(jxlBuffer,
+////                                    preferredColorConfig = PreferredColorConfig.RGBA_1010102)
+//                                val decodedEncoded = JxlAnimatedImage(jxlBuffer).getFrame(0, bitmap.width /2 , bitmap.height / 2)
+//                                lifecycleScope.launch {
+//                                    drawables.add(BitmapDrawable(resources, decodedEncoded))
+//                                }
+//                                val fos = FileOutputStream(File(cacheDir, image))
+//                                fos.sink().buffer().use {
+//                                    it.writeAll(ByteArrayInputStream(jxlBuffer).source().buffer())
+//                                    it.flush()
+//                                }
+//                            }
+//
+//                            simpleRoundTrip("screenshot_discord_5.png")
+//                            simpleRoundTrip("screen_discord.png")
+//                            simpleRoundTrip("screen_discord_2.png")
 //
 //                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
 //                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
@@ -189,36 +189,38 @@ class MainActivity : ComponentActivity() {
 //                                drawables.add(BitmapDrawable(resources, decoded))
 //                            }
 
-//                            var assets = (this@MainActivity.assets.list("") ?: return@launch).toList()
-//                            for (asset in assets) {
-//                                try {
-//                                    val buffer4 =
-//                                        this@MainActivity.assets.open(asset).source().buffer().readByteArray()
-//
-//                                    val largeImageSize = JxlCoder.getSize(buffer4)
-//                                    if (largeImageSize != null) {
-//                                        val time = measureTimeMillis {
-//                                            var srcImage = JxlCoder.decodeSampled(
-//                                                buffer4,
-//                                                largeImageSize.width / 3 * 2,
-//                                                largeImageSize.height / 3 * 2,
-//                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
-//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-//                                                JxlResizeFilter.BICUBIC,
-//                                                toneMapper = JxlToneMapper.LOGARITHMIC,
-//                                            )
-//                                            lifecycleScope.launch {
-//                                                imagesArray.add(srcImage)
-//                                            }
-//                                        }
-//                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
-//                                    }
-//                                } catch (e: Exception) {
-//                                    if (e !is FileNotFoundException) {
-//                                        throw e
-//                                    }
-//                                }
-//                            }
+                            var assets =
+                                (this@MainActivity.assets.list("") ?: return@launch).toList()
+                            for (asset in assets) {
+                                try {
+                                    val buffer4 =
+                                        this@MainActivity.assets.open(asset).source().buffer()
+                                            .readByteArray()
+
+                                    val largeImageSize = JxlCoder.getSize(buffer4)
+                                    if (largeImageSize != null) {
+                                        val time = measureTimeMillis {
+                                            var srcImage = JxlCoder.decodeSampled(
+                                                buffer4,
+                                                largeImageSize.width / 4,
+                                                largeImageSize.height / 4,
+                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
+                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+                                                JxlResizeFilter.MITCHELL_NETRAVALI,
+                                                toneMapper = JxlToneMapper.LOGARITHMIC,
+                                            )
+                                            lifecycleScope.launch {
+                                                imagesArray.add(srcImage)
+                                            }
+                                        }
+                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
+                                    }
+                                } catch (e: Exception) {
+                                    if (e !is FileNotFoundException) {
+                                        throw e
+                                    }
+                                }
+                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme

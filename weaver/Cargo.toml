@@ -1,0 +1,12 @@
+[package]
+name = "weaver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+half = { version = "2.4.1", features = ["num-traits", "default"] }
+num-traits = "0.2.19"
+pic-scale = { version = "0.1.18", features = ["half"] }
+
+[lib]
+crate-type = ["cdylib"]

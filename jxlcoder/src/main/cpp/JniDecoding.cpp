@@ -36,12 +36,12 @@
 #include "SizeScaler.h"
 #include "Support.h"
 #include "ReformatBitmap.h"
-#include "imagebit/CopyUnaligned.h"
 #include "XScaler.h"
 #include "colorspaces/ColorSpaceProfile.h"
 #include "colorspaces/GamutAdapter.h"
 #include "colorspaces/ColorSpaceProfile.h"
 #include "hwy/highway.h"
+#include "sparkyuv/sparkyuv.h"
 
 jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
                                jint scaledHeight,
@@ -68,15 +68,24 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   JxlColorEncoding colorEncoding;
   bool preferEncoding = false;
   bool hasAlphaInOrigin = true;
-  if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
-                           &rgbaPixels,
-                           &xsize, &ysize,
-                           &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
-                           osVersion >= 26,
-                           &jxlOrientation,
-                           &preferEncoding, &colorEncoding,
-                           &hasAlphaInOrigin)) {
-    throwInvalidJXLException(env);
+  try {
+    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
+                             &rgbaPixels,
+                             &xsize, &ysize,
+                             &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
+                             osVersion >= 26,
+                             &jxlOrientation,
+                             &preferEncoding, &colorEncoding,
+                             &hasAlphaInOrigin)) {
+      throwInvalidJXLException(env);
+      return nullptr;
+    }
+  } catch (std::bad_alloc &err) {
+    std::string errorString = "Not enough memory to decode this image";
+    throwException(env, errorString);
+    return nullptr;
+  } catch (InvalidImageSizeException &err) {
+    throwImageSizeException(env, err.what());
     return nullptr;
   }
 
@@ -240,16 +249,22 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   }
 
   if (bitmapPixelConfig == "RGB_565") {
-    coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+    sparkyuv::CopyChannel16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()), stride,
+                            reinterpret_cast<uint16_t *>(addr), (int) info.stride,
+                            (int) info.width,
+                            (int) info.height);
+  } else {
+    if (useBitmapFloats) {
+      sparkyuv::CopyRGBA16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()), stride,
+                           reinterpret_cast<uint16_t *>(addr), (int) info.stride,
+                           (int) info.width,
+                           (int) info.height);
+    } else {
+      sparkyuv::CopyRGBA(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
                          reinterpret_cast<uint8_t *>(addr), (int) info.stride,
                          (int) info.width,
-                         (int) info.height, sizeof(uint16_t));
-  } else {
-    coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                         reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                         (int) info.width * 4,
-                         (int) info.height,
-                         useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+                         (int) info.height);
+    }
   }
 
   if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {

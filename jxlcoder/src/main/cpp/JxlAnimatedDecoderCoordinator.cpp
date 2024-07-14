@@ -35,8 +35,8 @@
 #include "colorspaces/colorspace.h"
 #include "android/bitmap.h"
 #include "ReformatBitmap.h"
-#include "imagebit/CopyUnaligned.h"
 #include "hwy/highway.h"
+#include "sparkyuv/sparkyuv.h"
 
 using namespace std;
 
@@ -338,15 +338,22 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
     }
 
     if (bitmapPixelConfig == "RGB_565") {
-      coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+      sparkyuv::CopyChannel16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()), stride,
+                              reinterpret_cast<uint16_t *>(addr), (int) info.stride,
+                              (int) info.width,
+                              (int) info.height);
+    } else {
+      if (useFloat16) {
+        sparkyuv::CopyRGBA16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()), stride,
+                             reinterpret_cast<uint16_t *>(addr), (int) info.stride,
+                             (int) info.width,
+                             (int) info.height);
+      } else {
+        sparkyuv::CopyRGBA(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
                            reinterpret_cast<uint8_t *>(addr), (int) info.stride,
                            (int) info.width,
-                           (int) info.height, sizeof(uint16_t));
-    } else {
-      coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                           reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                           (int) info.width * 4,
-                           (int) info.height, useFloat16 ? 2 : 1);
+                           (int) info.height);
+      }
     }
 
     if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {

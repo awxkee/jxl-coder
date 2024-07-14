@@ -35,7 +35,6 @@
 #include "JniExceptions.h"
 #include "interop/JxlEncoding.h"
 #include <android/data_space.h>
-#include "imagebit/CopyUnaligned.h"
 #include "interop/JxlDefinitions.h"
 #include <jxl/encode.h>
 #include "colorspaces/ColorSpaceProfile.h"
@@ -166,10 +165,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         rgbPixels.resize(info.height * requiredStride);
         if (useFloat16) {
           sparkyuv::RGBAF16ToRGBF16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                          imageStride,
-                          reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                          requiredStride,
-                          info.width, info.height);
+                                    imageStride,
+                                    reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                                    requiredStride,
+                                    info.width, info.height);
         } else {
           sparkyuv::RGBAToRGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
                               reinterpret_cast<uint8_t *>(rgbPixels.data()),
@@ -187,11 +186,17 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
           rgbPixels = rgbaPixels;
         } else {
           rgbPixels.resize(requiredStride * (int) info.height);
-          coder::CopyUnaligned(rgbaPixels.data(), imageStride, rgbPixels.data(),
+          if (useFloat16) {
+            sparkyuv::CopyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), imageStride,
+                                 reinterpret_cast<uint16_t *>(rgbPixels.data()), requiredStride,
+                                 (int) info.width,
+                                 (int) info.height);
+          } else {
+            sparkyuv::CopyRGBA(rgbaPixels.data(), imageStride, rgbPixels.data(),
                                requiredStride,
-                               (int) info.width * 4,
-                               (int) info.height,
-                               (int) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t)));
+                               (int) info.width,
+                               (int) info.height);
+          }
         }
         imageStride = requiredStride;
       }
