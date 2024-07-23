@@ -16,9 +16,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "colorutils-rs"
-version = "0.4.13"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08db9a0e25441c6250724934d84fd943125768dcd92d925ab9eb902296b136e4"
+checksum = "317c9284435188cc49bc19e48fb291c3c4be4c3c14746aaff399c0484ae09f69"
 dependencies = [
  "erydanos",
  "half",
@@ -63,9 +63,9 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
 name = "erydanos"
-version = "0.2.3"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a140744bdb5b8777d9714a8d6a72c5e58d4eb2b0c3c8a85c8bada86efd9fa21"
+checksum = "7698f0188aee8ace013304cf8604616f6ad8ea6c9647b025a3cebd6bea5a8acb"
 dependencies = [
  "num-traits",
 ]
@@ -99,9 +99,9 @@ dependencies = [
 
 [[package]]
 name = "pic-scale"
-version = "0.1.19"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2469472fd70cf4346931c258b69f4badedf6c37b5187545649496b7a2644287e"
+checksum = "a693b25404bf7480bbc8cc64290ac39b60afc3e71d2706368a4a03c9c46f5ab1"
 dependencies = [
  "colorutils-rs",
  "half",
