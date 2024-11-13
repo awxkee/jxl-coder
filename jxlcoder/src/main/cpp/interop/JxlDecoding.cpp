@@ -35,12 +35,13 @@
 bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
                          size_t *ysize, std::vector<uint8_t> *iccProfile,
-                         bool *useFloats, int *bitDepth,
+                         bool *useFloats, uint32_t *bitDepth,
                          bool *alphaPremultiplied, bool allowedFloats,
                          JxlOrientation *jxlOrientation,
                          bool *preferEncoding,
                          JxlColorEncoding *colorEncoding,
-                         bool *hasAlphaInOrigin) {
+                         bool *hasAlphaInOrigin,
+                         float* intensityTarget) {
   auto runner = JxlResizableParallelRunnerMake(nullptr);
 
   auto dec = JxlDecoderMake(nullptr);
@@ -67,6 +68,7 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
   *preferEncoding = false;
 
   *hasAlphaInOrigin = true;
+  *intensityTarget = 255;
 
   for (;;) {
     JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
@@ -85,10 +87,11 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
       *alphaPremultiplied = info.alpha_premultiplied;
       *bitDepth = (int) info.bits_per_sample;
       *jxlOrientation = info.orientation;
+      *intensityTarget = info.intensity_target <= 0. ? 255 : info.intensity_target;
       if (info.bits_per_sample > 8 && allowedFloats) {
         *useFloats = true;
         useBitmapHalfFloats = true;
-        format = {4, JXL_TYPE_FLOAT16, JXL_NATIVE_ENDIAN, 0};
+        format = {4, JXL_TYPE_UINT16, JXL_NATIVE_ENDIAN, 0};
       } else {
         *useFloats = false;
         useBitmapHalfFloats = false;
@@ -142,8 +145,8 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
           JxlDecoderImageOutBufferSize(dec.get(), &format, &bufferSize)) {
         return false;
       }
-      int stride = (int) *xsize * 4 *
-          (int) (useBitmapHalfFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+      uintptr_t stride = (uintptr_t) * xsize * 4 *
+          (uintptr_t)(useBitmapHalfFloats ? sizeof(uint16_t) : sizeof(uint8_t));
       if (bufferSize != stride * (*ysize)) {
         return false;
       }

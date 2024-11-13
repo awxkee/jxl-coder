@@ -39,7 +39,11 @@
 #include <jxl/encode.h>
 #include "colorspaces/ColorSpaceProfile.h"
 #include "conversion/RgbChannels.h"
-#include "sparkyuv/sparkyuv.h"
+#include "imagebit/RGBAlpha.h"
+#include "imagebit/CopyUnalignedRGBA.h"
+#include "imagebit/Rgb565.h"
+#include "imagebit/RgbaToRgb.h"
+#include "imagebit/Rgb1010102.h"
 
 using namespace std;
 
@@ -113,24 +117,26 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
     if (info.format == ANDROID_BITMAP_FORMAT_RGBA_1010102) {
       imageStride = info.width * 4 * sizeof(uint16_t);
       vector<uint8_t> halfFloatPixels(imageStride * info.height);
-      sparkyuv::RGBA1010102ToRGBAF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), info.stride,
-                                     reinterpret_cast<uint16_t *>(halfFloatPixels.data()), imageStride,
-                                     info.width, info.height);
+      coder::RGBA1010102ToUnsigned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), info.stride,
+                                   reinterpret_cast<uint16_t *>(halfFloatPixels.data()), imageStride,
+                                   info.width, info.height, 16);
       rgbaPixels = halfFloatPixels;
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
-      uint32_t newStride = info.width * 4 * (uint32_t) sizeof(uint8_t);
+      uint32_t
+          newStride = info.width * 4 * (uint32_t)
+      sizeof(uint8_t);
       std::vector<uint8_t> rgba8888Pixels(newStride * info.height);
-      sparkyuv::RGB565ToRGBA(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                             (uint32_t) info.stride,
-                             rgba8888Pixels.data(), newStride,
-                             (uint32_t) info.width, (uint32_t) info.height);
+      coder::Rgb565ToUnsigned8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                               (uint32_t) info.stride,
+                               rgba8888Pixels.data(), newStride,
+                               (uint32_t) info.width, (uint32_t) info.height, 255);
       imageStride = newStride;
       rgbaPixels = rgba8888Pixels;
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888) {
-      sparkyuv::RGBAUnpremultiplyAlpha(rgbaPixels.data(), imageStride,
-                                       rgbaPixels.data(), imageStride,
-                                       (int) info.width,
-                                       (int) info.height);
+      coder::UnassociateRgba8(rgbaPixels.data(), imageStride,
+                              rgbaPixels.data(), imageStride,
+                              (uint32_t) info.width,
+                              (uint32_t) info.height);
     }
 
     bool useFloat16 = info.format == ANDROID_BITMAP_FORMAT_RGBA_F16 ||
@@ -161,20 +167,20 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
       }
         break;
       case rgb: {
-        uint32_t requiredStride = (uint32_t) info.width * 3 * (uint32_t) (useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
+        uint32_t requiredStride = (uint32_t) info.width * 3 * (uint32_t)(useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
         rgbPixels.resize(info.height * requiredStride);
         if (useFloat16) {
-          sparkyuv::RGBAF16ToRGBF16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                                    imageStride,
-                                    reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                                    requiredStride,
-                                    info.width, info.height);
+          coder::Rgba16ToRgb16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                               imageStride,
+                               reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                               requiredStride,
+                               info.width, info.height);
         } else {
-          sparkyuv::RGBAToRGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
-                              reinterpret_cast<uint8_t *>(rgbPixels.data()),
-                              static_cast<int>(requiredStride),
-                              static_cast<int>(info.width),
-                              static_cast<int>(info.height));
+          coder::Rgba8ToRgb8(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
+                             reinterpret_cast<uint8_t *>(rgbPixels.data()),
+                             static_cast<int>(requiredStride),
+                             static_cast<int>(info.width),
+                             static_cast<int>(info.height));
         }
         imageStride = requiredStride;
       }
@@ -187,15 +193,15 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
         } else {
           rgbPixels.resize(requiredStride * (int) info.height);
           if (useFloat16) {
-            sparkyuv::CopyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), imageStride,
+            coder::CopyUnaligned(reinterpret_cast<uint16_t *>(rgbaPixels.data()), imageStride,
                                  reinterpret_cast<uint16_t *>(rgbPixels.data()), requiredStride,
-                                 (int) info.width,
-                                 (int) info.height);
+                                 (uint32_t) info.width * 4,
+                                 (uint32_t) info.height);
           } else {
-            sparkyuv::CopyRGBA(rgbaPixels.data(), imageStride, rgbPixels.data(),
-                               requiredStride,
-                               (int) info.width,
-                               (int) info.height);
+            coder::CopyUnaligned(rgbaPixels.data(), imageStride, rgbPixels.data(),
+                                 requiredStride,
+                                 (uint32_t) info.width * 4,
+                                 (uint32_t) info.height);
           }
         }
         imageStride = requiredStride;
@@ -373,6 +379,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
     return byteArray;
   } catch (std::bad_alloc &err) {
     std::string errorString = "Not enough memory to encode this image";
+    throwException(env, errorString);
+    return nullptr;
+  } catch (std::runtime_error &err) {
+    std::string m1 = err.what();
+    std::string errorString = "Error: " + m1;
     throwException(env, errorString);
     return nullptr;
   }

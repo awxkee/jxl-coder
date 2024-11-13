@@ -31,7 +31,7 @@
 
 #include <vector>
 
-void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int width, int height,
+void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, uint32_t stride, uint32_t width, uint32_t height,
                                  const unsigned char *colorSpace, size_t colorSpaceSize,
                                  bool image16Bits);
 

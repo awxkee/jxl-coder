@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,12 +25,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.graphics.scale
 import androidx.lifecycle.lifecycleScope
-import com.awxkee.aire.Aire
 import com.awxkee.jxlcoder.animation.AnimatedDrawable
 import com.awxkee.jxlcoder.animation.JxlAnimatedStore
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
@@ -45,6 +46,7 @@ import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.UUID
 import kotlin.system.measureTimeMillis
 
@@ -121,13 +123,10 @@ class MainActivity : ComponentActivity() {
                     var imagesArray = remember {
                         mutableStateListOf<Bitmap>()
                     }
-                    var drawables = remember {
-                        mutableStateListOf<Drawable>()
-                    }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
-//                            val buffer5 =
-//                                assets.open("white_noise.jpeg").source().buffer().readByteArray()
+                            val buffer5 =
+                                assets.open("hatice.jpg").source().buffer().readByteArray()
 //                            val bitmap = BitmapFactory.decodeByteArray(buffer5, 0, buffer5.size)
 //                                .scale(500, 500)
 //                            val encoder = JxlAnimatedEncoder(
@@ -139,18 +138,18 @@ class MainActivity : ComponentActivity() {
 //                                encoder.addFrame(bitmap, 24)
 //                            }
 //                            val encoded = encoder.encode()
-//                            JxlCoder.Convenience.reconstructJPEG(encoded)
+
 //                            val animated = JxlCoder.decode(encoded)
 //                            lifecycleScope.launch {
 //                                imagesArray.add(animated)
 //                            }
-
+//
 //                            fun simpleRoundTrip(image: String) {
 //                                val bufferPng = assets.open(image).source().buffer().readByteArray()
 //                                val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
-//                                    .copy(Bitmap.Config.RGBA_F16,true)
+//                                    .copy(Bitmap.Config.RGBA_1010102,true)
 //                                lifecycleScope.launch {
-//                                    drawables.add(BitmapDrawable(resources, bitmap))
+//                                    imagesArray.add(bitmap)
 //                                }
 //                                val jxlBuffer = JxlCoder.encode(bitmap,
 //                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
@@ -161,7 +160,7 @@ class MainActivity : ComponentActivity() {
 ////                                    preferredColorConfig = PreferredColorConfig.RGBA_1010102)
 //                                val decodedEncoded = JxlAnimatedImage(jxlBuffer).getFrame(0, bitmap.width /2 , bitmap.height / 2)
 //                                lifecycleScope.launch {
-//                                    drawables.add(BitmapDrawable(resources, decodedEncoded))
+//                                    imagesArray.add(decodedEncoded)
 //                                }
 //                                val fos = FileOutputStream(File(cacheDir, image))
 //                                fos.sink().buffer().use {
@@ -191,6 +190,7 @@ class MainActivity : ComponentActivity() {
 
                             var assets =
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
+//                            assets = assets.filter { it.contains("20140606_102418_IMGP0297.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -200,15 +200,17 @@ class MainActivity : ComponentActivity() {
                                     val largeImageSize = JxlCoder.getSize(buffer4)
                                     if (largeImageSize != null) {
                                         val time = measureTimeMillis {
-                                            var srcImage = JxlCoder.decodeSampled(
+                                            val srcImage = JxlCoder.decodeSampled(
                                                 buffer4,
-                                                largeImageSize.width / 4,
-                                                largeImageSize.height / 4,
-                                                preferredColorConfig = PreferredColorConfig.RGBA_F16,
+                                                largeImageSize.width / 2,
+                                                largeImageSize.height / 2,
+                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                JxlResizeFilter.HERMITE,
-                                                toneMapper = JxlToneMapper.LOGARITHMIC,
+                                                toneMapper = JxlToneMapper.FILMIC,
                                             )
+//                                            val srcImage = JxlCoder.decode(buffer4,
+//                                                preferredColorConfig = PreferredColorConfig.RGB_565,
+//                                                toneMapper = JxlToneMapper.REC2408)
                                             lifecycleScope.launch {
                                                 imagesArray.add(srcImage)
                                             }
@@ -249,7 +251,7 @@ class MainActivity : ComponentActivity() {
 //                        )
                         LazyColumn(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
                         ) {
                             items(imagesArray.count(), key = {
                                 return@items UUID.randomUUID().toString()
@@ -261,23 +263,7 @@ class MainActivity : ComponentActivity() {
                                     contentDescription = "ok"
                                 )
                             }
-
-                            items(drawables.count(), key = {
-                                return@items UUID.randomUUID().toString()
-                            }) {
-                                Image(
-                                    painter = rememberDrawablePainter(drawable = drawables[it]),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentScale = ContentScale.FillWidth,
-                                    contentDescription = "ok"
-                                )
-                            }
                         }
-
-//                        GlideImage(
-//                            model = "https://wh.aimuse.online/preset/hdr_cosmos.jxl",
-//                            contentDescription = ""
-//                        )
                     }
                 }
             }

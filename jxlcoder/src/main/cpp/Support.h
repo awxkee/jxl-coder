@@ -32,7 +32,7 @@
 #include <jni.h>
 #include "SizeScaler.h"
 #include "XScaler.h"
-#include "colorspaces/GamutAdapter.h"
+#include "colorspaces/ColorMatrix.h"
 
 enum PreferredColorConfig {
   Default = 1,

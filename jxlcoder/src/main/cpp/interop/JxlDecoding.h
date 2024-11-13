@@ -41,7 +41,7 @@ class InvalidImageSizeException : public std::exception {
     this->width = width;
     this->height = height;
   }
-  char *what() {
+  const char *what() {
     std::string errorMessage =
         "Invalid image size exceed allowance, current size w: " + std::to_string(this->width) + ", h: " + std::to_string(this->height);
     return strdup(errorMessage.c_str());
@@ -54,11 +54,12 @@ class InvalidImageSizeException : public std::exception {
 bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          std::vector<uint8_t> *pixels, size_t *xsize,
                          size_t *ysize, std::vector<uint8_t> *iccProfile,
-                         bool *useFloats, int *bitDepth,
+                         bool *useFloats, uint32_t *bitDepth,
                          bool *alphaPremultiplied, bool allowedFloats,
                          JxlOrientation *jxlOrientation,
                          bool *preferEncoding,
                          JxlColorEncoding *colorEncoding,
-                         bool *hasAlphaInOrigin);
+                         bool *hasAlphaInOrigin,
+                         float* intensityTarget);
 
 bool DecodeBasicInfo(const uint8_t *jxl, size_t size, size_t *xsize, size_t *ysize);

@@ -36,7 +36,13 @@
 #include <android/data_space.h>
 #include <android/bitmap.h>
 #include "conversion/RgbChannels.h"
-#include "sparkyuv/sparkyuv.h"
+#include "imagebit/Rgb1010102.h"
+#include "imagebit/Rgb565.h"
+#include "imagebit/RGBAlpha.h"
+#include "imagebit/CopyUnalignedRGBA.h"
+#include "imagebit/RgbaF16bitToNBitU16.h"
+#include "imagebit/RgbaF16bitNBitU8.h"
+#include "imagebit/RgbaToRgb.h"
 
 using namespace std;
 
@@ -45,7 +51,7 @@ JNIEXPORT void JNICALL
 Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_closeAndReleaseAnimatedEncoder(JNIEnv *env,
                                                                            jobject thiz,
                                                                            jlong coordinatorPtr) {
-  JxlAnimatedEncoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
+  auto coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
   delete coordinator;
 }
 
@@ -107,19 +113,19 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_createEncodeCoordinator(JNIEnv *env,
   }
 
   try {
-    JxlAnimatedEncoder *encoder = new JxlAnimatedEncoder(width, height, colorspace,
-                                                         dataPixelFormat,
-                                                         compressionOption, numLoops, jQuality,
-                                                         effort, decodingSpeed);
+    auto encoder = new JxlAnimatedEncoder(width, height, colorspace,
+                                          dataPixelFormat,
+                                          compressionOption, numLoops, jQuality,
+                                          effort, decodingSpeed);
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "MemoryLeak"
-    JxlAnimatedEncoderCoordinator *coordinator = new JxlAnimatedEncoderCoordinator(encoder,
-                                                                                   colorspace,
-                                                                                   compressionOption,
-                                                                                   effort,
-                                                                                   jQuality,
-                                                                                   colorSpaceMatrix,
-                                                                                   dataPixelFormat);
+    auto coordinator = new JxlAnimatedEncoderCoordinator(encoder,
+                                                         colorspace,
+                                                         compressionOption,
+                                                         effort,
+                                                         jQuality,
+                                                         colorSpaceMatrix,
+                                                         dataPixelFormat);
     return reinterpret_cast<jlong >(coordinator);
   } catch (std::bad_alloc &err) {
     std::string errorString = "OOM: " + string(err.what());
@@ -127,6 +133,10 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_createEncodeCoordinator(JNIEnv *env,
     return 0;
   } catch (AnimatedEncoderError &err) {
     std::string errorString = err.what();
+    throwException(env, errorString);
+    return 0;
+  } catch (std::runtime_error &err) {
+    std::string errorString = "Error: " + string(err.what());
     throwException(env, errorString);
     return 0;
   }
@@ -139,7 +149,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                                                          jlong coordinatorPtr, jobject bitmap,
                                                          jint duration) {
   try {
-    JxlAnimatedEncoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
+    auto coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
 
     AndroidBitmapInfo info;
     if (AndroidBitmap_getInfo(env, bitmap, &info) < 0) {
@@ -194,58 +204,56 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
       if (dataPixelFormat == BINARY_16) {
         imageStride = info.width * 4 * sizeof(uint16_t);
         vector<uint8_t> halfFloatPixels(imageStride * info.height);
-        sparkyuv::RGBA1010102ToRGBAF16(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
-                                       (uint32_t) info.stride,
-                                       reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
-                                       imageStride,
-                                       info.width,
-                                       info.height);
+        coder::RGBA1010102ToUnsigned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
+                                     (uint32_t) info.stride,
+                                     reinterpret_cast<uint16_t *>(halfFloatPixels.data()),
+                                     imageStride,
+                                     info.width,
+                                     info.height, 16);
         rgbaPixels = halfFloatPixels;
       } else {
         imageStride = info.width * 4 * sizeof(uint8_t);
         vector<uint8_t> u8PixelsData(imageStride * info.height);
-        sparkyuv::RGBA1010102ToRGBA(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
-                                    info.stride,
-                                    reinterpret_cast<uint8_t *>(u8PixelsData.data()),
-                                    imageStride,
-                                    info.width,
-                                    info.height);
+        coder::RGBA1010102ToUnsigned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()),
+                                     info.stride,
+                                     reinterpret_cast<uint8_t *>(u8PixelsData.data()),
+                                     imageStride,
+                                     info.width,
+                                     info.height, 8);
         rgbaPixels = u8PixelsData;
       }
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
       int newStride = (int) info.width * 4 * (int) sizeof(uint8_t);
       vector<uint8_t> rgba8888Pixels(newStride * info.height);
       if (dataPixelFormat == UNSIGNED_8) {
-        sparkyuv::RGB565ToRGBA(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                               info.stride,
-                               rgba8888Pixels.data(), newStride,
-                               info.width, info.height);
+        coder::Rgb565ToUnsigned8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                                 info.stride,
+                                 rgba8888Pixels.data(), newStride,
+                                 info.width, info.height, 255);
         imageStride = newStride;
         rgbaPixels = rgba8888Pixels;
       } else {
         int b16Stride = (int) info.width * 4 * (int) sizeof(uint16_t);
         vector<uint8_t> halfFloatPixels(imageStride * info.height);
-        sparkyuv::RGB565ToRGBAF16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), newStride,
-                                  reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
-                                  info.width, info.height);
+        coder::Rgb565ToRgba16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), newStride,
+                              reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
+                              std::numeric_limits<uint16_t>::max(),
+                              info.width, info.height, 16);
         imageStride = b16Stride;
         rgbaPixels = halfFloatPixels;
       }
     } else if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888) {
       if (dataPixelFormat == UNSIGNED_8) {
-        sparkyuv::RGBAUnpremultiplyAlpha(rgbaPixels.data(), imageStride,
-                                         rgbaPixels.data(), imageStride,
-                                         (uint32_t) info.width,
-                                         (uint32_t) info.height);
+        coder::UnassociateRgba8(rgbaPixels.data(), imageStride,
+                                rgbaPixels.data(), imageStride,
+                                (uint32_t) info.width,
+                                (uint32_t) info.height);
       } else if (dataPixelFormat == BINARY_16) {
         int b16Stride = (int) info.width * 4 * (int) sizeof(uint16_t);
         vector<uint8_t> halfFloatPixels(b16Stride * info.height);
-        sparkyuv::RGBAPremultiplyAlpha(rgbaPixels.data(), imageStride,
-                                       rgbaPixels.data(), imageStride,
-                                       info.width, info.height);
-        sparkyuv::RGBAToRGBAF16(rgbaPixels.data(), imageStride,
-                                reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
-                                info.width, info.height);
+        coder::RGBAF16BitToNBitU16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), imageStride,
+                                   reinterpret_cast<uint16_t *>(halfFloatPixels.data()), b16Stride,
+                                   info.width, info.height, 16);
         imageStride = b16Stride;
         rgbaPixels = halfFloatPixels;
       }
@@ -253,14 +261,11 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
       if (dataPixelFormat == UNSIGNED_8) {
         int b16Stride = (int) info.width * 4 * (int) sizeof(uint8_t);
         vector<uint8_t> u8PixelsData(imageStride * info.height);
-        sparkyuv::RGBAF16ToRGBA(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
-                                imageStride,
-                                reinterpret_cast<uint8_t *>(u8PixelsData.data()),
-                                b16Stride,
-                                info.width, info.height);
-        sparkyuv::RGBAPremultiplyAlpha(rgbaPixels.data(), imageStride,
-                                       rgbaPixels.data(), imageStride,
-                                       info.width, info.height);
+        coder::RGBAF16BitToNBitU8(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                                  imageStride,
+                                  reinterpret_cast<uint8_t *>(u8PixelsData.data()),
+                                  b16Stride,
+                                  info.width, info.height, 8, false);
         imageStride = b16Stride;
         rgbaPixels = u8PixelsData;
       }
@@ -271,20 +276,20 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
     switch (colorPixelType) {
       case mono: {
         size_t requiredStride = (size_t) info.width * 1 *
-            (size_t) (dataPixelFormat == BINARY_16 ? sizeof(uint16_t) : sizeof(uint8_t));
+            (size_t)(dataPixelFormat == BINARY_16 ? sizeof(uint16_t) : sizeof(uint8_t));
         rgbPixels.resize(info.height * requiredStride);
         if (dataPixelFormat == BINARY_16) {
           coder::RGBAPickChannel(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                                 (int) imageStride,
+                                 (uint32_t) imageStride,
                                  reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                                 (int) requiredStride,
-                                 (int) info.width, (int) info.height, 0);
+                                 (uint32_t) requiredStride,
+                                 (uint32_t) info.width, (uint32_t) info.height, 0);
         } else {
-          coder::RGBAPickChannel(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<int>(imageStride),
+          coder::RGBAPickChannel(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<uint32_t>(imageStride),
                                  reinterpret_cast<uint8_t *>(rgbPixels.data()),
-                                 static_cast<int>(requiredStride),
-                                 static_cast<int>(info.width),
-                                 static_cast<int>(info.height), 0);
+                                 static_cast<uint32_t>(requiredStride),
+                                 static_cast<uint32_t>(info.width),
+                                 static_cast<uint32_t>(info.height), 0);
         }
         imageStride = requiredStride;
       }
@@ -295,17 +300,17 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
                                                 : sizeof(uint8_t));
         rgbPixels.resize(info.height * requiredStride);
         if (dataPixelFormat == BINARY_16) {
-          sparkyuv::RGBAF16ToRGBF16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
-                                    imageStride,
-                                    reinterpret_cast<uint16_t *>(rgbPixels.data()),
-                                    requiredStride,
-                                    info.width, info.height);
+          coder::Rgba16ToRgb16(reinterpret_cast<const uint16_t *>(rgbaPixels.data()),
+                               imageStride,
+                               reinterpret_cast<uint16_t *>(rgbPixels.data()),
+                               requiredStride,
+                               info.width, info.height);
         } else {
-          sparkyuv::RGBAToRGB(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<uint32_t>(imageStride),
-                              reinterpret_cast<uint8_t *>(rgbPixels.data()),
-                              static_cast<uint32_t>(requiredStride),
-                              static_cast<uint32_t>(info.width),
-                              static_cast<uint32_t>(info.height));
+          coder::Rgba8ToRgb8(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), static_cast<uint32_t>(imageStride),
+                             reinterpret_cast<uint8_t *>(rgbPixels.data()),
+                             static_cast<uint32_t>(requiredStride),
+                             static_cast<uint32_t>(info.width),
+                             static_cast<uint32_t>(info.height));
         }
         imageStride = requiredStride;
       }
@@ -319,13 +324,13 @@ Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_addFrameImpl(JNIEnv *env, jobject th
         } else {
           rgbPixels.resize(requiredStride * (int) info.height);
           if (dataPixelFormat == BINARY_16) {
-            sparkyuv::CopyRGBA16(reinterpret_cast<uint16_t *>(rgbaPixels.data()), imageStride,
+            coder::CopyUnaligned(reinterpret_cast<uint16_t *>(rgbaPixels.data()), imageStride,
                                  reinterpret_cast<uint16_t *>(rgbPixels.data()), requiredStride,
-                                 info.width, info.height);
+                                 info.width * 4, info.height);
           } else {
-            sparkyuv::CopyRGBA(reinterpret_cast<uint8_t *>(rgbaPixels.data()), imageStride,
-                               reinterpret_cast<uint8_t *>(rgbPixels.data()), requiredStride,
-                               info.width, info.height);
+            coder::CopyUnaligned(reinterpret_cast<uint8_t *>(rgbaPixels.data()), imageStride,
+                                 reinterpret_cast<uint8_t *>(rgbPixels.data()), requiredStride,
+                                 info.width * 4, info.height);
           }
         }
         imageStride = requiredStride;
@@ -353,7 +358,7 @@ JNIEXPORT jbyteArray JNICALL
 Java_com_awxkee_jxlcoder_JxlAnimatedEncoder_encodeAnimatedImpl(JNIEnv *env, jobject thiz,
                                                                jlong coordinatorPtr) {
   try {
-    JxlAnimatedEncoderCoordinator *coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
+    auto coordinator = reinterpret_cast<JxlAnimatedEncoderCoordinator *>(coordinatorPtr);
     vector<uint8_t> buffer;
     coordinator->finish(ref(buffer));
     jbyteArray byteArray = env->NewByteArray((jsize) buffer.size());

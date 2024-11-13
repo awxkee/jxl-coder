@@ -60,7 +60,7 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
     return false;
   }
 
-  JxlPixelFormat pixelFormat = {1, encodingDataFormat == BINARY_16 ? JXL_TYPE_FLOAT16 : JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
+  JxlPixelFormat pixelFormat = {1, encodingDataFormat == BINARY_16 ? JXL_TYPE_UINT16 : JXL_TYPE_UINT8, JXL_NATIVE_ENDIAN, 0};
   uint32_t channelsCount = 1;
   uint32_t baseChannelsCount = 1;
   switch (colorspace) {

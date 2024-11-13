@@ -19,16 +19,6 @@ enum class ScalingFunction {
 
 extern "C" {
 
-void weave_scale_f16(const uint16_t *src,
-                     uint32_t src_stride,
-                     uint32_t width,
-                     uint32_t height,
-                     const uint16_t *dst,
-                     uint32_t dst_stride,
-                     uint32_t new_width,
-                     uint32_t new_height,
-                     ScalingFunction scaling_function);
-
 void weave_scale_u8(const uint8_t *src,
                     uint32_t src_stride,
                     uint32_t width,
@@ -37,6 +27,19 @@ void weave_scale_u8(const uint8_t *src,
                     uint32_t dst_stride,
                     uint32_t new_width,
                     uint32_t new_height,
-                    ScalingFunction scaling_function);
+                    ScalingFunction scaling_function,
+                    bool premultiply_alpha);
 
-} // extern "C"
+void weave_scale_u16(const uint16_t *src,
+                     uintptr_t src_stride,
+                     uint32_t width,
+                     uint32_t height,
+                     uint16_t *dst,
+                     uintptr_t dst_stride,
+                     uint32_t new_width,
+                     uint32_t new_height,
+                     uintptr_t bit_depth,
+                     ScalingFunction scaling_function,
+                     bool premultiply_alpha);
+
+}  // extern "C"

@@ -187,15 +187,15 @@ class JxlAnimatedDecoder {
 
   JxlFrame getFrame(int at);
 
-  int getLoopCount() {
+  [[nodiscard]] uint32_t getLoopCount() {
     return loopCount;
   }
 
-  uint32_t getWidth() {
+  [[nodiscard]] uint32_t getWidth() const {
     return info.xsize;
   }
 
-  uint32_t getHeight() {
+  [[nodiscard]] uint32_t getHeight() const {
     return info.ysize;
   }
 
@@ -203,7 +203,7 @@ class JxlAnimatedDecoder {
     return static_cast<int>(frameInfo.size());
   }
 
-  bool isAlphaAttenuated() {
+  [[nodiscard]] bool isAlphaAttenuated() const {
     return alphaPremultiplied;
   }
 
