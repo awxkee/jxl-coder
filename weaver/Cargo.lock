@@ -294,9 +294,9 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "pic-scale"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "417fcbe1e3de45bea074bd5dd07cbbd47509523dd52d9fff98297489193cd00c"
+checksum = "29f2e262ef1378d26720858a94343cc7eb05e7578276430b3bdf2a587e9220ed"
 dependencies = [
  "colorutils-rs",
  "half",
