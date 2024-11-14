@@ -125,8 +125,8 @@ class MainActivity : ComponentActivity() {
                     }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
-                            val buffer5 =
-                                assets.open("hatice.jpg").source().buffer().readByteArray()
+//                            val buffer5 =
+//                                assets.open("hatice.jpg").source().buffer().readByteArray()
 //                            val bitmap = BitmapFactory.decodeByteArray(buffer5, 0, buffer5.size)
 //                                .scale(500, 500)
 //                            val encoder = JxlAnimatedEncoder(
@@ -190,7 +190,7 @@ class MainActivity : ComponentActivity() {
 
                             var assets =
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
-                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
+//                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -204,9 +204,9 @@ class MainActivity : ComponentActivity() {
                                                 buffer4,
                                                 largeImageSize.width / 2,
                                                 largeImageSize.height / 2,
-                                                preferredColorConfig = PreferredColorConfig.RGBA_F16,
+                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.FILMIC,
+                                                toneMapper = JxlToneMapper.REC2408,
                                             )
 //                                            val srcImage = JxlCoder.decode(buffer4,
 //                                                preferredColorConfig = PreferredColorConfig.RGB_565,
