@@ -1,1 +1,1 @@
-Upgrade libjxl, speed improvements and stability
+Improvements for f16, fixes for non standard cpu processors

@@ -317,6 +317,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     std::string errorString = "Not enough memory to decode this image";
     throwException(env, errorString);
     return nullptr;
+  } catch (std::runtime_error &err) {
+      std::string w1 = err.what();
+      std::string errorString = "Error while decoding: " + w1;
+      throwException(env, errorString);
+      return nullptr;
   }
 }
 
@@ -346,6 +351,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
     std::string errorString = "Not enough memory to decode this image";
     throwException(env, errorString);
     return nullptr;
+  } catch (std::runtime_error &err) {
+      std::string w1 = err.what();
+      std::string errorString = "Error while decoding: " + w1;
+      throwException(env, errorString);
+      return nullptr;
   }
 }
 
