@@ -204,7 +204,7 @@ class MainActivity : ComponentActivity() {
                                                 buffer4,
                                                 largeImageSize.width / 2,
                                                 largeImageSize.height / 2,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408,
                                             )

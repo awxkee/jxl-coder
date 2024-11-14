@@ -103,7 +103,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   imageData.clear();
 
   if (!iccProfile.empty()) {
-    size_t stride = (size_t) xsize * 4 * (size_t)(useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+    size_t stride =
+        (size_t) xsize * 4 * (size_t) (useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
     convertUseDefinedColorSpace(rgbaPixels,
                                 stride,
                                 static_cast<size_t>(xsize),
@@ -113,11 +114,13 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
                                 useBitmapFloats);
   }
 
-  bool useSampler = (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
+  bool
+      useSampler = (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
 
   uint32_t finalWidth = xsize;
   uint32_t finalHeight = ysize;
-  uint32_t stride = static_cast<uint32_t >(finalWidth) * 4 * static_cast<uint32_t >(useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+  uint32_t stride = static_cast<uint32_t >(finalWidth) * 4
+      * static_cast<uint32_t >(useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
 
   if (useSampler) {
     auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useBitmapFloats,
@@ -248,7 +251,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
 
   jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-  jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
+  jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
+                                                          "createBitmap",
                                                           "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
   jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
                                                   static_cast<jint>(finalWidth),
@@ -318,10 +322,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     throwException(env, errorString);
     return nullptr;
   } catch (std::runtime_error &err) {
-      std::string w1 = err.what();
-      std::string errorString = "Error while decoding: " + w1;
-      throwException(env, errorString);
-      return nullptr;
+    std::string w1 = err.what();
+    std::string errorString = "Error while decoding: " + w1;
+    throwException(env, errorString);
+    return nullptr;
   }
 }
 
@@ -352,10 +356,10 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
     throwException(env, errorString);
     return nullptr;
   } catch (std::runtime_error &err) {
-      std::string w1 = err.what();
-      std::string errorString = "Error while decoding: " + w1;
-      throwException(env, errorString);
-      return nullptr;
+    std::string w1 = err.what();
+    std::string errorString = "Error while decoding: " + w1;
+    throwException(env, errorString);
+    return nullptr;
   }
 }
 
