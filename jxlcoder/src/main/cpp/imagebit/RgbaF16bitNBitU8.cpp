@@ -32,6 +32,7 @@
 #include <thread>
 #include <vector>
 #include "concurrency.hpp"
+#include "conversion/HalfFloats.h"
 #if HAVE_NEON
 #include "arm_neon.h"
 #endif
@@ -44,9 +45,10 @@ void RGBAF16BitToNBitU8(const uint16_t *sourceData, uint32_t srcStride,
                         uint32_t height, uint32_t bitDepth, const bool attenuateAlpha) {
   const auto maxColors = static_cast<float>((1 << bitDepth) - 1);
 
-  for (uint32_t y = 0; y < height; ++y) {
+  if (has_fphp()) {
+    for (uint32_t y = 0; y < height; ++y) {
 #if HAVE_NEON
-    auto vSrc = reinterpret_cast<const float16_t *>(reinterpret_cast<const uint8_t *>(sourceData)
+      auto vSrc = reinterpret_cast<const float16_t *>(reinterpret_cast<const uint8_t *>(sourceData)
         + y * srcStride);
     auto vDst =
         reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst) + y * dstStride);
@@ -82,34 +84,66 @@ void RGBAF16BitToNBitU8(const uint16_t *sourceData, uint32_t srcStride,
       vDst += 4;
     }
 #else
-    auto vSrc = reinterpret_cast<const uint16_t *>(reinterpret_cast<const uint8_t *>(sourceData)
-        + y * srcStride);
-    auto vDst =
-        reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst) + y * dstStride);
-    for (uint32_t x = 0; x < width; ++x) {
-      auto tmpR = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[0]) * maxColors), 0.0f, maxColors);
-      auto tmpG = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[1]) * maxColors), 0.0f, maxColors);
-      auto tmpB = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[2]) * maxColors), 0.0f, maxColors);
-      auto tmpA = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[3]) * maxColors), 0.0f, maxColors);
+      auto vSrc = reinterpret_cast<const uint16_t *>(reinterpret_cast<const uint8_t *>(sourceData)
+          + y * srcStride);
+      auto vDst =
+          reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst) + y * dstStride);
+      for (uint32_t x = 0; x < width; ++x) {
+        auto tmpR = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[0]) * maxColors), 0.0f, maxColors);
+        auto tmpG = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[1]) * maxColors), 0.0f, maxColors);
+        auto tmpB = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[2]) * maxColors), 0.0f, maxColors);
+        auto tmpA = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[3]) * maxColors), 0.0f, maxColors);
 
-      if (attenuateAlpha) {
-        tmpR = (static_cast<uint16_t>(tmpR) * static_cast<uint16_t>(tmpA))
-            / static_cast<uint16_t >(255);
-        tmpG = (static_cast<uint16_t>(tmpG) * static_cast<uint16_t>(tmpA))
-            / static_cast<uint16_t >(255);
-        tmpB = (static_cast<uint16_t>(tmpB) * static_cast<uint16_t>(tmpA))
-            / static_cast<uint16_t >(255);
+        if (attenuateAlpha) {
+          tmpR = (static_cast<uint16_t>(tmpR) * static_cast<uint16_t>(tmpA))
+              / static_cast<uint16_t >(255);
+          tmpG = (static_cast<uint16_t>(tmpG) * static_cast<uint16_t>(tmpA))
+              / static_cast<uint16_t >(255);
+          tmpB = (static_cast<uint16_t>(tmpB) * static_cast<uint16_t>(tmpA))
+              / static_cast<uint16_t >(255);
+        }
+
+        vDst[0] = tmpR;
+        vDst[1] = tmpG;
+        vDst[2] = tmpB;
+        vDst[3] = tmpA;
+
+        vSrc += 4;
+        vDst += 4;
       }
-
-      vDst[0] = tmpR;
-      vDst[1] = tmpG;
-      vDst[2] = tmpB;
-      vDst[3] = tmpA;
-
-      vSrc += 4;
-      vDst += 4;
-    }
 #endif
+    }
+  } else {
+    // Fallback to devices without FPHP
+    for (uint32_t y = 0; y < height; ++y) {
+      auto vSrc = reinterpret_cast<const uint16_t *>(reinterpret_cast<const uint8_t *>(sourceData)
+          + y * srcStride);
+      auto vDst =
+          reinterpret_cast<uint8_t *>(reinterpret_cast<uint8_t *>(dst) + y * dstStride);
+      for (uint32_t x = 0; x < width; ++x) {
+        auto tmpR = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[0]) * maxColors), 0.0f, maxColors);
+        auto tmpG = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[1]) * maxColors), 0.0f, maxColors);
+        auto tmpB = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[2]) * maxColors), 0.0f, maxColors);
+        auto tmpA = (uint8_t) std::clamp(std::roundf(LoadHalf(vSrc[3]) * maxColors), 0.0f, maxColors);
+
+        if (attenuateAlpha) {
+          tmpR = (static_cast<uint16_t>(tmpR) * static_cast<uint16_t>(tmpA))
+              / static_cast<uint16_t >(255);
+          tmpG = (static_cast<uint16_t>(tmpG) * static_cast<uint16_t>(tmpA))
+              / static_cast<uint16_t >(255);
+          tmpB = (static_cast<uint16_t>(tmpB) * static_cast<uint16_t>(tmpA))
+              / static_cast<uint16_t >(255);
+        }
+
+        vDst[0] = tmpR;
+        vDst[1] = tmpG;
+        vDst[2] = tmpB;
+        vDst[3] = tmpA;
+
+        vSrc += 4;
+        vDst += 4;
+      }
+    }
   }
 }
 }

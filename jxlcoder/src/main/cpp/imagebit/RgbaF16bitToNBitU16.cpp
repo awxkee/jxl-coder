@@ -30,6 +30,7 @@
 #include "half.hpp"
 #include <algorithm>
 #include "concurrency.hpp"
+#include "conversion/HalfFloats.h"
 #if HAVE_NEON
 #include "arm_neon.h"
 #endif
@@ -49,12 +50,13 @@ RGBAF16BitToNBitU16(const uint16_t *sourceData,
   auto srcData = reinterpret_cast<const uint8_t *>(sourceData);
   auto data64Ptr = reinterpret_cast<uint8_t *>(dst);
   const float scale = 1.0f / float((1 << bitDepth) - 1);
-  const float maxColors = (float) std::powf(2.0f, static_cast<float>(bitDepth)) - 1.f;
+  const auto maxColors = (float) ((1 << bitDepth) - 1);
 
-  for (uint32_t y = 0; y < height; ++y) {
+  if (has_fphp()) {
+    for (uint32_t y = 0; y < height; ++y) {
 
 #if HAVE_NEON
-    auto srcPtr = reinterpret_cast<const float16_t *>(srcData);
+      auto srcPtr = reinterpret_cast<const float16_t *>(srcData);
     auto dstPtr = reinterpret_cast<uint16_t *>(data64Ptr);
     for (int x = 0; x < width; ++x) {
       auto alpha = static_cast<float16_t >(srcPtr[3]);
@@ -78,30 +80,58 @@ RGBAF16BitToNBitU16(const uint16_t *sourceData,
       dstPtr += 4;
     }
 #else
-    auto srcPtr = reinterpret_cast<const uint16_t *>(srcData);
-    auto dstPtr = reinterpret_cast<uint16_t *>(data64Ptr);
-    for (int x = 0; x < width; ++x) {
-      auto alpha = LoadHalf(srcPtr[3]);
-      auto tmpR = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[0]) * maxColors, 0.0f,
-                                                   maxColors));
-      auto tmpG = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[1]) * maxColors, 0.0f,
-                                                   maxColors));
-      auto tmpB = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[2]) * maxColors, 0.0f,
-                                                   maxColors));
-      auto tmpA = static_cast<uint16_t>(std::clamp((alpha / scale), 0.0f, maxColors));
+      auto srcPtr = reinterpret_cast<const uint16_t *>(srcData);
+      auto dstPtr = reinterpret_cast<uint16_t *>(data64Ptr);
+      for (int x = 0; x < width; ++x) {
+        auto alpha = LoadHalf(srcPtr[3]);
+        auto tmpR = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[0]) * maxColors, 0.0f,
+                                                     maxColors));
+        auto tmpG = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[1]) * maxColors, 0.0f,
+                                                     maxColors));
+        auto tmpB = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[2]) * maxColors, 0.0f,
+                                                     maxColors));
+        auto tmpA = static_cast<uint16_t>(std::clamp((alpha / scale), 0.0f, maxColors));
 
-      dstPtr[0] = tmpR;
-      dstPtr[1] = tmpG;
-      dstPtr[2] = tmpB;
-      dstPtr[3] = tmpA;
+        dstPtr[0] = tmpR;
+        dstPtr[1] = tmpG;
+        dstPtr[2] = tmpB;
+        dstPtr[3] = tmpA;
 
-      srcPtr += 4;
-      dstPtr += 4;
-    }
+        srcPtr += 4;
+        dstPtr += 4;
+      }
 #endif
 
-    srcData += srcStride;
-    data64Ptr += dstStride;
+      srcData += srcStride;
+      data64Ptr += dstStride;
+    }
+  } else {
+    for (uint32_t y = 0; y < height; ++y) {
+
+      auto srcPtr = reinterpret_cast<const uint16_t *>(srcData);
+      auto dstPtr = reinterpret_cast<uint16_t *>(data64Ptr);
+      for (int x = 0; x < width; ++x) {
+        auto alpha = LoadHalf(srcPtr[3]);
+        auto tmpR = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[0]) * maxColors, 0.0f,
+                                                     maxColors));
+        auto tmpG = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[1]) * maxColors, 0.0f,
+                                                     maxColors));
+        auto tmpB = static_cast<uint16_t>(std::clamp(LoadHalf(srcPtr[2]) * maxColors, 0.0f,
+                                                     maxColors));
+        auto tmpA = static_cast<uint16_t>(std::clamp((alpha / scale), 0.0f, maxColors));
+
+        dstPtr[0] = tmpR;
+        dstPtr[1] = tmpG;
+        dstPtr[2] = tmpB;
+        dstPtr[3] = tmpA;
+
+        srcPtr += 4;
+        dstPtr += 4;
+      }
+
+      srcData += srcStride;
+      data64Ptr += dstStride;
+    }
   }
 }
 

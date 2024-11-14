@@ -32,17 +32,9 @@
 #include <algorithm>
 #include "half.hpp"
 #include "concurrency.hpp"
+#include "conversion/HalfFloats.h"
 
 using namespace std;
-
-namespace {
-uint32_t sat_subu32b(uint32_t x, uint32_t y) {
-  uint32_t res = x - y;
-  res &= -(res <= x);
-
-  return res;
-}
-}
 
 namespace coder {
 

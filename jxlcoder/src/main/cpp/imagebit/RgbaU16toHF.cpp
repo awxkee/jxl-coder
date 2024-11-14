@@ -32,6 +32,7 @@
 using namespace std;
 
 #include "half.hpp"
+#include "conversion/HalfFloats.h"
 #include <thread>
 #if HAVE_NEON
 #include "arm_neon.h"
@@ -44,17 +45,17 @@ void RgbaU16ToF(const uint16_t *src, const uint32_t srcStride,
 
   const float scale = 1.f / static_cast<float>((1 << bitDepth) - 1);
 
-  for (uint32_t y = 0; y < height; ++y) {
-    auto vSrc =
-        reinterpret_cast<const uint16_t *>(reinterpret_cast<const uint8_t *>(src) + srcStride * y);
-    auto vDst =
-        reinterpret_cast<uint16_t *>(reinterpret_cast<uint8_t *>(dst) + dstStride * y);
+  if (has_fphp()) {
+    for (uint32_t y = 0; y < height; ++y) {
+      auto vSrc =
+          reinterpret_cast<const uint16_t *>(reinterpret_cast<const uint8_t *>(src) + srcStride * y);
+      auto vDst =
+          reinterpret_cast<uint16_t *>(reinterpret_cast<uint8_t *>(dst) + dstStride * y);
 
-    uint32_t x = 0;
+      uint32_t x = 0;
 
 #if HAVE_NEON
-
-    float32x4_t vScale = vdupq_n_f32(scale);
+      float32x4_t vScale = vdupq_n_f32(scale);
 
     for (; x + 8 < width; x += 8) {
       uint16x8x4_t pixelSet = vld4q_u16(vSrc);
@@ -102,22 +103,42 @@ void RgbaU16ToF(const uint16_t *src, const uint32_t srcStride,
 
 #endif
 
-    for (; x < width; ++x) {
+      for (; x < width; ++x) {
 #if HAVE_NEON
-      auto vF16Dst = reinterpret_cast<float16_t *>(vDst);
-      vF16Dst[0] = static_cast<float16_t >(static_cast<float>(vSrc[0]) * scale);
-      vF16Dst[1] = static_cast<float16_t >(static_cast<float>(vSrc[1]) * scale);
-      vF16Dst[2] = static_cast<float16_t >(static_cast<float>(vSrc[2]) * scale);
-      vF16Dst[3] = static_cast<float16_t >(static_cast<float>(vSrc[3]) * scale);
+        auto vF16Dst = reinterpret_cast<float16_t *>(vDst);
+        vF16Dst[0] = static_cast<float16_t >(static_cast<float>(vSrc[0]) * scale);
+        vF16Dst[1] = static_cast<float16_t >(static_cast<float>(vSrc[1]) * scale);
+        vF16Dst[2] = static_cast<float16_t >(static_cast<float>(vSrc[2]) * scale);
+        vF16Dst[3] = static_cast<float16_t >(static_cast<float>(vSrc[3]) * scale);
 #else
-      vDst[0] = half_float::half(static_cast<float>(vSrc[0]) * scale).data_;
-      vDst[1] = half_float::half(static_cast<float>(vSrc[1]) * scale).data_;
-      vDst[0] = half_float::half(static_cast<float>(vSrc[2]) * scale).data_;
-      vDst[3] = half_float::half(static_cast<float>(vSrc[3]) * scale).data_;
+        vDst[0] = half_float::half(static_cast<float>(vSrc[0]) * scale).data_;
+        vDst[1] = half_float::half(static_cast<float>(vSrc[1]) * scale).data_;
+        vDst[2] = half_float::half(static_cast<float>(vSrc[2]) * scale).data_;
+        vDst[3] = half_float::half(static_cast<float>(vSrc[3]) * scale).data_;
 #endif
 
-      vSrc += 4;
-      vDst += 4;
+        vSrc += 4;
+        vDst += 4;
+      }
+    }
+  } else {
+    for (uint32_t y = 0; y < height; ++y) {
+      auto vSrc =
+          reinterpret_cast<const uint16_t *>(reinterpret_cast<const uint8_t *>(src) + srcStride * y);
+      auto vDst =
+          reinterpret_cast<uint16_t *>(reinterpret_cast<uint8_t *>(dst) + dstStride * y);
+
+      uint32_t x = 0;
+
+      for (; x < width; ++x) {
+        vDst[0] = half_float::half(static_cast<float>(vSrc[0]) * scale).data_;
+        vDst[1] = half_float::half(static_cast<float>(vSrc[1]) * scale).data_;
+        vDst[2] = half_float::half(static_cast<float>(vSrc[2]) * scale).data_;
+        vDst[3] = half_float::half(static_cast<float>(vSrc[3]) * scale).data_;
+
+        vSrc += 4;
+        vDst += 4;
+      }
     }
   }
 }

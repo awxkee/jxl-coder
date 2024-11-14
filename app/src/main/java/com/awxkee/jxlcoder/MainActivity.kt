@@ -190,7 +190,7 @@ class MainActivity : ComponentActivity() {
 
                             var assets =
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
-//                            assets = assets.filter { it.contains("20140606_102418_IMGP0297.jxl") }
+                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -204,7 +204,7 @@ class MainActivity : ComponentActivity() {
                                                 buffer4,
                                                 largeImageSize.width / 2,
                                                 largeImageSize.height / 2,
-                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
+                                                preferredColorConfig = PreferredColorConfig.RGBA_F16,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.FILMIC,
                                             )

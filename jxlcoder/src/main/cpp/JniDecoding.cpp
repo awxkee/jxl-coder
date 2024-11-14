@@ -142,8 +142,6 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
       && colorEncoding.color_space == JXL_COLOR_SPACE_RGB) {
     Eigen::Matrix3f sourceProfile;
     TransferFunction transferFunction = TransferFunction::Srgb;
-    bool useChromaticAdaptation = false;
-    float gamma = 2.2f;
     if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
       transferFunction = TransferFunction::Hlg;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
@@ -155,7 +153,6 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
       toneMapper = TONE_SKIP;
       // Make real gamma
       transferFunction = TransferFunction::Gamma2p2;
-      gamma = 1.f / colorEncoding.gamma;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
       toneMapper = TONE_SKIP;
       transferFunction = TransferFunction::Itur709;
@@ -188,9 +185,6 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
           static_cast<float>(colorEncoding.primaries_blue_xy[1]);
       whitePoint << static_cast<float>(colorEncoding.white_point_xy[0]),
           static_cast<float>(colorEncoding.white_point_xy[1]);
-      if (whitePoint != getIlluminantD65()) {
-        useChromaticAdaptation = true;
-      }
       sourceProfile = GamutRgbToXYZ(primaries, whitePoint);
     }
 

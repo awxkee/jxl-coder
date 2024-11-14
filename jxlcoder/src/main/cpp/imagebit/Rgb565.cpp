@@ -32,6 +32,7 @@
 #include "half.hpp"
 #include <algorithm>
 #include "concurrency.hpp"
+#include "conversion/HalfFloats.h"
 
 using namespace std;
 

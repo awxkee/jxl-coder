@@ -28,7 +28,7 @@
 
 #ifdef __cplusplus
 
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include "decode.h"
@@ -36,6 +36,7 @@
 #include "resizable_parallel_runner.h"
 #include "resizable_parallel_runner_cxx.h"
 #include <thread>
+#include "conversion/HalfFloats.h"
 
 class AnimatedDecoderError : public std::exception {
  public:
@@ -170,7 +171,7 @@ class JxlAnimatedDecoder {
         if (JXL_DEC_SUCCESS !=
             JxlDecoderGetColorAsICCProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                                            iccProfile.data(), iccProfile.size())) {
-          std::string str = "Cannot retreive color icc profile";
+          std::string str = "Cannot retrieve color icc profile";
           throw AnimatedDecoderError(str);
         }
       } else if (status == JXL_DEC_SUCCESS) {

@@ -88,18 +88,12 @@ bool EncodeJxlOneshot(const std::vector<uint8_t> &pixels, const uint32_t xsize,
   basicInfo.ysize = ysize;
   basicInfo.bits_per_sample = encodingDataFormat == BINARY_16 ? 16 : 8;
   basicInfo.uses_original_profile = compression_option == lossy ? JXL_FALSE : JXL_TRUE;
-  if (encodingDataFormat == BINARY_16) {
-    basicInfo.exponent_bits_per_sample = 5;
-  }
   basicInfo.num_color_channels = baseChannelsCount;
   basicInfo.alpha_premultiplied = false;
 
   if (colorspace == rgba) {
     basicInfo.num_extra_channels = 1;
     basicInfo.alpha_bits = encodingDataFormat == BINARY_16 ? 16 : 8;
-    if (encodingDataFormat == BINARY_16) {
-      basicInfo.alpha_exponent_bits = 5;
-    }
   }
 
   if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basicInfo)) {
