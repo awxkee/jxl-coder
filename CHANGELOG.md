@@ -1,1 +1,1 @@
-Improvements for f16, fixes for non standard cpu processors
+Updates old CPU features handling

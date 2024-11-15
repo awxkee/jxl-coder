@@ -182,7 +182,7 @@ class MainActivity : ComponentActivity() {
 //                                drawables.add(BitmapDrawable(resources, bitmap))
 //                            }
                             val encoded =
-                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.RGBA, effort = JxlEffort.LIGHTNING)
+                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.RGB, effort = JxlEffort.LIGHTNING)
                             val decoded = JxlCoder.decodeSampled(encoded,
                                 preferredColorConfig = PreferredColorConfig.RGBA_8888, width = 1305 ,
                                 height = 1295)
