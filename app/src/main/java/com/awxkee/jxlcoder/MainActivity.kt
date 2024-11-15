@@ -125,10 +125,10 @@ class MainActivity : ComponentActivity() {
                     }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
-//                            val buffer5 =
-//                                assets.open("hatice.jpg").source().buffer().readByteArray()
-//                            val bitmap = BitmapFactory.decodeByteArray(buffer5, 0, buffer5.size)
-//                                .scale(500, 500)
+                            val buffer5 =
+                                assets.open("test_image_1.jpg").source().buffer().readByteArray()
+                            val bitmap = BitmapFactory.decodeByteArray(buffer5, 0, buffer5.size)
+                                .scale(1305, 1295)
 //                            val encoder = JxlAnimatedEncoder(
 //                                bitmap.width,
 //                                bitmap.height,
@@ -181,48 +181,50 @@ class MainActivity : ComponentActivity() {
 //                            lifecycleScope.launch {
 //                                drawables.add(BitmapDrawable(resources, bitmap))
 //                            }
-//                            val encoded =
-//                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.RGBA)
-//                            val decoded = JxlCoder.decode(encoded, preferredColorConfig = PreferredColorConfig.RGBA_F16)
-//                            lifecycleScope.launch {
-//                                drawables.add(BitmapDrawable(resources, decoded))
-//                            }
-
-                            var assets =
-                                (this@MainActivity.assets.list("") ?: return@launch).toList()
-//                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
-                            for (asset in assets) {
-                                try {
-                                    val buffer4 =
-                                        this@MainActivity.assets.open(asset).source().buffer()
-                                            .readByteArray()
-
-                                    val largeImageSize = JxlCoder.getSize(buffer4)
-                                    if (largeImageSize != null) {
-                                        val time = measureTimeMillis {
-                                            val srcImage = JxlCoder.decodeSampled(
-                                                buffer4,
-                                                largeImageSize.width / 2,
-                                                largeImageSize.height / 2,
-                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.REC2408,
-                                            )
-//                                            val srcImage = JxlCoder.decode(buffer4,
-//                                                preferredColorConfig = PreferredColorConfig.RGB_565,
-//                                                toneMapper = JxlToneMapper.REC2408)
-                                            lifecycleScope.launch {
-                                                imagesArray.add(srcImage)
-                                            }
-                                        }
-                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
-                                    }
-                                } catch (e: Exception) {
-                                    if (e !is FileNotFoundException) {
-                                        throw e
-                                    }
-                                }
+                            val encoded =
+                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.RGBA, effort = JxlEffort.LIGHTNING)
+                            val decoded = JxlCoder.decodeSampled(encoded,
+                                preferredColorConfig = PreferredColorConfig.RGBA_8888, width = 1305 ,
+                                height = 1295)
+                            lifecycleScope.launch {
+                                imagesArray.add(decoded)
                             }
+
+//                            var assets =
+//                                (this@MainActivity.assets.list("") ?: return@launch).toList()
+////                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
+//                            for (asset in assets) {
+//                                try {
+//                                    val buffer4 =
+//                                        this@MainActivity.assets.open(asset).source().buffer()
+//                                            .readByteArray()
+//
+//                                    val largeImageSize = JxlCoder.getSize(buffer4)
+//                                    if (largeImageSize != null) {
+//                                        val time = measureTimeMillis {
+//                                            val srcImage = JxlCoder.decodeSampled(
+//                                                buffer4,
+//                                                largeImageSize.width / 2,
+//                                                largeImageSize.height / 2,
+//                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
+//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                                toneMapper = JxlToneMapper.REC2408,
+//                                            )
+////                                            val srcImage = JxlCoder.decode(buffer4,
+////                                                preferredColorConfig = PreferredColorConfig.RGB_565,
+////                                                toneMapper = JxlToneMapper.REC2408)
+//                                            lifecycleScope.launch {
+//                                                imagesArray.add(srcImage)
+//                                            }
+//                                        }
+//                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
+//                                    }
+//                                } catch (e: Exception) {
+//                                    if (e !is FileNotFoundException) {
+//                                        throw e
+//                                    }
+//                                }
+//                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme
