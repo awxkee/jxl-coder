@@ -1,10 +1,10 @@
 /*
  * MIT License
  *
- * Copyright (c) 2023 Radzivon Bartoshyk
+ * Copyright (c) 2024 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
- * Created by Radzivon Bartoshyk on 14/01/2024
+ * Created by Radzivon Bartoshyk on 13/10/2024
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,4 +26,29 @@
  *
  */
 
-#include "CoderCms.h"
+#ifndef AVIF_COLORMATRIX_H
+#define AVIF_COLORMATRIX_H
+
+#include <vector>
+#include <cstdint>
+#include "Trc.h"
+#include "ToneMapper.h"
+#include "ITUR.h"
+
+void applyColorMatrix(uint8_t *inPlace, uint32_t stride, uint32_t width, uint32_t height,
+                      const float *matrix, TransferFunction intoLinear, TransferFunction intoGamma,
+                      CurveToneMapper toneMapper, ITURColorCoefficients coeffs, float contentBrightness);
+
+void applyColorMatrix16Bit(uint16_t *inPlace,
+                           uint32_t stride,
+                           uint32_t width,
+                           uint32_t height,
+                           uint8_t bitDepth,
+                           const float *matrix,
+                           TransferFunction intoLinear,
+                           TransferFunction intoGamma,
+                           CurveToneMapper toneMapper,
+                           ITURColorCoefficients coeffs,
+                           float contentBrightness);
+
+#endif //AVIF_COLORMATRIX_H

@@ -1,10 +1,10 @@
 /*
  * MIT License
  *
- * Copyright (c) 2023 Radzivon Bartoshyk
+ * Copyright (c) 2024 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
- * Created by Radzivon Bartoshyk on 12/09/2023
+ * Created by Radzivon Bartoshyk on 13/10/2024
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,15 +26,29 @@
  *
  */
 
-#ifndef JXL_COPYUNALIGNEDRGBA_H
-#define JXL_COPYUNALIGNEDRGBA_H
+#include "LogarithmicToneMapper.h"
+#include "Oklab.hpp"
 
-#include <vector>
+void LogarithmicToneMapper::transferTone(float *inPlace, uint32_t width) const {
+  float *targetPlace = inPlace;
 
-namespace coder {
-void
-CopyUnaligned(const uint8_t *__restrict__ src, const uint32_t srcStride, uint8_t *__restrict__ dst,
-              const uint32_t dstStride, const uint32_t width, const uint32_t height, const uint32_t pixelSize);
+  const float vDen = this->den;
+
+  for (uint32_t x = 0; x < width; ++x) {
+    float r = targetPlace[0];
+    float g = targetPlace[1];
+    float b = targetPlace[2];
+    coder::Oklab oklab = coder::Oklab::fromLinearRGB(r, g, b);
+    if (oklab.L == 0) {
+      continue;
+    }
+    float Lout = std::logf(std::abs(1.f + oklab.L)) * vDen;
+    float shScale = Lout / oklab.L;
+    oklab.L = oklab.L * shScale;
+    coder::Rgb linearRgb = oklab.toLinearRGB();
+    targetPlace[0] = std::min(linearRgb.r, 1.f);
+    targetPlace[1] = std::min(linearRgb.g, 1.f);
+    targetPlace[2] = std::min(linearRgb.b, 1.f);
+    targetPlace += 3;
+  }
 }
-
-#endif //JXL_COPYUNALIGNEDRGBA_H

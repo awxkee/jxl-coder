@@ -35,7 +35,7 @@
 
 using namespace std;
 
-void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int width, int height,
+void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, uint32_t stride, uint32_t width, uint32_t height,
                                  const unsigned char *colorSpace, size_t colorSpaceSize,
                                  bool image16Bits) {
   cmsContext context = cmsCreateContext(nullptr, nullptr);
@@ -57,9 +57,9 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
     cmsCloseProfile(reinterpret_cast<cmsHPROFILE>(profile));
   });
   cmsHTRANSFORM transform = cmsCreateTransform(ptrSrcProfile.get(),
-                                               image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
+                                               image16Bits ? TYPE_RGBA_16_PREMUL : TYPE_RGBA_8,
                                                ptrDstProfile.get(),
-                                               image16Bits ? TYPE_RGBA_HALF_FLT : TYPE_RGBA_8,
+                                               image16Bits ? TYPE_RGBA_16_PREMUL : TYPE_RGBA_8,
                                                INTENT_PERCEPTUAL,
                                                cmsFLAGS_BLACKPOINTCOMPENSATION |
                                                    cmsFLAGS_NOWHITEONWHITEFIXUP |
@@ -73,20 +73,14 @@ void convertUseDefinedColorSpace(std::vector<uint8_t> &vector, int stride, int w
     cmsDeleteTransform(reinterpret_cast<cmsHTRANSFORM>(transform));
   });
 
-  std::vector<uint8_t> iccARGB;
-  iccARGB.resize(stride * height);
-
   auto mSrcInput = vector.data();
-  auto mDstARGB = iccARGB.data();
 
   concurrency::parallel_for(6, height, [&](int y) {
     cmsDoTransformLineStride(
         reinterpret_cast<void *>(ptrTransform.get()),
         reinterpret_cast<const void *>(mSrcInput + stride * y),
-        reinterpret_cast<void *>(mDstARGB + stride * y),
+        reinterpret_cast<void *>(mSrcInput + stride * y),
         width, 1,
         stride, stride, 0, 0);
   });
-
-  vector = iccARGB;
 }

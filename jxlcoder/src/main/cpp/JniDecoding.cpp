@@ -36,12 +36,10 @@
 #include "SizeScaler.h"
 #include "Support.h"
 #include "ReformatBitmap.h"
-#include "imagebit/CopyUnaligned.h"
 #include "XScaler.h"
 #include "colorspaces/ColorSpaceProfile.h"
-#include "colorspaces/GamutAdapter.h"
-#include "colorspaces/ColorSpaceProfile.h"
 #include "hwy/highway.h"
+#include "imagebit/CopyUnalignedRGBA.h"
 
 jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
                                jint scaledHeight,
@@ -63,20 +61,35 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   bool useBitmapFloats = false;
   bool alphaPremultiplied = false;
   int osVersion = androidOSVersion();
-  int bitDepth = 8;
+  uint32_t bitDepth = 8;
   JxlOrientation jxlOrientation = JXL_ORIENT_IDENTITY;
   JxlColorEncoding colorEncoding;
   bool preferEncoding = false;
   bool hasAlphaInOrigin = true;
-  if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
-                           &rgbaPixels,
-                           &xsize, &ysize,
-                           &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
-                           osVersion >= 26,
-                           &jxlOrientation,
-                           &preferEncoding, &colorEncoding,
-                           &hasAlphaInOrigin)) {
-    throwInvalidJXLException(env);
+  float intensityTarget = 255.f;
+  try {
+    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
+                             &rgbaPixels,
+                             &xsize, &ysize,
+                             &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
+                             osVersion >= 26,
+                             &jxlOrientation,
+                             &preferEncoding, &colorEncoding,
+                             &hasAlphaInOrigin, &intensityTarget)) {
+      throwInvalidJXLException(env);
+      return nullptr;
+    }
+  } catch (std::bad_alloc &err) {
+    std::string errorString = "Not enough memory to decode this image";
+    throwException(env, errorString);
+    return nullptr;
+  } catch (std::runtime_error &err) {
+    std::string m1 = err.what();
+    std::string errorString = "Error: " + m1;
+    throwException(env, errorString);
+    return nullptr;
+  } catch (InvalidImageSizeException &err) {
+    throwImageSizeException(env, err.what());
     return nullptr;
   }
 
@@ -90,7 +103,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   imageData.clear();
 
   if (!iccProfile.empty()) {
-    size_t stride = (size_t) xsize * 4 * (size_t) (useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+    size_t stride =
+        (size_t) xsize * 4 * (size_t) (useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
     convertUseDefinedColorSpace(rgbaPixels,
                                 stride,
                                 static_cast<size_t>(xsize),
@@ -100,11 +114,13 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
                                 useBitmapFloats);
   }
 
-  bool useSampler = (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
+  bool
+      useSampler = (scaledWidth > 0 || scaledHeight > 0) && (scaledWidth != 0 && scaledHeight != 0);
 
   uint32_t finalWidth = xsize;
   uint32_t finalHeight = ysize;
-  uint32_t stride = static_cast<uint32_t >(finalWidth) * 4 * static_cast<uint32_t >(useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+  uint32_t stride = static_cast<uint32_t >(finalWidth) * 4
+      * static_cast<uint32_t >(useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
 
   if (useSampler) {
     auto scaleResult = RescaleImage(rgbaPixels, env, &stride, useBitmapFloats,
@@ -112,8 +128,9 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
                                     reinterpret_cast<uint32_t *>(&finalHeight),
                                     static_cast<uint32_t >(scaledWidth),
                                     static_cast<uint32_t >(scaledHeight),
+                                    bitDepth,
                                     alphaPremultiplied, scaleMode,
-                                    sampler);
+                                    sampler, hasAlphaInOrigin);
     if (!scaleResult) {
       return nullptr;
     }
@@ -127,71 +144,85 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)
       && colorEncoding.color_space == JXL_COLOR_SPACE_RGB) {
     Eigen::Matrix3f sourceProfile;
-    GamutTransferFunction function = SKIP;
-    GammaCurve gammaCurve = sRGB;
-    bool useChromaticAdaptation = false;
-    float gamma = 2.2f;
+    TransferFunction transferFunction = TransferFunction::Srgb;
     if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
-      function = HLG;
+      transferFunction = TransferFunction::Hlg;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
       toneMapper = TONE_SKIP;
-      function = SMPTE428;
+      transferFunction = TransferFunction::Smpte428;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
-      function = PQ;
+      transferFunction = TransferFunction::Pq;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
       toneMapper = TONE_SKIP;
-      function = EOTF_GAMMA;
-      gamma = 1.f / colorEncoding.gamma;
+      // Make real gamma
+      transferFunction = TransferFunction::Gamma2p2;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
       toneMapper = TONE_SKIP;
-      function = EOTF_BT709;
+      transferFunction = TransferFunction::Itur709;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
       toneMapper = TONE_SKIP;
-      function = EOTF_SRGB;
+      transferFunction = TransferFunction::Srgb;
     }
+
+    Eigen::Matrix<float, 3, 2> primaries;
+    Eigen::Vector2f whitePoint;
 
     if (colorEncoding.primaries == JXL_PRIMARIES_2100) {
       sourceProfile = GamutRgbToXYZ(getRec2020Primaries(), getIlluminantD65());
+      primaries << getRec2020Primaries();
+      whitePoint << getIlluminantD65();
     } else if (colorEncoding.primaries == JXL_PRIMARIES_P3) {
       sourceProfile = GamutRgbToXYZ(getDisplayP3Primaries(), getIlluminantD65());
+      primaries << getDisplayP3Primaries();
+      whitePoint << getIlluminantD65();
     } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB) {
       sourceProfile = GamutRgbToXYZ(getSRGBPrimaries(), getIlluminantD65());
+      primaries << getSRGBPrimaries();
+      whitePoint << getIlluminantD65();
     } else {
-      Eigen::Matrix<float, 3, 2> primaries;
       primaries << static_cast<float>(colorEncoding.primaries_red_xy[0]),
           static_cast<float>(colorEncoding.primaries_red_xy[1]),
           static_cast<float>(colorEncoding.primaries_green_xy[0]),
           static_cast<float>(colorEncoding.primaries_green_xy[1]),
           static_cast<float>(colorEncoding.primaries_blue_xy[0]),
           static_cast<float>(colorEncoding.primaries_blue_xy[1]);
-      Eigen::Vector2f whitePoint = {static_cast<float>(colorEncoding.white_point_xy[0]),
-                                    static_cast<float>(colorEncoding.white_point_xy[1])};
-      if (whitePoint != getIlluminantD65()) {
-        useChromaticAdaptation = true;
-      }
+      whitePoint << static_cast<float>(colorEncoding.white_point_xy[0]),
+          static_cast<float>(colorEncoding.white_point_xy[1]);
       sourceProfile = GamutRgbToXYZ(primaries, whitePoint);
-      gammaCurve = sRGB;
     }
 
     Eigen::Matrix3f dstProfile = GamutRgbToXYZ(getRec709Primaries(), getIlluminantD65());
     Eigen::Matrix3f conversion = dstProfile.inverse() * sourceProfile;
 
+    ITURColorCoefficients coeffs = colorPrimariesComputeYCoeffs(primaries, whitePoint);
+
+    const float matrix[9] = {
+        conversion(0, 0), conversion(0, 1), conversion(0, 2),
+        conversion(1, 0), conversion(1, 1), conversion(1, 2),
+        conversion(2, 0), conversion(2, 1), conversion(2, 2),
+    };
+
     if (useBitmapFloats) {
-      coder::GamutAdapter<hwy::float16_t> adapter(reinterpret_cast<hwy::float16_t *>(rgbaPixels.data()), stride,
-                                                  finalWidth, finalHeight,
-                                                  16,
-                                                  gammaCurve, function,
-                                                  toneMapper, &conversion, gamma,
-                                                  useChromaticAdaptation);
-      adapter.transfer();
+      applyColorMatrix16Bit(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                            stride,
+                            finalWidth, finalHeight,
+                            bitDepth,
+                            matrix,
+                            transferFunction,
+                            TransferFunction::Srgb,
+                            toneMapper,
+                            coeffs,
+                            intensityTarget);
     } else {
-      coder::GamutAdapter<uint8_t> adapter(rgbaPixels.data(), stride,
-                                           finalWidth, finalHeight,
-                                           8,
-                                           gammaCurve, function,
-                                           toneMapper, &conversion, gamma,
-                                           useChromaticAdaptation);
-      adapter.transfer();
+      applyColorMatrix(reinterpret_cast<uint8_t *>(rgbaPixels.data()),
+                       stride,
+                       finalWidth,
+                       finalHeight,
+                       matrix,
+                       transferFunction,
+                       TransferFunction::Srgb,
+                       toneMapper,
+                       coeffs, intensityTarget);
     }
   }
 
@@ -220,7 +251,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
 
   jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-  jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
+  jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
+                                                          "createBitmap",
                                                           "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
   jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
                                                   static_cast<jint>(finalWidth),
@@ -240,16 +272,22 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   }
 
   if (bitmapPixelConfig == "RGB_565") {
-    coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                         reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                         (int) info.width,
-                         (int) info.height, sizeof(uint16_t));
+    coder::CopyUnaligned(reinterpret_cast<const uint16_t *>(rgbaPixels.data()), stride,
+                         reinterpret_cast<uint16_t *>(addr), (uint32_t) info.stride,
+                         (uint32_t) info.width,
+                         (uint32_t) info.height);
   } else {
-    coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
-                         reinterpret_cast<uint8_t *>(addr), (int) info.stride,
-                         (int) info.width * 4,
-                         (int) info.height,
-                         useBitmapFloats ? sizeof(uint16_t) : sizeof(uint8_t));
+    if (useBitmapFloats) {
+      coder::CopyUnaligned(reinterpret_cast<const uint16_t *>(rgbaPixels.data()), stride,
+                           reinterpret_cast<uint16_t *>(addr), (uint32_t) info.stride,
+                           (uint32_t) info.width * 4,
+                           (uint32_t) info.height);
+    } else {
+      coder::CopyUnaligned(reinterpret_cast<const uint8_t *>(rgbaPixels.data()), stride,
+                           reinterpret_cast<uint8_t *>(addr), (uint32_t) info.stride,
+                           (uint32_t) info.width * 4,
+                           (uint32_t) info.height);
+    }
   }
 
   if (AndroidBitmap_unlockPixels(env, bitmapObj) != 0) {
@@ -283,6 +321,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     std::string errorString = "Not enough memory to decode this image";
     throwException(env, errorString);
     return nullptr;
+  } catch (std::runtime_error &err) {
+    std::string w1 = err.what();
+    std::string errorString = "Error while decoding: " + w1;
+    throwException(env, errorString);
+    return nullptr;
   }
 }
 
@@ -310,6 +353,11 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
                                   resizeSampler, javaToneMapper);
   } catch (std::bad_alloc &err) {
     std::string errorString = "Not enough memory to decode this image";
+    throwException(env, errorString);
+    return nullptr;
+  } catch (std::runtime_error &err) {
+    std::string w1 = err.what();
+    std::string errorString = "Error while decoding: " + w1;
     throwException(env, errorString);
     return nullptr;
   }

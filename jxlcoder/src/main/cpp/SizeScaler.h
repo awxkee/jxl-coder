@@ -45,8 +45,11 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   bool useFloats,
                   uint32_t *imageWidthPtr, uint32_t *imageHeightPtr,
                   uint32_t scaledWidth, uint32_t scaledHeight,
+                  uint32_t bit_depth,
                   bool alphaPremultiplied,
-                  ScaleMode scaleMode, XSampler sampler);
+                  ScaleMode scaleMode,
+                  XSampler sampler,
+                  bool doesOriginHasAlpha);
 
 std::pair<int, int>
 ResizeAspectFit(std::pair<int, int> sourceSize, std::pair<int, int> dstSize, float *scale);

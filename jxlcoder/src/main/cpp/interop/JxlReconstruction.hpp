@@ -37,7 +37,7 @@
 namespace coder {
 class JxlReconstruction {
  public:
-  JxlReconstruction(std::vector<uint8_t> &data) : jxlData(data) {
+  explicit JxlReconstruction(std::vector<uint8_t> &data) : jxlData(data) {
 
   }
 

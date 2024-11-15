@@ -38,6 +38,7 @@ jint throwException(JNIEnv *env, std::string &msg);
 jint throwCantCompressImage(JNIEnv *env);
 jint throwInvalidColorSpaceException(JNIEnv *env);
 jint throwInvalidCompressionOptionException(JNIEnv *env);
+jint throwImageSizeException(JNIEnv *env, const char* message);
 
 int androidOSVersion();
 

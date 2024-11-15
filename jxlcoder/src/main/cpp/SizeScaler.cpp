@@ -32,24 +32,8 @@
 #include <jni.h>
 #include "JniExceptions.h"
 #include "XScaler.h"
-#include "processing/Convolve1D.h"
-#include "processing/Convolve1Db16.h"
 #include "Eigen/Eigen"
-#include "sparkyuv/sparkyuv.h"
-
-static std::vector<float> compute1DGaussianKernel(int width, float sigma) {
-  std::vector<float> kernel(ceil(width));
-  int mean = ceil(width) / 2;
-  float sum = 0;
-  const float scale = 1.f / (std::sqrtf(2 * M_PI) * sigma);
-  for (int x = 0; x < width; x++) {
-    kernel[x] = std::expf(-0.5 * std::powf((x - mean) / sigma, 2.0)) * scale;
-    sum += kernel[x];
-  }
-  for (int x = 0; x < width; x++)
-    kernel[x] /= sum;
-  return std::move(kernel);
-}
+#include "weaver.h"
 
 bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   JNIEnv *env,
@@ -57,11 +41,13 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   bool useFloats,
                   uint32_t *imageWidthPtr, uint32_t *imageHeightPtr,
                   uint32_t scaledWidth, uint32_t scaledHeight,
+                  uint32_t bitDepth,
                   bool alphaPremultiplied,
                   ScaleMode scaleMode,
-                  XSampler sampler) {
-  int imageWidth = *imageWidthPtr;
-  int imageHeight = *imageHeightPtr;
+                  XSampler sampler,
+                  bool doesOriginHasAlpha) {
+  uint32_t imageWidth = *imageWidthPtr;
+  uint32_t imageHeight = *imageHeightPtr;
   if ((scaledHeight != 0 || scaledWidth != 0) && (scaledWidth != 0 && scaledHeight != 0)) {
 
     int xTranslation = 0, yTranslation = 0;
@@ -97,84 +83,73 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
       }
     }
 
-    int lineWidth = scaledWidth * static_cast<int>(useFloats ? sizeof(uint16_t) : sizeof(uint8_t)) * 4;
-    int alignment = 64;
-    int padding = (alignment - (lineWidth % alignment)) % alignment;
-    int imdStride = lineWidth + padding;
+    uint32_t lineWidth = scaledWidth * static_cast<int>(useFloats ? sizeof(uint16_t) : sizeof(uint8_t)) * 4;
+    uint32_t alignment = 64;
+    uint32_t padding = (alignment - (lineWidth % alignment)) % alignment;
+    uint32_t imdStride = lineWidth + padding;
 
     std::vector<uint8_t> newImageData(imdStride * scaledHeight);
 
-    float ratio = std::min(static_cast<float>(scaledHeight) / static_cast<float>(imageHeight),
-                           static_cast<float>(scaledWidth) / static_cast<float>(imageWidth));
-
-    sparkyuv::SparkYuvSampler sparkSampler = sparkyuv::bilinear;
+    ScalingFunction sparkSampler = ScalingFunction::Bilinear;
     switch (sampler) {
       case bilinear: {
-        sparkSampler = sparkyuv::bilinear;
+        sparkSampler = ScalingFunction::Bilinear;
       }
         break;
       case nearest: {
-        sparkSampler = sparkyuv::nearest;
+        sparkSampler = ScalingFunction::Nearest;
       }
         break;
       case cubic: {
-        sparkSampler = sparkyuv::cubic;
+        sparkSampler = ScalingFunction::Cubic;
       }
         break;
       case mitchell: {
-        sparkSampler = sparkyuv::mitchell;
+        sparkSampler = ScalingFunction::Mitchell;
       }
         break;
       case lanczos: {
-        sparkSampler = sparkyuv::lanczos;
+        sparkSampler = ScalingFunction::Lanczos;
       }
         break;
       case catmullRom: {
-        sparkSampler = sparkyuv::catmullRom;
+        sparkSampler = ScalingFunction::CatmullRom;
       }
         break;
       case hermite: {
-        sparkSampler = sparkyuv::hermite;
+        sparkSampler = ScalingFunction::Hermite;
       }
         break;
       case bSpline: {
-        sparkSampler = sparkyuv::bSpline;
+        sparkSampler = ScalingFunction::BSpline;
       }
         break;
       case hann: {
-        sparkSampler = sparkyuv::lanczos;
+        sparkSampler = ScalingFunction::Lanczos;
       }
         break;
       case bicubic: {
-        sparkSampler = sparkyuv::bicubic;
+        sparkSampler = ScalingFunction::Bicubic;
       }
         break;
     }
 
     if (useFloats) {
-      if (ratio < 0.5f) {
-        auto kernel = compute1DGaussianKernel(7, (7 - 1) / 6.f);
-        coder::convolve1D(reinterpret_cast<uint16_t *>(rgbaData.data()), *stride, imageWidth, imageHeight, kernel, kernel);
-      }
-
-      sparkyuv::ScaleRGBAF16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
-                             imageWidth * 4 * (int) sizeof(uint16_t),
-                             imageWidth, imageHeight,
-                             reinterpret_cast<uint16_t *>(newImageData.data()),
-                             imdStride,
-                             scaledWidth, scaledHeight, sparkSampler);
+      weave_scale_u16(reinterpret_cast<const uint16_t *>(rgbaData.data()),
+                      imageWidth * 4 * (int) sizeof(uint16_t),
+                      imageWidth, imageHeight,
+                      reinterpret_cast<uint16_t *>(newImageData.data()),
+                      imdStride,
+                      scaledWidth, scaledHeight, bitDepth, static_cast<ScalingFunction>(sparkSampler),
+                      doesOriginHasAlpha);
     } else {
-      if (ratio < 0.5f) {
-        auto kernel = compute1DGaussianKernel(7, (7 - 1) / 6.f);
-        coder::convolve1D(reinterpret_cast<uint8_t *>(rgbaData.data()), *stride, imageWidth, imageHeight, kernel, kernel);
-      }
-
-      sparkyuv::ScaleRGBA(reinterpret_cast<const uint8_t *>(rgbaData.data()),
-                          (int) imageWidth * 4 * (int) sizeof(uint8_t),
-                          imageWidth, imageHeight,
-                          reinterpret_cast<uint8_t *>(newImageData.data()),
-                          imdStride,
-                          scaledWidth, scaledHeight, sparkSampler);
+      weave_scale_u8(reinterpret_cast<const uint8_t *>(rgbaData.data()),
+                     (int) imageWidth * 4 * (int) sizeof(uint8_t),
+                     imageWidth, imageHeight,
+                     reinterpret_cast<uint8_t *>(newImageData.data()),
+                     imdStride,
+                     scaledWidth, scaledHeight, static_cast<ScalingFunction>(sparkSampler),
+                     doesOriginHasAlpha);
 
     }
 

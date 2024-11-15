@@ -28,7 +28,7 @@
 
 #ifdef __cplusplus
 
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include "decode.h"
@@ -36,6 +36,7 @@
 #include "resizable_parallel_runner.h"
 #include "resizable_parallel_runner_cxx.h"
 #include <thread>
+#include "conversion/HalfFloats.h"
 
 class AnimatedDecoderError : public std::exception {
  public:
@@ -118,6 +119,15 @@ class JxlAnimatedDecoder {
         numer = info.have_animation ? info.animation.tps_numerator : 1;
         alphaPremultiplied = info.alpha_premultiplied;
 
+        uint64_t maxSize = std::numeric_limits<int32_t>::max();
+        uint64_t
+            currentSize = static_cast<uint64_t >(info.xsize) * static_cast<uint64_t >(info.ysize) * 4;
+        if (currentSize >= maxSize) {
+          std::string errorMessage =
+              "Invalid image size exceed allowance, current size w: " + std::to_string(info.xsize) + ", h: " + std::to_string(info.ysize);
+          throw AnimatedDecoderError(strdup(errorMessage.c_str()));
+        }
+
         JxlResizableParallelRunnerSetThreads(
             runner.get(),
             JxlResizableParallelRunnerSuggestThreads(info.xsize, info.ysize));
@@ -161,7 +171,7 @@ class JxlAnimatedDecoder {
         if (JXL_DEC_SUCCESS !=
             JxlDecoderGetColorAsICCProfile(dec.get(), JXL_COLOR_PROFILE_TARGET_DATA,
                                            iccProfile.data(), iccProfile.size())) {
-          std::string str = "Cannot retreive color icc profile";
+          std::string str = "Cannot retrieve color icc profile";
           throw AnimatedDecoderError(str);
         }
       } else if (status == JXL_DEC_SUCCESS) {
@@ -178,15 +188,15 @@ class JxlAnimatedDecoder {
 
   JxlFrame getFrame(int at);
 
-  int getLoopCount() {
+  [[nodiscard]] uint32_t getLoopCount() {
     return loopCount;
   }
 
-  uint32_t getWidth() {
+  [[nodiscard]] uint32_t getWidth() const {
     return info.xsize;
   }
 
-  uint32_t getHeight() {
+  [[nodiscard]] uint32_t getHeight() const {
     return info.ysize;
   }
 
@@ -194,7 +204,7 @@ class JxlAnimatedDecoder {
     return static_cast<int>(frameInfo.size());
   }
 
-  bool isAlphaAttenuated() {
+  [[nodiscard]] bool isAlphaAttenuated() const {
     return alphaPremultiplied;
   }
 

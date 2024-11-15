@@ -33,17 +33,8 @@
 #include "conversion/half.hpp"
 #include "ConversionUtils.h"
 
-namespace coder {
-void RgbaF32ToF16(const float *JXL_RESTRICT src,
-                  const uint32_t srcStride,
-                  uint16_t *JXL_RESTRICT dst,
-                  const uint32_t dstStride,
-                  const uint32_t width,
-                  const uint32_t height);
-}
-
-float half_to_float(const uint16_t x);
-
-uint16_t float_to_half(const float x);
+float half_to_float(uint16_t x);
+uint16_t float_to_half(float x);
+bool has_fphp();
 
 #endif //JXLCODER_HALFFLOATS_H

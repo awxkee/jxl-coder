@@ -68,7 +68,7 @@ class JxlAnimatedImage : Closeable {
         byteBuffer: ByteBuffer,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
+        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.BILINEAR,
         toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
         if (Build.VERSION.SDK_INT >= 21) {
@@ -89,7 +89,7 @@ class JxlAnimatedImage : Closeable {
         byteArray: ByteArray,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.CATMULL_ROM,
+        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.BILINEAR,
         toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
         if (Build.VERSION.SDK_INT >= 21) {

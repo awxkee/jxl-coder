@@ -53,15 +53,15 @@ class JxlAnimatedDecoderCoordinator {
     return decoder->getNumberOfFrames();
   }
 
-  int frameDuration(int frame) {
+  uint32_t frameDuration(int frame) {
     return decoder->getFrameDuration(frame);
   }
 
-  int loopsCount() {
+  uint32_t loopsCount() {
     return decoder->getLoopCount();
   }
 
-  JxlFrame getFrame(int at) {
+  JxlFrame getFrame(uint32_t at) {
     return decoder->getFrame(at);
   }
 
