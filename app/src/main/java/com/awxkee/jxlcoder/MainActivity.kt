@@ -3,9 +3,11 @@ package com.awxkee.jxlcoder
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
 import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.hardware.DataSpace
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -181,11 +183,20 @@ class MainActivity : ComponentActivity() {
 //                            lifecycleScope.launch {
 //                                drawables.add(BitmapDrawable(resources, bitmap))
 //                            }
+                            val space = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                             val encoded =
-                                JxlCoder.encode(bitmap, channelsConfiguration = JxlChannelsConfiguration.RGB, effort = JxlEffort.LIGHTNING)
-                            val decoded = JxlCoder.decodeSampled(encoded,
-                                preferredColorConfig = PreferredColorConfig.RGBA_8888, width = 1305 ,
-                                height = 1295)
+                                JxlCoder.encode(
+                                    space,
+                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
+                                    effort = JxlEffort.LIGHTNING,
+                                    compressionOption = JxlCompressionOption.LOSSLESS,
+                                    quality = 100,
+                                )
+                            val decoded = JxlCoder.decodeSampled(
+                                encoded,
+                                preferredColorConfig = PreferredColorConfig.RGBA_8888, width = 1305,
+                                height = 1295
+                            )
                             lifecycleScope.launch {
                                 imagesArray.add(decoded)
                             }

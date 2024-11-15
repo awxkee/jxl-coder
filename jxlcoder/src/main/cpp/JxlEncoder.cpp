@@ -44,6 +44,7 @@
 #include "imagebit/Rgb565.h"
 #include "imagebit/RgbaToRgb.h"
 #include "imagebit/Rgb1010102.h"
+#include "imagebit/RgbaF16bitToNBitU16.h"
 
 using namespace std;
 
@@ -137,6 +138,17 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
                               rgbaPixels.data(), imageStride,
                               (uint32_t) info.width,
                               (uint32_t) info.height);
+    } else if (info.format == ANDROID_BITMAP_FORMAT_RGBA_F16) {
+      uint32_t
+          newStride = info.width * 4 * (uint32_t)
+      sizeof(uint16_t);
+      std::vector<uint8_t> rgbau16Pixels(newStride * info.height);
+      coder::RGBAF16BitToNBitU16(reinterpret_cast<uint16_t *>(rgbaPixels.data()),
+                                 (uint32_t) info.stride,
+                                 reinterpret_cast<uint16_t *>(rgbau16Pixels.data()), newStride,
+                                 (uint32_t) info.width, (uint32_t) info.height, 16);
+      imageStride = newStride;
+      rgbaPixels = rgbau16Pixels;
     }
 
     bool useFloat16 = info.format == ANDROID_BITMAP_FORMAT_RGBA_F16 ||
