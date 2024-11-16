@@ -61,48 +61,44 @@ bool loadAHardwareBuffersAPI() {
         && AHardwareBuffer_describe_compat != nullptr;
   }
   alreadyHdBuffersLoaded = true;
-  void *hhl = dlopen("libandroid.so", RTLD_NOW);
-  if (!hhl) {
-    return false;
-  }
 
-  AHardwareBuffer_allocate_compat = (AHardwareBufferAllocateFunc) dlsym(hhl,
+  AHardwareBuffer_allocate_compat = (AHardwareBufferAllocateFunc) dlsym(RTLD_DEFAULT,
                                                                         "AHardwareBuffer_allocate");
   if (AHardwareBuffer_allocate_compat == nullptr) {
     return false;
   }
 
-  AHardwareBuffer_isSupported_compat = (AHardwareBufferIsSupportedFunc) dlsym(hhl,
+  AHardwareBuffer_isSupported_compat = (AHardwareBufferIsSupportedFunc) dlsym(RTLD_DEFAULT,
                                                                               "AHardwareBuffer_isSupported");
   if (AHardwareBuffer_isSupported_compat == nullptr) {
     return false;
   }
 
-  AHardwareBuffer_unlock_compat = (AHardwareBufferUnlockFunc) dlsym(hhl,
+  AHardwareBuffer_unlock_compat = (AHardwareBufferUnlockFunc) dlsym(RTLD_DEFAULT,
                                                                     "AHardwareBuffer_unlock");
   if (AHardwareBuffer_unlock_compat == nullptr) {
     return false;
   }
 
-  AHardwareBuffer_release_compat = (AHardwareBufferReleaseFunc) dlsym(hhl,
+  AHardwareBuffer_release_compat = (AHardwareBufferReleaseFunc) dlsym(RTLD_DEFAULT,
                                                                       "AHardwareBuffer_release");
   if (AHardwareBuffer_release_compat == nullptr) {
     return false;
   }
 
-  AHardwareBuffer_lock_compat = (AHardwareBufferLockFunc) dlsym(hhl,
+  AHardwareBuffer_lock_compat = (AHardwareBufferLockFunc) dlsym(RTLD_DEFAULT,
                                                                 "AHardwareBuffer_lock");
   if (AHardwareBuffer_lock_compat == nullptr) {
     return false;
   }
 
-  AHardwareBuffer_toHardwareBuffer_compat = (AHardwareBufferToHardwareBufferFunc) dlsym(hhl,
+  AHardwareBuffer_toHardwareBuffer_compat = (AHardwareBufferToHardwareBufferFunc) dlsym(RTLD_DEFAULT,
                                                                                         "AHardwareBuffer_toHardwareBuffer");
   if (AHardwareBuffer_toHardwareBuffer_compat == nullptr) {
     return false;
   }
 
-  AHardwareBuffer_describe_compat = (AHardwareBufferDescribeFunc) dlsym(hhl,
+  AHardwareBuffer_describe_compat = (AHardwareBufferDescribeFunc) dlsym(RTLD_DEFAULT,
                                                                         "AHardwareBuffer_describe");
   if (AHardwareBuffer_describe_compat == nullptr) {
     return false;

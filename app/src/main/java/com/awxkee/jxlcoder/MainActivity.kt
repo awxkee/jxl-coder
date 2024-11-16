@@ -125,6 +125,9 @@ class MainActivity : ComponentActivity() {
                     var imagesArray = remember {
                         mutableStateListOf<Bitmap>()
                     }
+                    var drawablesArray = remember {
+                        mutableStateListOf<Drawable>()
+                    }
                     LaunchedEffect(key1 = Unit, block = {
                         lifecycleScope.launch(Dispatchers.IO) {
                             val buffer5 =
@@ -183,59 +186,66 @@ class MainActivity : ComponentActivity() {
 //                            lifecycleScope.launch {
 //                                drawables.add(BitmapDrawable(resources, bitmap))
 //                            }
-                            val space = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-                            val encoded =
-                                JxlCoder.encode(
-                                    space,
-                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
-                                    effort = JxlEffort.LIGHTNING,
-                                    compressionOption = JxlCompressionOption.LOSSLESS,
-                                    quality = 100,
-                                )
-                            val decoded = JxlCoder.decodeSampled(
-                                encoded,
-                                preferredColorConfig = PreferredColorConfig.RGBA_8888, width = 1305,
-                                height = 1295
-                            )
-                            lifecycleScope.launch {
-                                imagesArray.add(decoded)
-                            }
+//                            val space = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+//                            val encoded =
+//                                JxlCoder.encode(
+//                                    space,
+//                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
+//                                    effort = JxlEffort.LIGHTNING,
+//                                    compressionOption = JxlCompressionOption.LOSSLESS,
+//                                    quality = 100,
+//                                )
+//                            val decoded = JxlCoder.decodeSampled(
+//                                encoded,
+//                                preferredColorConfig = PreferredColorConfig.HARDWARE, width = 1305,
+//                                height = 1295
+//                            )
+//                            lifecycleScope.launch {
+//                                imagesArray.add(decoded)
+//                            }
 
-//                            var assets =
-//                                (this@MainActivity.assets.list("") ?: return@launch).toList()
-////                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
-//                            for (asset in assets) {
-//                                try {
-//                                    val buffer4 =
-//                                        this@MainActivity.assets.open(asset).source().buffer()
-//                                            .readByteArray()
-//
-//                                    val largeImageSize = JxlCoder.getSize(buffer4)
-//                                    if (largeImageSize != null) {
-//                                        val time = measureTimeMillis {
+                            var assets =
+                                (this@MainActivity.assets.list("") ?: return@launch).toList()
+                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
+                            for (asset in assets) {
+                                try {
+                                    val buffer4 =
+                                        this@MainActivity.assets.open(asset).source().buffer()
+                                            .readByteArray()
+
+                                    val largeImageSize = JxlCoder.getSize(buffer4)
+                                    if (largeImageSize != null) {
+                                        val time = measureTimeMillis {
 //                                            val srcImage = JxlCoder.decodeSampled(
 //                                                buffer4,
 //                                                largeImageSize.width / 2,
 //                                                largeImageSize.height / 2,
-//                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
+//                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
 //                                                com.awxkee.jxlcoder.ScaleMode.FIT,
 //                                                toneMapper = JxlToneMapper.REC2408,
 //                                            )
-////                                            val srcImage = JxlCoder.decode(buffer4,
-////                                                preferredColorConfig = PreferredColorConfig.RGB_565,
-////                                                toneMapper = JxlToneMapper.REC2408)
+                                            val animatedImage = JxlAnimatedImage(
+                                                buffer4,
+                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                scaleMode = ScaleMode.FIT,
+                                                toneMapper = JxlToneMapper.REC2408,
+                                            )
+                                            drawablesArray.add(animatedImage.animatedDrawable)
+//                                            val srcImage = JxlCoder.decode(buffer4,
+//                                                preferredColorConfig = PreferredColorConfig.RGB_565,
+//                                                toneMapper = JxlToneMapper.REC2408)
 //                                            lifecycleScope.launch {
 //                                                imagesArray.add(srcImage)
 //                                            }
-//                                        }
-//                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
-//                                    }
-//                                } catch (e: Exception) {
-//                                    if (e !is FileNotFoundException) {
-//                                        throw e
-//                                    }
-//                                }
-//                            }
+                                        }
+                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
+                                    }
+                                } catch (e: Exception) {
+                                    if (e !is FileNotFoundException) {
+                                        throw e
+                                    }
+                                }
+                            }
                         }
                     })
                     // A surface container using the 'background' color from the theme
@@ -276,6 +286,17 @@ class MainActivity : ComponentActivity() {
                                     contentDescription = "ok"
                                 )
                             }
+
+//                            items(drawablesArray.count(), key = {
+//                                return@items UUID.randomUUID().toString()
+//                            }) {
+//                                Image(
+//                                    rememberDrawablePainter(drawable = drawablesArray[it]),
+//                                    modifier = Modifier.fillMaxWidth(),
+//                                    contentScale = ContentScale.FillWidth,
+//                                    contentDescription = "ok"
+//                                )
+//                            }
                         }
                     }
                 }

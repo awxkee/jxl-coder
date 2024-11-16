@@ -203,7 +203,8 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       bufferDesc.format = (*useFloats) ? AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT
                                        : AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
 
-      bufferDesc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+      bufferDesc.usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN |
+          AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
 
       AHardwareBuffer *hardwareBuffer = nullptr;
 
@@ -216,7 +217,7 @@ ReformatColorConfig(JNIEnv *env, std::vector<uint8_t> &imageData, std::string &i
       uint8_t *buffer = nullptr;
 
       status = AHardwareBuffer_lock_compat(hardwareBuffer,
-                                           AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1,
+                                           AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1,
                                            &rect, reinterpret_cast<void **>(&buffer));
       if (status != 0) {
         AHardwareBuffer_release_compat(hardwareBuffer);

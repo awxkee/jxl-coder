@@ -228,11 +228,11 @@ public class AnimatedDrawable(
     }
 
      override fun getIntrinsicHeight(): Int {
-        return bounds.height()
+        return frameStore.height
     }
 
     override fun getIntrinsicWidth(): Int {
-        return bounds.width()
+        return frameStore.width
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
