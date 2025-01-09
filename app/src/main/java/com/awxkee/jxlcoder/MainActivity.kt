@@ -216,27 +216,20 @@ class MainActivity : ComponentActivity() {
                                     val largeImageSize = JxlCoder.getSize(buffer4)
                                     if (largeImageSize != null) {
                                         val time = measureTimeMillis {
-//                                            val srcImage = JxlCoder.decodeSampled(
-//                                                buffer4,
-//                                                largeImageSize.width / 2,
-//                                                largeImageSize.height / 2,
-//                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-//                                                toneMapper = JxlToneMapper.REC2408,
-//                                            )
-                                            val animatedImage = JxlAnimatedImage(
+                                            val srcImage = JxlCoder.decodeSampled(
                                                 buffer4,
+                                                -1,
+                                                largeImageSize.height / 2,
                                                 preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                scaleMode = ScaleMode.FIT,
+                                                com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408,
                                             )
-                                            drawablesArray.add(animatedImage.animatedDrawable)
 //                                            val srcImage = JxlCoder.decode(buffer4,
 //                                                preferredColorConfig = PreferredColorConfig.RGB_565,
 //                                                toneMapper = JxlToneMapper.REC2408)
-//                                            lifecycleScope.launch {
-//                                                imagesArray.add(srcImage)
-//                                            }
+                                            lifecycleScope.launch {
+                                                imagesArray.add(srcImage)
+                                            }
                                         }
                                         Log.d("JXLCoder", "Decoding done in ${time}ms")
                                     }

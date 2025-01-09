@@ -40,7 +40,7 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   uint32_t *stride,
                   bool useFloats,
                   uint32_t *imageWidthPtr, uint32_t *imageHeightPtr,
-                  uint32_t scaledWidth, uint32_t scaledHeight,
+                  int scaledWidth, int scaledHeight,
                   uint32_t bitDepth,
                   bool alphaPremultiplied,
                   ScaleMode scaleMode,
@@ -57,11 +57,11 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
     if (scaleMode == Fit || scaleMode == Fill) {
       std::pair<int, int> currentSize(imageWidth, imageHeight);
       if (scaledHeight > 0 && scaledWidth < 0) {
-        auto newBounds = ResizeAspectHeight(currentSize, scaledHeight, scaledWidth == -2);
+        auto newBounds = ResizeAspectHeight(currentSize, scaledHeight, scaledHeight == -2);
         scaledWidth = newBounds.first;
         scaledHeight = newBounds.second;
       } else if (scaledHeight < 0) {
-        auto newBounds = ResizeAspectWidth(currentSize, scaledHeight, scaledHeight == -2);
+        auto newBounds = ResizeAspectWidth(currentSize, scaledWidth, scaledWidth == -2);
         scaledWidth = newBounds.first;
         scaledHeight = newBounds.second;
       } else {
@@ -157,7 +157,6 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
     imageHeight = scaledHeight;
 
     if (xTranslation > 0 || yTranslation > 0) {
-
       int left = std::max(xTranslation, 0);
       int right = xTranslation + canvasWidth;
       int top = std::max(yTranslation, 0);
