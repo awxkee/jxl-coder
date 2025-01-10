@@ -206,22 +206,23 @@ class MainActivity : ComponentActivity() {
                                     val largeImageSize = JxlCoder.getSize(buffer4)
                                     if (largeImageSize != null) {
                                         val decodingTime = measureTimeMillis {
-                                            val srcImage = JxlCoder.decode(
-                                                buffer4,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.REC2408,
-                                            )
-
-                                            // Resizable version
-//                                            val srcImage = JxlCoder.decodeSampled(
+//                                            val srcImage = JxlCoder.decode(
 //                                                buffer4,
-//                                                width = largeImageSize.width / 2,
-//                                                height = largeImageSize.height / 2,
 //                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
 //                                                com.awxkee.jxlcoder.ScaleMode.FIT,
 //                                                toneMapper = JxlToneMapper.REC2408,
 //                                            )
+
+                                            // Resizable version
+                                            val srcImage = JxlCoder.decodeSampled(
+                                                buffer4,
+                                                width = largeImageSize.width / 2,
+                                                height = largeImageSize.height / 2,
+                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+                                                toneMapper = JxlToneMapper.REC2408,
+                                                jxlResizeFilter = JxlResizeFilter.CATMULL_ROM
+                                            )
                                             lifecycleScope.launch {
                                                 imagesArray.add(srcImage)
                                             }
