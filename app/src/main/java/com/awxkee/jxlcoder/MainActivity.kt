@@ -57,18 +57,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-//        val buffer1 = this.assets.open("hdr_cosmos.jxl").source().buffer().readByteArray()
-//        assert(JxlCoder.isJXL(buffer1))
-//        assert(JxlCoder().getSize(buffer1) != null)
-//        val iccCosmosImage = JxlCoder().decode(buffer1)
-//        val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
-//        assert(JxlCoder.isJXL(buffer2))
-//        assert(JxlCoder().getSize(buffer2) != null)
-//        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
-//        assert(JxlCoder.isJXL(buffer3))
-//        assert(JxlCoder().getSize(buffer3) != null)
-
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 //            val buffer4 = this.assets.open("happy_india.jxl").source().buffer().readByteArray()
 //            assert(JxlCoder.isJXL(buffer4))
@@ -224,57 +212,21 @@ class MainActivity : ComponentActivity() {
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408,
                                             )
-                                        }
-                                        Log.d("JXLMain", "Decoding time ${decodingTime}ms")
-                                        val time = measureTimeMillis {
+
+                                            // Resizable version
 //                                            val srcImage = JxlCoder.decodeSampled(
 //                                                buffer4,
-//                                                largeImageSize.width / 2,
-//                                                largeImageSize.height / 2,
+//                                                width = largeImageSize.width / 2,
+//                                                height = largeImageSize.height / 2,
 //                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
 //                                                com.awxkee.jxlcoder.ScaleMode.FIT,
 //                                                toneMapper = JxlToneMapper.REC2408,
 //                                            )
-                                            val srcImage = JxlCoder.decode(
-                                                buffer4,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.REC2408,
-                                            )
-                                            val fosRec2408 = FileOutputStream(File(cacheDir, File(asset).nameWithoutExtension + ".jpg"))
-                                            fosRec2408.use {
-                                                srcImage.compress(Bitmap.CompressFormat.JPEG, 90, it)
-                                                it.flush()
-                                            }
-//                                            val srcPerceptual = JxlCoder.decodeSampled(
-//                                                buffer4,
-//                                                largeImageSize.width / 2,
-//                                                largeImageSize.height / 2,
-//                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-//                                                toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
-//                                            )
-                                            val srcPerceptual = JxlCoder.decode(
-                                                buffer4,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
-                                            )
-                                            val fosRec2408Perc = FileOutputStream(File(cacheDir, File(asset).nameWithoutExtension + "_perceptual.jpg"))
-                                            fosRec2408Perc.use {
-                                                srcPerceptual.compress(Bitmap.CompressFormat.JPEG, 90, it)
-                                                it.flush()
-                                            }
-//                                            val srcImage = JxlCoder.decode(buffer4,
-//                                                preferredColorConfig = PreferredColorConfig.RGB_565,
-//                                                toneMapper = JxlToneMapper.REC2408)
                                             lifecycleScope.launch {
                                                 imagesArray.add(srcImage)
-                                                imagesArray.add(srcPerceptual)
                                             }
-
                                         }
-                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
+                                        Log.d("JXLMain", "Decoding time ${decodingTime}ms")
                                     }
                                 } catch (e: Exception) {
                                     if (e !is FileNotFoundException) {
@@ -289,25 +241,6 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-//                        AsyncImage(
-//                            model = "https://pdfconverter1984.blob.core.windows.net/simple/wide_gamut.jxl",
-//                            contentDescription = null,
-//                            imageLoader = ImageLoader.Builder(this)
-//                                .components {
-//                                    add(JxlDecoder.Factory())
-//                                }
-//                                .build()
-//                        )
-
-//                        Image(
-//                            bitmap = image.asImageBitmap(),
-////                            painter = rememberDrawablePainter(drawable = drawable),
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .fillMaxHeight(),
-//                            contentScale = ContentScale.FillWidth,
-//                            contentDescription = "ok"
-//                        )
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -322,17 +255,6 @@ class MainActivity : ComponentActivity() {
                                     contentDescription = "ok"
                                 )
                             }
-
-//                            items(drawablesArray.count(), key = {
-//                                return@items UUID.randomUUID().toString()
-//                            }) {
-//                                Image(
-//                                    rememberDrawablePainter(drawable = drawablesArray[it]),
-//                                    modifier = Modifier.fillMaxWidth(),
-//                                    contentScale = ContentScale.FillWidth,
-//                                    contentDescription = "ok"
-//                                )
-//                            }
                         }
                     }
                 }
