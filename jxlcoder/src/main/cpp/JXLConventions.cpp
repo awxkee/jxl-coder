@@ -144,7 +144,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_gif2JXLImpl(JNIEnv *env, jobject thiz, jbyteAr
     for (const EasyGifReader::Frame &frame : gifReader) {
       const std::uint32_t *framePixels = frame.pixels();
       int frameDuration = frame.duration().milliseconds();
-      const uint8_t *mSource = reinterpret_cast<const uint8_t *>(framePixels);
+      const auto *mSource = reinterpret_cast<const uint8_t *>(framePixels);
       std::copy(mSource, mSource + frameSize, mPixelStore.begin());
       encoder.addFrame(mPixelStore, frameDuration);
     }

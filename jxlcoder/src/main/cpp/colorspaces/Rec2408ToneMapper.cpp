@@ -79,22 +79,44 @@ float rec2408_pq(float intensity, const float intensity_target) {
 }
 
 void Rec2408ToneMapper::transferTone(float *inPlace, uint32_t width) const {
-  float *targetPlace = inPlace;
+  if (this->perceptual) {
+    float *targetPlace = inPlace;
 
-  const float vWeightA = this->weightA;
-  const float vWeightB = this->weightB;
+    const float vWeightA = this->weightA;
+    const float vWeightB = this->weightB;
 
-  for (uint32_t x = 0; x < width; ++x) {
-    float r = targetPlace[0];
-    float g = targetPlace[1];
-    float b = targetPlace[2];
-    coder::Oklab oklab = coder::Oklab::fromLinearRGB(r, g, b);
-    float shScale = (1.f + vWeightA * oklab.L) / (1.f + vWeightB * oklab.L);
-    oklab.L = oklab.L * shScale;
-    coder::Rgb linearRgb = oklab.toLinearRGB();
-    targetPlace[0] = std::min(linearRgb.r, 1.f);
-    targetPlace[1] = std::min(linearRgb.g, 1.f);
-    targetPlace[2] = std::min(linearRgb.b, 1.f);
-    targetPlace += 3;
+    for (uint32_t x = 0; x < width; ++x) {
+      float r = targetPlace[0];
+      float g = targetPlace[1];
+      float b = targetPlace[2];
+      coder::Oklab oklab = coder::Oklab::fromLinearRGB(r, g, b);
+      float shScale = (1.f + vWeightA * oklab.L) / (1.f + vWeightB * oklab.L);
+      oklab.L = oklab.L * shScale;
+      coder::Rgb linearRgb = oklab.toLinearRGB();
+      targetPlace[0] = std::min(linearRgb.r, 1.f);
+      targetPlace[1] = std::min(linearRgb.g, 1.f);
+      targetPlace[2] = std::min(linearRgb.b, 1.f);
+      targetPlace += 3;
+    }
+  } else {
+    float *targetPlace = inPlace;
+
+    const float vWeightA = this->weightA;
+    const float vWeightB = this->weightB;
+
+    for (uint32_t x = 0; x < width; ++x) {
+      float r = targetPlace[0];
+      float g = targetPlace[1];
+      float b = targetPlace[2];
+      float inLight = 0.2627f * static_cast<float>(r) +  0.6780f * static_cast<float>(g) +  0.0593f * static_cast<float>(b);
+      if (inLight == 0) {
+        continue;
+      }
+      float scale = (1.f + vWeightA * inLight) / (1.f + vWeightB * inLight);
+      targetPlace[0] = std::min(r * scale, 1.f);
+      targetPlace[1] = std::min(g * scale, 1.f);
+      targetPlace[2] = std::min(b * scale, 1.f);
+      targetPlace += 3;
+    }
   }
 }

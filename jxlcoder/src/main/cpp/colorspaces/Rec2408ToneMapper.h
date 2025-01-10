@@ -36,7 +36,7 @@ public:
     Rec2408ToneMapper(const float contentMaxBrightness,
                       const float displayMaxBrightness,
                       const float whitePoint,
-                      const float primaries[3]) {
+                      const float primaries[3], bool perceptual): perceptual(perceptual) {
         std::copy(primaries, primaries + 3, lumaPrimaries);
 
         this->Ld = contentMaxBrightness / whitePoint;
@@ -49,6 +49,7 @@ public:
 private:
     float lumaPrimaries[3] = {0};
     float Ld = 0;
+    bool perceptual;
     float weightA = 0;
     float weightB = 0;
 };

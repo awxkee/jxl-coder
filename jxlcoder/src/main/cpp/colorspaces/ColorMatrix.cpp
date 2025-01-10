@@ -77,8 +77,8 @@ void applyColorMatrix(uint8_t *inPlace, uint32_t stride, uint32_t width, uint32_
     }
 
     float mCoeffs[3] = {coeffs.kr, coeffs.kg, coeffs.kb};
-    if (toneMapper == CurveToneMapper::REC2408) {
-      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs);
+    if (toneMapper == CurveToneMapper::REC2408 || toneMapper == CurveToneMapper::REC2408_PERCEPTUAL) {
+      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs, toneMapper == CurveToneMapper::REC2408_PERCEPTUAL);
       mToneMapper.transferTone(rowVector.data(), width);
     } else if (toneMapper == CurveToneMapper::LOGARITHMIC) {
       LogarithmicToneMapper mToneMapper(mCoeffs);
@@ -185,8 +185,8 @@ void applyColorMatrix16Bit(uint16_t *inPlace,
     }
 
     float mCoeffs[3] = {coeffs.kr, coeffs.kg, coeffs.kb};
-    if (toneMapper == CurveToneMapper::REC2408) {
-      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs);
+    if (toneMapper == CurveToneMapper::REC2408 || toneMapper == CurveToneMapper::REC2408_PERCEPTUAL) {
+      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs, toneMapper == CurveToneMapper::REC2408_PERCEPTUAL);
       mToneMapper.transferTone(rowVector.data(), width);
     } else if (toneMapper == CurveToneMapper::LOGARITHMIC) {
       LogarithmicToneMapper mToneMapper(mCoeffs);

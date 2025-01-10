@@ -206,7 +206,9 @@ class MainActivity : ComponentActivity() {
 
                             var assets =
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
-                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
+//                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
+//                            assets = assets.take(15)
+                            assets = assets.filter { it.contains("cow_image_jxl.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -215,21 +217,62 @@ class MainActivity : ComponentActivity() {
 
                                     val largeImageSize = JxlCoder.getSize(buffer4)
                                     if (largeImageSize != null) {
-                                        val time = measureTimeMillis {
-                                            val srcImage = JxlCoder.decodeSampled(
+                                        val decodingTime = measureTimeMillis {
+                                            val srcImage = JxlCoder.decode(
                                                 buffer4,
-                                                -1,
-                                                largeImageSize.height / 2,
                                                 preferredColorConfig = PreferredColorConfig.HARDWARE,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408,
                                             )
+                                        }
+                                        Log.d("JXLMain", "Decoding time ${decodingTime}ms")
+                                        val time = measureTimeMillis {
+//                                            val srcImage = JxlCoder.decodeSampled(
+//                                                buffer4,
+//                                                largeImageSize.width / 2,
+//                                                largeImageSize.height / 2,
+//                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                                toneMapper = JxlToneMapper.REC2408,
+//                                            )
+                                            val srcImage = JxlCoder.decode(
+                                                buffer4,
+                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+                                                toneMapper = JxlToneMapper.REC2408,
+                                            )
+                                            val fosRec2408 = FileOutputStream(File(cacheDir, File(asset).nameWithoutExtension + ".jpg"))
+                                            fosRec2408.use {
+                                                srcImage.compress(Bitmap.CompressFormat.JPEG, 90, it)
+                                                it.flush()
+                                            }
+//                                            val srcPerceptual = JxlCoder.decodeSampled(
+//                                                buffer4,
+//                                                largeImageSize.width / 2,
+//                                                largeImageSize.height / 2,
+//                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+//                                                toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
+//                                            )
+                                            val srcPerceptual = JxlCoder.decode(
+                                                buffer4,
+                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+                                                toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
+                                            )
+                                            val fosRec2408Perc = FileOutputStream(File(cacheDir, File(asset).nameWithoutExtension + "_perceptual.jpg"))
+                                            fosRec2408Perc.use {
+                                                srcPerceptual.compress(Bitmap.CompressFormat.JPEG, 90, it)
+                                                it.flush()
+                                            }
 //                                            val srcImage = JxlCoder.decode(buffer4,
 //                                                preferredColorConfig = PreferredColorConfig.RGB_565,
 //                                                toneMapper = JxlToneMapper.REC2408)
                                             lifecycleScope.launch {
                                                 imagesArray.add(srcImage)
+                                                imagesArray.add(srcPerceptual)
                                             }
+
                                         }
                                         Log.d("JXLCoder", "Decoding done in ${time}ms")
                                     }

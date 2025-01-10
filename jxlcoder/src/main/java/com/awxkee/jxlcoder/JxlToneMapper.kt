@@ -29,5 +29,5 @@
 package com.awxkee.jxlcoder
 
 enum class JxlToneMapper(val value: Int) {
-    REC2408(1), LOGARITHMIC(2), FILMIC(3), ACES(4)
+    REC2408(1), LOGARITHMIC(2), FILMIC(3), ACES(4), REC2408_PERCEPTUAL(5),
 }
