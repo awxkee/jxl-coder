@@ -1,24 +1,19 @@
 package com.awxkee.jxlcoder
 
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.ColorSpace
 import android.graphics.Matrix
-import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
-import android.hardware.DataSpace
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.Display
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,47 +22,27 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.graphics.scale
 import androidx.lifecycle.lifecycleScope
-import com.awxkee.jxlcoder.animation.AnimatedDrawable
-import com.awxkee.jxlcoder.animation.JxlAnimatedStore
 import com.awxkee.jxlcoder.ui.theme.JXLCoderTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.buffer
-import okio.sink
 import okio.source
-import okio.use
-import java.io.ByteArrayInputStream
-import java.io.File
 import java.io.FileNotFoundException
-import java.io.FileOutputStream
-import java.security.MessageDigest
 import java.util.UUID
 import kotlin.system.measureTimeMillis
+
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalGlideComposeApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-//        val buffer1 = this.assets.open("hdr_cosmos.jxl").source().buffer().readByteArray()
-//        assert(JxlCoder.isJXL(buffer1))
-//        assert(JxlCoder().getSize(buffer1) != null)
-//        val iccCosmosImage = JxlCoder().decode(buffer1)
-//        val buffer2 = this.assets.open("second_jxl.jxl").source().buffer().readByteArray()
-//        assert(JxlCoder.isJXL(buffer2))
-//        assert(JxlCoder().getSize(buffer2) != null)
-//        val buffer3 = this.assets.open("alpha_jxl.jxl").source().buffer().readByteArray()
-//        assert(JxlCoder.isJXL(buffer3))
-//        assert(JxlCoder().getSize(buffer3) != null)
-
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 //            val buffer4 = this.assets.open("happy_india.jxl").source().buffer().readByteArray()
@@ -204,11 +179,19 @@ class MainActivity : ComponentActivity() {
 //                                imagesArray.add(decoded)
 //                            }
 
+                            val display: Display = this@MainActivity.windowManager.defaultDisplay
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                val hdrCapabilities = display.hdrCapabilities
+                                val maxNits = hdrCapabilities.desiredMaxLuminance
+                                val whitePoint = hdrCapabilities.desiredMaxAverageLuminance
+                                Log.d("Max HDR value", "$maxNits whitePoint $whitePoint")
+                            }
+
                             var assets =
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
 //                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
 //                            assets = assets.take(15)
-                            assets = assets.filter { it.contains("cow_image_jxl.jxl") }
+                            assets = assets.filter { it.contains("Lake_HDR.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -218,63 +201,68 @@ class MainActivity : ComponentActivity() {
                                     val largeImageSize = JxlCoder.getSize(buffer4)
                                     if (largeImageSize != null) {
                                         val decodingTime = measureTimeMillis {
-                                            val srcImage = JxlCoder.decode(
-                                                buffer4,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.REC2408,
-                                            )
-                                        }
-                                        Log.d("JXLMain", "Decoding time ${decodingTime}ms")
-                                        val time = measureTimeMillis {
-//                                            val srcImage = JxlCoder.decodeSampled(
+//                                            val srcImage = JxlCoder.decode(
 //                                                buffer4,
-//                                                largeImageSize.width / 2,
-//                                                largeImageSize.height / 2,
 //                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
 //                                                com.awxkee.jxlcoder.ScaleMode.FIT,
 //                                                toneMapper = JxlToneMapper.REC2408,
 //                                            )
-                                            val srcImage = JxlCoder.decode(
+
+                                            // Resizable version
+                                            val srcImage = JxlCoder.decodeSampled(
                                                 buffer4,
+                                                width = largeImageSize.width / 2,
+                                                height = largeImageSize.height / 2,
                                                 preferredColorConfig = PreferredColorConfig.HARDWARE,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408,
+                                                jxlResizeFilter = JxlResizeFilter.LANCZOS
                                             )
-                                            val fosRec2408 = FileOutputStream(File(cacheDir, File(asset).nameWithoutExtension + ".jpg"))
-                                            fosRec2408.use {
-                                                srcImage.compress(Bitmap.CompressFormat.JPEG, 90, it)
-                                                it.flush()
+                                            lifecycleScope.launch {
+                                                imagesArray.add(srcImage)
                                             }
-//                                            val srcPerceptual = JxlCoder.decodeSampled(
-//                                                buffer4,
-//                                                largeImageSize.width / 2,
-//                                                largeImageSize.height / 2,
-//                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-//                                                toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
-//                                            )
-                                            val srcPerceptual = JxlCoder.decode(
+                                            val srcImage1 = JxlCoder.decodeSampled(
                                                 buffer4,
+                                                width = largeImageSize.width / 2,
+                                                height = largeImageSize.height / 2,
                                                 preferredColorConfig = PreferredColorConfig.HARDWARE,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
+                                                jxlResizeFilter = JxlResizeFilter.NEAREST
                                             )
-                                            val fosRec2408Perc = FileOutputStream(File(cacheDir, File(asset).nameWithoutExtension + "_perceptual.jpg"))
-                                            fosRec2408Perc.use {
-                                                srcPerceptual.compress(Bitmap.CompressFormat.JPEG, 90, it)
-                                                it.flush()
-                                            }
-//                                            val srcImage = JxlCoder.decode(buffer4,
-//                                                preferredColorConfig = PreferredColorConfig.RGB_565,
-//                                                toneMapper = JxlToneMapper.REC2408)
                                             lifecycleScope.launch {
-                                                imagesArray.add(srcImage)
-                                                imagesArray.add(srcPerceptual)
+                                                imagesArray.add(srcImage1)
                                             }
-
+                                            val srcImage2 = JxlCoder.decodeSampled(
+                                                buffer4,
+                                                width = largeImageSize.width / 2,
+                                                height = largeImageSize.height / 2,
+                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+                                                toneMapper = JxlToneMapper.FILMIC,
+                                                jxlResizeFilter = JxlResizeFilter.NEAREST
+                                            )
+                                            lifecycleScope.launch {
+                                                imagesArray.add(srcImage2)
+                                            }
+                                            val srcImage3 = JxlCoder.decodeSampled(
+                                                buffer4,
+                                                width = largeImageSize.width / 2,
+                                                height = largeImageSize.height / 2,
+                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                com.awxkee.jxlcoder.ScaleMode.FIT,
+                                                toneMapper = JxlToneMapper.ACES,
+                                                jxlResizeFilter = JxlResizeFilter.NEAREST
+                                            )
+                                            lifecycleScope.launch {
+                                                imagesArray.add(srcImage3)
+                                            }
                                         }
-                                        Log.d("JXLCoder", "Decoding done in ${time}ms")
+                                        Log.d("JXLMain", "Decoding time ${decodingTime}ms")
+                                        launch {
+                                            delay(1500)
+                                            Log.d("JXLMain", "Decoding time ${decodingTime}ms")
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     if (e !is FileNotFoundException) {
@@ -289,25 +277,6 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-//                        AsyncImage(
-//                            model = "https://pdfconverter1984.blob.core.windows.net/simple/wide_gamut.jxl",
-//                            contentDescription = null,
-//                            imageLoader = ImageLoader.Builder(this)
-//                                .components {
-//                                    add(JxlDecoder.Factory())
-//                                }
-//                                .build()
-//                        )
-
-//                        Image(
-//                            bitmap = image.asImageBitmap(),
-////                            painter = rememberDrawablePainter(drawable = drawable),
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .fillMaxHeight(),
-//                            contentScale = ContentScale.FillWidth,
-//                            contentDescription = "ok"
-//                        )
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -322,17 +291,6 @@ class MainActivity : ComponentActivity() {
                                     contentDescription = "ok"
                                 )
                             }
-
-//                            items(drawablesArray.count(), key = {
-//                                return@items UUID.randomUUID().toString()
-//                            }) {
-//                                Image(
-//                                    rememberDrawablePainter(drawable = drawablesArray[it]),
-//                                    modifier = Modifier.fillMaxWidth(),
-//                                    contentScale = ContentScale.FillWidth,
-//                                    contentDescription = "ok"
-//                                )
-//                            }
                         }
                     }
                 }

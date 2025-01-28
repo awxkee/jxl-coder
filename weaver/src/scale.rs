@@ -26,12 +26,135 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 use crate::scaling_function::ScalingFunction;
+use num_traits::FromPrimitive;
 use pic_scale::{
-    ImageSize, ImageStore, LinearApproxScaler, Scaler, Scaling, ScalingU16, ThreadingPolicy,
+    BufferStore, ImageStore, ImageStoreMut, ImageStoreScaling, PicScaleError, ScalingOptions,
 };
+use std::fmt::Debug;
 use std::slice;
+
+#[inline]
+fn map_error_code(error: Result<(), PicScaleError>) -> usize {
+    match error {
+        Ok(_) => 0,
+        Err(err) => err.code(),
+    }
+}
+
+fn pic_scale_scale_generic<
+    'a,
+    T: Sized + Copy + Clone + Default + Debug + FromPrimitive + 'static,
+    const N: usize,
+>(
+    src: *const T,
+    src_stride: usize,
+    width: u32,
+    height: u32,
+    dst: *mut T,
+    dst_stride: usize,
+    new_width: u32,
+    new_height: u32,
+    bit_depth: u32,
+    resizing_filter: ScalingFunction,
+    premultiply_alpha: bool,
+) -> usize
+where
+    ImageStore<'a, T, N>: ImageStoreScaling<'a, T, N>,
+{
+    unsafe {
+        let source_image: std::borrow::Cow<[T]>;
+
+        let required_align_of_t: usize = align_of::<T>();
+        let size_of_t: usize = size_of::<T>();
+
+        let mut j_src_stride = src_stride / size_of_t;
+
+        if src as usize % required_align_of_t != 0 || src_stride % size_of_t != 0 {
+            let mut _src_slice = vec![T::default(); width as usize * height as usize * N];
+            let j = slice::from_raw_parts(src as *const u8, src_stride * height as usize);
+
+            for (dst, src) in _src_slice
+                .chunks_exact_mut(width as usize * N)
+                .zip(j.chunks_exact(src_stride))
+            {
+                for (dst, src) in dst.iter_mut().zip(src.chunks_exact(N)) {
+                    let src_pixel = src.as_ptr() as *const T;
+                    *dst = src_pixel.read_unaligned();
+                }
+            }
+            source_image = std::borrow::Cow::Owned(_src_slice);
+            j_src_stride = width as usize * N;
+        } else {
+            source_image = std::borrow::Cow::Borrowed(slice::from_raw_parts(
+                src,
+                src_stride / size_of_t * height as usize,
+            ));
+        }
+
+        let source_store = ImageStore::<T, N> {
+            buffer: source_image,
+            channels: N,
+            width: width as usize,
+            height: height as usize,
+            stride: j_src_stride,
+            bit_depth: bit_depth as usize,
+        };
+
+        let mut options = ScalingOptions::default();
+        options.premultiply_alpha = premultiply_alpha;
+        options.use_multithreading = true;
+        options.resampling_function = resizing_filter.to_resampling_function();
+
+        if dst as usize % required_align_of_t != 0 && dst_stride % size_of_t != 0 {
+            let mut dst_store = ImageStoreMut::alloc_with_depth(
+                new_width as usize,
+                new_height as usize,
+                bit_depth as usize,
+            );
+
+            let result = source_store.scale(&mut dst_store, options);
+            let result_code = map_error_code(result);
+            if result_code != 0 {
+                return result_code;
+            }
+
+            let dst_slice =
+                slice::from_raw_parts_mut(dst as *mut u8, new_width as usize * dst_stride);
+
+            for (src, dst) in dst_store
+                .as_bytes()
+                .chunks_exact(dst_store.stride())
+                .zip(dst_slice.chunks_exact_mut(dst_stride))
+            {
+                for (src, dst) in src.iter().zip(dst.chunks_exact_mut(N)) {
+                    let dst_ptr = dst.as_mut_ptr() as *mut T;
+                    dst_ptr.write_unaligned(*src);
+                }
+            }
+            0
+        } else {
+            let dst_slice =
+                slice::from_raw_parts_mut(dst, new_height as usize * (dst_stride / size_of_t));
+            let buffer = BufferStore::Borrowed(dst_slice);
+            let mut dst_store = ImageStoreMut::<T, N> {
+                buffer,
+                width: new_width as usize,
+                height: new_height as usize,
+                bit_depth: bit_depth as usize,
+                channels: N,
+                stride: dst_stride / size_of_t,
+            };
+
+            let result = source_store.scale(&mut dst_store, options);
+            let result_code = map_error_code(result);
+            if result_code != 0 {
+                return result_code;
+            }
+            0
+        }
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn weave_scale_u8(
@@ -39,51 +162,26 @@ pub unsafe extern "C" fn weave_scale_u8(
     src_stride: u32,
     width: u32,
     height: u32,
-    dst: *const u8,
+    dst: *mut u8,
     dst_stride: u32,
     new_width: u32,
     new_height: u32,
     scaling_function: ScalingFunction,
     premultiply_alpha: bool,
-) {
-    let mut src_slice = vec![0u8; width as usize * height as usize * 4];
-    let c_source_slice = slice::from_raw_parts(src, src_stride as usize * height as usize);
-
-    for (dst, src) in src_slice
-        .chunks_exact_mut(width as usize * 4)
-        .zip(c_source_slice.chunks_exact(src_stride as usize))
-    {
-        for (dst, src) in dst.iter_mut().zip(src.iter()) {
-            *dst = *src;
-        }
-    }
-
-    let source_store =
-        ImageStore::<u8, 4>::new(src_slice, width as usize, height as usize).unwrap();
-
-    let mut scaler = LinearApproxScaler::new(scaling_function.to_resampling_function());
-
-    scaler.set_threading_policy(ThreadingPolicy::Adaptive);
-    let dst_slice = unsafe {
-        slice::from_raw_parts_mut(dst as *mut u8, dst_stride as usize * new_height as usize)
-    };
-
-    let new_store = scaler
-        .resize_rgba(
-            ImageSize::new(new_width as usize, new_height as usize),
-            source_store,
-            premultiply_alpha,
-        )
-        .unwrap();
-
-    for (dst_chunk, src_chunk) in dst_slice
-        .chunks_mut(dst_stride as usize)
-        .zip(new_store.as_bytes().chunks(new_width as usize * 4))
-    {
-        for (dst, src) in dst_chunk.iter_mut().zip(src_chunk.iter()) {
-            *dst = *src;
-        }
-    }
+) -> usize {
+    pic_scale_scale_generic::<u8, 4>(
+        src,
+        src_stride as usize,
+        width,
+        height,
+        dst,
+        dst_stride as usize,
+        new_width,
+        new_height,
+        8,
+        scaling_function,
+        premultiply_alpha,
+    )
 }
 
 #[no_mangle]
@@ -99,46 +197,18 @@ pub unsafe extern "C" fn weave_scale_u16(
     bit_depth: usize,
     scaling_function: ScalingFunction,
     premultiply_alpha: bool,
-) {
-    let mut _src_slice = vec![0u16; width as usize * height as usize * 4];
-
-    let source_image = slice::from_raw_parts(src as *const u8, src_stride * height as usize);
-
-    for (dst, src) in _src_slice
-        .chunks_exact_mut(width as usize * 4)
-        .zip(source_image.chunks_exact(src_stride))
-    {
-        for (dst, src) in dst.iter_mut().zip(src.chunks_exact(2)) {
-            let pixel = u16::from_ne_bytes([src[0], src[1]]);
-            *dst = pixel;
-        }
-    }
-
-    let _source_store =
-        ImageStore::<u16, 4>::new(_src_slice, width as usize, height as usize).unwrap();
-
-    let mut scaler = Scaler::new(scaling_function.to_resampling_function());
-    scaler.set_threading_policy(ThreadingPolicy::Adaptive);
-
-    let _new_store = scaler
-        .resize_rgba_u16(
-            ImageSize::new(new_width as usize, new_height as usize),
-            _source_store,
-            bit_depth,
-            premultiply_alpha,
-        )
-        .unwrap();
-
-    let dst_slice =
-        unsafe { slice::from_raw_parts_mut(dst as *mut u8, dst_stride * new_height as usize) };
-    for (dst, src) in dst_slice
-        .chunks_exact_mut(dst_stride)
-        .zip(_new_store.as_bytes().chunks_exact(4 * _new_store.width))
-    {
-        for (dst, src) in dst.chunks_exact_mut(2).zip(src.iter()) {
-            let bytes = src.to_ne_bytes();
-            dst[0] = bytes[0];
-            dst[1] = bytes[1];
-        }
-    }
+) -> usize {
+    pic_scale_scale_generic::<u16, 4>(
+        src,
+        src_stride,
+        width,
+        height,
+        dst,
+        dst_stride,
+        new_width,
+        new_height,
+        bit_depth as u32,
+        scaling_function,
+        premultiply_alpha,
+    )
 }
