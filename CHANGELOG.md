@@ -1,1 +1,1 @@
-Updates old CPU features handling
+Maintenance. Update base tone mapper
