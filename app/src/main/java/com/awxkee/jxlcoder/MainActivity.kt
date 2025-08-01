@@ -191,7 +191,7 @@ class MainActivity : ComponentActivity() {
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
 //                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
 //                            assets = assets.take(15)
-                            assets = assets.filter { it.contains("Lake_HDR.jxl") }
+//                            assets = assets.filter { it.contains("Lake_HDR.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -220,42 +220,6 @@ class MainActivity : ComponentActivity() {
                                             )
                                             lifecycleScope.launch {
                                                 imagesArray.add(srcImage)
-                                            }
-                                            val srcImage1 = JxlCoder.decodeSampled(
-                                                buffer4,
-                                                width = largeImageSize.width / 4,
-                                                height = largeImageSize.height / 5,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
-                                                jxlResizeFilter = JxlResizeFilter.NEAREST
-                                            )
-                                            lifecycleScope.launch {
-                                                imagesArray.add(srcImage1)
-                                            }
-                                            val srcImage2 = JxlCoder.decodeSampled(
-                                                buffer4,
-                                                width = largeImageSize.width / 2,
-                                                height = largeImageSize.height / 2,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.FILMIC,
-                                                jxlResizeFilter = JxlResizeFilter.NEAREST
-                                            )
-                                            lifecycleScope.launch {
-                                                imagesArray.add(srcImage2)
-                                            }
-                                            val srcImage3 = JxlCoder.decodeSampled(
-                                                buffer4,
-                                                width = largeImageSize.width / 2,
-                                                height = largeImageSize.height / 2,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.ACES,
-                                                jxlResizeFilter = JxlResizeFilter.NEAREST
-                                            )
-                                            lifecycleScope.launch {
-                                                imagesArray.add(srcImage3)
                                             }
                                         }
                                         Log.d("JXLMain", "Decoding time ${decodingTime}ms")
