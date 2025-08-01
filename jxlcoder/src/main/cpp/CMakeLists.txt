@@ -50,6 +50,8 @@ target_include_directories(cpufeatures PUBLIC ${ANDROID_NDK}/sources/android/cpu
 target_link_libraries(cpufeatures dl)
 list(APPEND EXTRA_LIBS cpufeatures)
 
+target_link_options(jxlcoder PRIVATE "-Wl,-z,max-page-size=16384")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

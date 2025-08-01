@@ -74,6 +74,7 @@ class JxlDecoder(
             ), true
         )
     }
+
     class Factory : Decoder.Factory {
         override fun create(
             result: SourceResult,

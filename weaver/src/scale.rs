@@ -30,6 +30,7 @@ use crate::scaling_function::ScalingFunction;
 use num_traits::FromPrimitive;
 use pic_scale::{
     BufferStore, ImageStore, ImageStoreMut, ImageStoreScaling, PicScaleError, ScalingOptions,
+    ThreadingPolicy,
 };
 use std::fmt::Debug;
 use std::slice;
@@ -103,7 +104,7 @@ where
 
         let mut options = ScalingOptions::default();
         options.premultiply_alpha = premultiply_alpha;
-        options.use_multithreading = true;
+        options.threading_policy = ThreadingPolicy::Single;
         options.resampling_function = resizing_filter.to_resampling_function();
 
         if dst as usize % required_align_of_t != 0 && dst_stride % size_of_t != 0 {

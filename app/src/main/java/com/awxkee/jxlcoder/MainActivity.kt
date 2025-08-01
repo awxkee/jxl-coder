@@ -211,8 +211,8 @@ class MainActivity : ComponentActivity() {
                                             // Resizable version
                                             val srcImage = JxlCoder.decodeSampled(
                                                 buffer4,
-                                                width = largeImageSize.width / 2,
-                                                height = largeImageSize.height / 2,
+                                                width = largeImageSize.width / 3,
+                                                height = largeImageSize.height / 3,
                                                 preferredColorConfig = PreferredColorConfig.HARDWARE,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408,
@@ -223,8 +223,8 @@ class MainActivity : ComponentActivity() {
                                             }
                                             val srcImage1 = JxlCoder.decodeSampled(
                                                 buffer4,
-                                                width = largeImageSize.width / 2,
-                                                height = largeImageSize.height / 2,
+                                                width = largeImageSize.width / 4,
+                                                height = largeImageSize.height / 5,
                                                 preferredColorConfig = PreferredColorConfig.HARDWARE,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408_PERCEPTUAL,
