@@ -191,7 +191,7 @@ class MainActivity : ComponentActivity() {
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
 //                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
 //                            assets = assets.take(15)
-//                            assets = assets.filter { it.contains("Lake_HDR.jxl") }
+//                            assets = assets.filter { it.contains("test_f32_image.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                                                 buffer4,
                                                 width = largeImageSize.width / 3,
                                                 height = largeImageSize.height / 3,
-                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
+                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 toneMapper = JxlToneMapper.REC2408,
                                                 jxlResizeFilter = JxlResizeFilter.LANCZOS
