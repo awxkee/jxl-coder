@@ -7,8 +7,7 @@ concurrency:
 on:
   push:
     branches:
-      - '*'
-      - '!ci_test_*'
+      - 'master'
     tags-ignore:
       - '*'
   pull_request:
@@ -33,7 +32,7 @@ jobs:
         run: echo "GITHUB_REF_NAME=$GITHUB_REF_NAME" >> $GITHUB_ENV
       - name: Compile to maven local
         env:
-          VERSION_NAME: ${{ env.GITHUB_REF_NAME }}
+          VERSION_NAME: 0.0.1
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEY }}

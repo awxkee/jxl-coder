@@ -13,12 +13,7 @@ fi
 rm -rf ./libjxl/deps.sh
 cp deps.sh ./libjxl/deps.sh
 
-if [ -z "$INCLUDE_X86" ]; then
-  ABI_LIST="armeabi-v7a arm64-v8a x86_64"
-  echo "X86 won't be included into a build"
-else
-  ABI_LIST="armeabi-v7a arm64-v8a x86 x86_64"
-fi
+ABI_LIST="armeabi-v7a arm64-v8a x86 x86_64"
 
 cd libjxl
 
@@ -31,28 +26,129 @@ for abi in ${ABI_LIST}; do
   mkdir "build-${abi}"
   cd "build-${abi}"
 
-  cmake .. \
-    -G "Ninja" \
-    -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=${abi} -DCMAKE_ANDROID_ARCH_ABI=${abi} \
-    -DANDROID_NDK=${NDK} \
-    -DSJPEG_ANDROID_NDK_PATH=${NDK} \
-    -DANDROID_PLATFORM=android-21 \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_SHARED_LIBS=ON \
-    -DCMAKE_SYSTEM_NAME=Generic \
-    -DCMAKE_ANDROID_STL_TYPE=c++_shared \
-    -DCMAKE_SYSTEM_NAME=Android \
-    -DCMAKE_THREAD_PREFER_PTHREAD=TRUE \
-    -DTHREADS_PREFER_PTHREAD_FLAG=TRUE \
-    -DJPEGXL_ENABLE_TOOLS=OFF \
-    -DJPEGXL_BUNDLE_LIBPNG=TRUE \
-    -DBUILD_TESTING=OFF \
-    -DJPEGXL_ENABLE_SJPEG=OFF \
-    -DJPEGXL_ENABLE_MANPAGES=FALSE \
-    -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=FALSE \
-    -DJPEGXL_ENABLE_EXAMPLES=OFF \
-    -DANDROID=TRUE
+  echo $ARCH_OPTIONS
+
+  if [ "$abi" == "arm64-v8a" ]; then
+    cmake .. \
+      -G "Ninja" \
+      -Wno-dev -Wno-policy \
+      -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=${abi} -DCMAKE_ANDROID_ARCH_ABI=${abi} \
+      -DANDROID_NDK=${NDK} \
+      -DSJPEG_ANDROID_NDK_PATH=${NDK} \
+      -DANDROID_PLATFORM=android-21 \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_SYSTEM_NAME=Generic \
+      -DCMAKE_ANDROID_STL_TYPE=c++_shared \
+      -DCMAKE_SYSTEM_NAME=Android \
+      -DCMAKE_THREAD_PREFER_PTHREAD=TRUE \
+      -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,max-page-size=16384" \
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+      -DTHREADS_PREFER_PTHREAD_FLAG=TRUE \
+      -DJPEGXL_ENABLE_TOOLS=OFF \
+      -DBUILD_TESTING=OFF \
+      -DJPEGXL_ENABLE_SKCMS=true \
+      -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
+      -DJPEGXL_ENABLE_JPEGLI=OFF \
+      -DJPEGXL_ENABLE_SJPEG=OFF \
+      -DJPEGXL_ENABLE_MANPAGES=FALSE \
+      -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=FALSE \
+      -DENABLE_SKCMS_DEFAULT=FALSE \
+      -DJPEGXL_ENABLE_EXAMPLES=OFF \
+      -DJPEGXL_ENABLE_HWY_SVE=false \
+      -DJPEGXL_ENABLE_HWY_SVE2=false \
+      -DJPEGXL_ENABLE_HWY_SVE_256=false \
+      -DJPEGXL_ENABLE_HWY_SVE2_128=false \
+      -DJPEGXL_ENABLE_HWY_NEON_BF16=false \
+      -DJPEGXL_ENABLE_HWY_NEON_WITHOUT_AES=true \
+      -DJPEGXL_ENABLE_HWY_NEON=false \
+      -DJPEGXL_ENABLE_HWY_SCALAR=false \
+      -DJPEGXL_ENABLE_HWY_EMU128=false \
+      -DJPEGXL_ENABLE_HWY_AVX3=false \
+      -DJPEGXL_ENABLE_HWY_AVX3_DL=false \
+      -DJPEGXL_ENABLE_HWY_SSE2=false \
+      -DJPEGXL_ENABLE_HWY_SSE4=false \
+      -DJPEGXL_ENABLE_HWY_SSSE3=false \
+      -DJPEGXL_ENABLE_HWY_AVX2=false \
+      -DJPEGXL_BUNDLE_LIBPNG=false \
+      -DANDROID=TRUE
+  elif [[ "$abi" == "x86_64" || "$abi" == "x86" ]]; then
+    cmake .. \
+      -G "Ninja" \
+      -Wno-dev -Wno-policy \
+      -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=${abi} -DCMAKE_ANDROID_ARCH_ABI=${abi} \
+      -DANDROID_NDK=${NDK} \
+      -DSJPEG_ANDROID_NDK_PATH=${NDK} \
+      -DANDROID_PLATFORM=android-21 \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_SYSTEM_NAME=Generic \
+      -DCMAKE_ANDROID_STL_TYPE=c++_shared \
+      -DCMAKE_SYSTEM_NAME=Android \
+      -DCMAKE_THREAD_PREFER_PTHREAD=TRUE \
+      -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,max-page-size=16384" \
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+      -DTHREADS_PREFER_PTHREAD_FLAG=TRUE \
+      -DJPEGXL_ENABLE_TOOLS=OFF \
+      -DBUILD_TESTING=OFF \
+      -DJPEGXL_ENABLE_SKCMS=true \
+      -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
+      -DJPEGXL_ENABLE_JPEGLI=OFF \
+      -DJPEGXL_ENABLE_SJPEG=OFF \
+      -DJPEGXL_ENABLE_MANPAGES=FALSE \
+      -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=FALSE \
+      -DENABLE_SKCMS_DEFAULT=FALSE \
+      -DJPEGXL_ENABLE_EXAMPLES=OFF \
+      -DJPEGXL_ENABLE_HWY_SCALAR=false \
+      -DJPEGXL_ENABLE_HWY_EMU128=false \
+      -DJPEGXL_ENABLE_HWY_AVX3=false \
+      -DJPEGXL_ENABLE_HWY_AVX3_DL=false \
+      -DJPEGXL_ENABLE_HWY_SSE2=true \
+      -DJPEGXL_ENABLE_HWY_SSE4=false \
+      -DJPEGXL_ENABLE_HWY_SSSE3=false \
+      -DJPEGXL_ENABLE_HWY_AVX2=false \
+      -DJPEGXL_BUNDLE_LIBPNG=false \
+      -DANDROID=TRUE
+  else
+    cmake .. \
+      -G "Ninja" \
+      -Wno-dev -Wno-policy \
+      -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=${abi} -DCMAKE_ANDROID_ARCH_ABI=${abi} \
+      -DANDROID_NDK=${NDK} \
+      -DSJPEG_ANDROID_NDK_PATH=${NDK} \
+      -DANDROID_PLATFORM=android-21 \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_SYSTEM_NAME=Generic \
+      -DCMAKE_ANDROID_STL_TYPE=c++_shared \
+      -DCMAKE_SYSTEM_NAME=Android \
+      -DCMAKE_THREAD_PREFER_PTHREAD=TRUE \
+      -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-z,max-page-size=16384" \
+      -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+      -DTHREADS_PREFER_PTHREAD_FLAG=TRUE \
+      -DJPEGXL_ENABLE_TOOLS=OFF \
+      -DBUILD_TESTING=OFF \
+      -DJPEGXL_ENABLE_SKCMS=true \
+      -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=OFF \
+      -DJPEGXL_ENABLE_JPEGLI=OFF \
+      -DJPEGXL_ENABLE_SJPEG=OFF \
+      -DJPEGXL_ENABLE_MANPAGES=FALSE \
+      -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=FALSE \
+      -DENABLE_SKCMS_DEFAULT=FALSE \
+      -DJPEGXL_ENABLE_EXAMPLES=OFF \
+      -DJPEGXL_ENABLE_HWY_SCALAR=false \
+      -DJPEGXL_ENABLE_HWY_EMU128=true \
+      -DJPEGXL_BUNDLE_LIBPNG=false \
+      -DANDROID=TRUE
+  fi
+
   ninja
+  $NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip lib/libjxl_threads.so
+  $NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip lib/libjxl_cms.so
+  $NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip lib/libjxl.so
+  $NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip third_party/brotli/libbrotlicommon.so
+  $NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip third_party/brotli/libbrotlidec.so
+  $NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-strip third_party/brotli/libbrotlienc.so
   cd ..
 done
 
