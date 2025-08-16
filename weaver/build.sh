@@ -3,7 +3,7 @@ rustup default nightly
 
 rustup +nightly target add x86_64-linux-android aarch64-linux-android armv7-linux-androideabi i686-linux-android
 
-RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 -C target-feature=+neon -C opt-level=3 -C strip=symbols" cargo +nightly build -Z build-std=std,panic_abort --target aarch64-linux-android --release --manifest-path Cargo.toml
+RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 -C target-feature=+neon -C opt-level=3 -C strip=symbols" cargo +nightly build -Z build-std=std,panic_abort --target aarch64-linux-android --features arm_set --release --manifest-path Cargo.toml
 
 RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 -C opt-level=z -C strip=symbols" cargo +nightly build -Z build-std=std,panic_abort --target x86_64-linux-android --release --manifest-path Cargo.toml
 
