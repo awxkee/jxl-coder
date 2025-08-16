@@ -353,7 +353,6 @@ version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94a2d35741e1560fe6adfc6b1191c7e671413703719b1608d52cd2efbb5b2f65"
 dependencies = [
- "colorutils-rs",
  "novtb",
  "num-traits",
  "pxfm",
