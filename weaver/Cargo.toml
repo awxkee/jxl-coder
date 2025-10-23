@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 colorutils-rs = "0.7.5"
 num-traits = "0.2.19"
-pic-scale = { version = "0.6.12", default-features = false}
+pic-scale = { version = "0.6.13", default-features = false}
 
 [features]
 arm_set = ["pic-scale/nightly_i8mm", "pic-scale/rdm"]
