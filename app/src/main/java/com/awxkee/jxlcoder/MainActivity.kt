@@ -107,91 +107,12 @@ class MainActivity : ComponentActivity() {
                         lifecycleScope.launch(Dispatchers.IO) {
                             val buffer5 =
                                 assets.open("test_image_1.jpg").source().buffer().readByteArray()
-                            val bitmap = BitmapFactory.decodeByteArray(buffer5, 0, buffer5.size)
-                                .scale(1305, 1295)
-//                            val encoder = JxlAnimatedEncoder(
-//                                bitmap.width,
-//                                bitmap.height,
-//                                dataPixelFormat = JxlEncodingDataPixelFormat.BINARY_16
-//                            )
-//                            repeat(4) {
-//                                encoder.addFrame(bitmap, 24)
-//                            }
-//                            val encoded = encoder.encode()
-
-//                            val animated = JxlCoder.decode(encoded)
-//                            lifecycleScope.launch {
-//                                imagesArray.add(animated)
-//                            }
-//
-//                            fun simpleRoundTrip(image: String) {
-//                                val bufferPng = assets.open(image).source().buffer().readByteArray()
-//                                val bitmap = BitmapFactory.decodeByteArray(bufferPng, 0, bufferPng.size)
-//                                    .copy(Bitmap.Config.RGBA_1010102,true)
-//                                lifecycleScope.launch {
-//                                    imagesArray.add(bitmap)
-//                                }
-//                                val jxlBuffer = JxlCoder.encode(bitmap,
-//                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
-//                                    compressionOption = JxlCompressionOption.LOSSY,
-//                                    effort = JxlEffort.LIGHTNING,
-//                                    decodingSpeed = JxlDecodingSpeed.SLOW)
-////                                val decodedEncoded = JxlCoder.decode(jxlBuffer,
-////                                    preferredColorConfig = PreferredColorConfig.RGBA_1010102)
-//                                val decodedEncoded = JxlAnimatedImage(jxlBuffer).getFrame(0, bitmap.width /2 , bitmap.height / 2)
-//                                lifecycleScope.launch {
-//                                    imagesArray.add(decodedEncoded)
-//                                }
-//                                val fos = FileOutputStream(File(cacheDir, image))
-//                                fos.sink().buffer().use {
-//                                    it.writeAll(ByteArrayInputStream(jxlBuffer).source().buffer())
-//                                    it.flush()
-//                                }
-//                            }
-//
-//                            simpleRoundTrip("screenshot_discord_5.png")
-//                            simpleRoundTrip("screen_discord.png")
-//                            simpleRoundTrip("screen_discord_2.png")
-//
-//                            val buffer5 = assets.open("elephant.png").source().buffer().readByteArray()
-//                            val jxlBufferPNG = JxlCoder.Convenience.apng2JXL(buffer5, quality = 55)
-//                            val buffer = assets.open("abstract_alpha.png").source().buffer().readByteArray()
-//                            val bitmap = BitmapFactory.decodeByteArray(buffer, 0, buffer.size)
-//                                .copy(Bitmap.Config.ARGB_8888, true)
-//                            lifecycleScope.launch {
-//                                drawables.add(BitmapDrawable(resources, bitmap))
-//                            }
-//                            val space = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-//                            val encoded =
-//                                JxlCoder.encode(
-//                                    space,
-//                                    channelsConfiguration = JxlChannelsConfiguration.RGB,
-//                                    effort = JxlEffort.LIGHTNING,
-//                                    compressionOption = JxlCompressionOption.LOSSLESS,
-//                                    quality = 100,
-//                                )
-//                            val decoded = JxlCoder.decodeSampled(
-//                                encoded,
-//                                preferredColorConfig = PreferredColorConfig.HARDWARE, width = 1305,
-//                                height = 1295
-//                            )
-//                            lifecycleScope.launch {
-//                                imagesArray.add(decoded)
-//                            }
-
-                            val display: Display = this@MainActivity.windowManager.defaultDisplay
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                                val hdrCapabilities = display.hdrCapabilities
-                                val maxNits = hdrCapabilities.desiredMaxLuminance
-                                val whitePoint = hdrCapabilities.desiredMaxAverageLuminance
-                                Log.d("Max HDR value", "$maxNits whitePoint $whitePoint")
-                            }
 
                             var assets =
                                 (this@MainActivity.assets.list("") ?: return@launch).toList()
 //                            assets = assets.filter { it.contains("20181110_213419__MMC1561-HDR.jxl") }
 //                            assets = assets.take(15)
-//                            assets = assets.filter { it.contains("test_f32_image.jxl") }
+//                            assets = assets.filter { it.contains("test_img_q80.jxl") }
                             for (asset in assets) {
                                 try {
                                     val buffer4 =
@@ -201,13 +122,6 @@ class MainActivity : ComponentActivity() {
                                     val largeImageSize = JxlCoder.getSize(buffer4)
                                     if (largeImageSize != null) {
                                         val decodingTime = measureTimeMillis {
-//                                            val srcImage = JxlCoder.decode(
-//                                                buffer4,
-//                                                preferredColorConfig = PreferredColorConfig.HARDWARE,
-//                                                com.awxkee.jxlcoder.ScaleMode.FIT,
-//                                                toneMapper = JxlToneMapper.REC2408,
-//                                            )
-
                                             // Resizable version
                                             val srcImage = JxlCoder.decodeSampled(
                                                 buffer4,
