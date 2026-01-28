@@ -44,14 +44,12 @@
 jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
                                jint scaledHeight,
                                jint javaPreferredColorConfig,
-                               jint javaScaleMode, jint javaResizeFilter, jint javaToneMapper) {
+                               jint javaScaleMode, jint javaResizeFilter) {
   ScaleMode scaleMode;
   PreferredColorConfig preferredColorConfig;
   XSampler sampler;
-  CurveToneMapper toneMapper;
   if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                javaScaleMode, &scaleMode, javaResizeFilter, &sampler,
-                                javaToneMapper, &toneMapper)) {
+                                javaScaleMode, &scaleMode, javaResizeFilter, &sampler)) {
     return nullptr;
   }
 
@@ -136,6 +134,8 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     }
   }
 
+  bool toneMap = true;
+
   if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG ||
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI ||
@@ -148,19 +148,19 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
       transferFunction = TransferFunction::Hlg;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
-      toneMapper = TONE_SKIP;
+      toneMap = false;
       transferFunction = TransferFunction::Smpte428;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
       transferFunction = TransferFunction::Pq;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
-      toneMapper = TONE_SKIP;
+      toneMap = false;
       // Make real gamma
       transferFunction = TransferFunction::Gamma2p2;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
-      toneMapper = TONE_SKIP;
+      toneMap = false;
       transferFunction = TransferFunction::Itur709;
     } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
-      toneMapper = TONE_SKIP;
+      toneMap = false;
       transferFunction = TransferFunction::Srgb;
     }
 
@@ -210,7 +210,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
                             matrix,
                             transferFunction,
                             TransferFunction::Srgb,
-                            toneMapper,
+                            toneMap,
                             coeffs,
                             intensityTarget);
     } else {
@@ -221,7 +221,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
                        matrix,
                        transferFunction,
                        TransferFunction::Srgb,
-                       toneMapper,
+                       toneMap,
                        coeffs, intensityTarget);
     }
   }
@@ -307,8 +307,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                                                     jint scaledHeight,
                                                     jint javaPreferredColorConfig,
                                                     jint javaScaleMode,
-                                                    jint resizeSampler,
-                                                    jint javaToneMapper) {
+                                                    jint resizeSampler) {
   try {
     auto totalLength = env->GetArrayLength(byte_array);
     std::vector<uint8_t> srcBuffer(totalLength);
@@ -316,7 +315,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
                             reinterpret_cast<jbyte *>(srcBuffer.data()));
     return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
                                   javaPreferredColorConfig, javaScaleMode,
-                                  resizeSampler, javaToneMapper);
+                                  resizeSampler);
   } catch (std::bad_alloc &err) {
     std::string errorString = "Not enough memory to decode this image";
     throwException(env, errorString);
@@ -336,8 +335,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
                                                               jint scaledHeight,
                                                               jint preferredColorConfig,
                                                               jint scaleMode,
-                                                              jint resizeSampler,
-                                                              jint javaToneMapper) {
+                                                              jint resizeSampler) {
   try {
     auto bufferAddress = reinterpret_cast<uint8_t *>(env->GetDirectBufferAddress(byteBuffer));
     int length = (int) env->GetDirectBufferCapacity(byteBuffer);
@@ -350,7 +348,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
     std::copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
     return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
                                   preferredColorConfig, scaleMode,
-                                  resizeSampler, javaToneMapper);
+                                  resizeSampler);
   } catch (std::bad_alloc &err) {
     std::string errorString = "Not enough memory to decode this image";
     throwException(env, errorString);

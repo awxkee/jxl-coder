@@ -47,15 +47,12 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject
                                                             jobject byteBuffer,
                                                             jint javaPreferredColorConfig,
                                                             jint javaScaleMode,
-                                                            jint javaJxlResizeSampler,
-                                                            jint javaToneMapper) {
+                                                            jint javaJxlResizeSampler) {
   ScaleMode scaleMode;
   PreferredColorConfig preferredColorConfig;
   XSampler sampler;
-  CurveToneMapper toneMapper;
   if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler,
-                                javaToneMapper, &toneMapper)) {
+                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler)) {
     return 0;
   }
 
@@ -78,7 +75,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject
     copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
     auto decoder = new JxlAnimatedDecoder(srcBuffer);
     auto coordinator = new JxlAnimatedDecoderCoordinator(
-        decoder, scaleMode, preferredColorConfig, sampler, toneMapper
+        decoder, scaleMode, preferredColorConfig, sampler
     );
     return reinterpret_cast<jlong >(coordinator);
   } catch (AnimatedDecoderError &err) {
@@ -98,15 +95,12 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
                                                                      jbyteArray byteArray,
                                                                      jint javaPreferredColorConfig,
                                                                      jint javaScaleMode,
-                                                                     jint javaJxlResizeSampler,
-                                                                     jint javaToneMapper) {
+                                                                     jint javaJxlResizeSampler) {
   ScaleMode scaleMode;
   PreferredColorConfig preferredColorConfig;
   XSampler sampler;
-  CurveToneMapper toneMapper;
   if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler,
-                                javaToneMapper, &toneMapper)) {
+                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler)) {
     return 0;
   }
 
@@ -117,7 +111,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
                             reinterpret_cast<jbyte *>(srcBuffer.data()));
     auto decoder = new JxlAnimatedDecoder(srcBuffer);
     auto coordinator = new JxlAnimatedDecoderCoordinator(
-        decoder, scaleMode, preferredColorConfig, sampler, toneMapper
+        decoder, scaleMode, preferredColorConfig, sampler
     );
     return reinterpret_cast<jlong >(coordinator);
   } catch (AnimatedDecoderError &err) {
@@ -192,26 +186,26 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
         && colorEncoding.color_space == JXL_COLOR_SPACE_RGB) {
       Eigen::Matrix3f sourceProfile;
       TransferFunction transferFunction = TransferFunction::Srgb;
-      CurveToneMapper toneMapper = CurveToneMapper::TONE_SKIP;
+      bool tonemap = true;
       bool useChromaticAdaptation = false;
       float gamma = 2.2f;
       if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
         transferFunction = TransferFunction::Hlg;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         transferFunction = TransferFunction::Smpte428;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
         transferFunction = TransferFunction::Pq;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         // Make real gamma
         transferFunction = TransferFunction::Gamma2p2;
         gamma = 1.f / colorEncoding.gamma;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         transferFunction = TransferFunction::Itur709;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         transferFunction = TransferFunction::Srgb;
       }
 
@@ -263,7 +257,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                        matrix,
                        transferFunction,
                        TransferFunction::Srgb,
-                       toneMapper,
+                       tonemap,
                        coeffs, 255.);
     }
 

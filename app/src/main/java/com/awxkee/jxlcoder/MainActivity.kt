@@ -129,7 +129,6 @@ class MainActivity : ComponentActivity() {
                                                 height = largeImageSize.height / 3,
                                                 preferredColorConfig = PreferredColorConfig.RGBA_8888,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
-                                                toneMapper = JxlToneMapper.REC2408,
                                                 jxlResizeFilter = JxlResizeFilter.LANCZOS
                                             )
                                             lifecycleScope.launch {

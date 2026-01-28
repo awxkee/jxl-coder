@@ -32,12 +32,11 @@
 #include <vector>
 #include <cstdint>
 #include "Trc.h"
-#include "ToneMapper.h"
 #include "ITUR.h"
 
 void applyColorMatrix(uint8_t *inPlace, uint32_t stride, uint32_t width, uint32_t height,
                       const float *matrix, TransferFunction intoLinear, TransferFunction intoGamma,
-                      CurveToneMapper toneMapper, ITURColorCoefficients coeffs, float contentBrightness);
+                      bool tonemap, ITURColorCoefficients coeffs, float contentBrightness);
 
 void applyColorMatrix16Bit(uint16_t *inPlace,
                            uint32_t stride,
@@ -47,7 +46,7 @@ void applyColorMatrix16Bit(uint16_t *inPlace,
                            const float *matrix,
                            TransferFunction intoLinear,
                            TransferFunction intoGamma,
-                           CurveToneMapper toneMapper,
+                           bool tonemap,
                            ITURColorCoefficients coeffs,
                            float contentBrightness);
 

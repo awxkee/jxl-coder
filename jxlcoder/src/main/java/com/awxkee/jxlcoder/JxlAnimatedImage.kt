@@ -50,7 +50,6 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
-        javaToneMapper: Int,
     ): Long
 
     private external fun createCoordinatorByteArray(
@@ -58,8 +57,7 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
-        javaToneMapper: Int,
-    ): Long
+        ): Long
 
     val scaleMode: ScaleMode
 
@@ -69,7 +67,6 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.BILINEAR,
-        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
         if (Build.VERSION.SDK_INT >= 21) {
             System.loadLibrary("jxlcoder")
@@ -80,7 +77,6 @@ class JxlAnimatedImage : Closeable {
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
-            toneMapper.value,
         )
     }
 
@@ -90,7 +86,6 @@ class JxlAnimatedImage : Closeable {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.BILINEAR,
-        toneMapper: JxlToneMapper = JxlToneMapper.LOGARITHMIC,
     ) {
         if (Build.VERSION.SDK_INT >= 21) {
             System.loadLibrary("jxlcoder")
@@ -101,7 +96,6 @@ class JxlAnimatedImage : Closeable {
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
-            toneMapper.value,
         )
     }
 
