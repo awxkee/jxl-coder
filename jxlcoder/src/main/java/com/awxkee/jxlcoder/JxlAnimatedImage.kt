@@ -64,6 +64,7 @@ class JxlAnimatedImage : Closeable {
     val scaleMode: ScaleMode
 
     @Keep
+    @JvmOverloads
     public constructor(
         byteBuffer: ByteBuffer,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
@@ -85,6 +86,7 @@ class JxlAnimatedImage : Closeable {
     }
 
     @Keep
+    @JvmOverloads
     public constructor(
         byteArray: ByteArray,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
@@ -145,6 +147,7 @@ class JxlAnimatedImage : Closeable {
     }
 
     @Keep
+    @JvmOverloads
     public fun getFrame(frame: Int, scaleWidth: Int = 0, scaleHeight: Int = 0): Bitmap {
         assertOpen()
         return getFrameImpl(coordinator, frame, scaleWidth, scaleHeight)

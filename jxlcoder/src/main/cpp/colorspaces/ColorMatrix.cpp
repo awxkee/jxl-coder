@@ -35,6 +35,53 @@
 #include "FilmicToneMapper.h"
 #include "AcesToneMapper.h"
 
+#if HAVE_NEON
+#include <arm_neon.h>
+#endif
+
+static inline void applyMatrix3x3(float *data, uint32_t pixelCount,
+                                   float c0, float c1, float c2,
+                                   float c3, float c4, float c5,
+                                   float c6, float c7, float c8) {
+#if HAVE_NEON
+  uint32_t x = 0;
+  float32x4_t vc0 = vdupq_n_f32(c0), vc1 = vdupq_n_f32(c1), vc2 = vdupq_n_f32(c2);
+  float32x4_t vc3 = vdupq_n_f32(c3), vc4 = vdupq_n_f32(c4), vc5 = vdupq_n_f32(c5);
+  float32x4_t vc6 = vdupq_n_f32(c6), vc7 = vdupq_n_f32(c7), vc8 = vdupq_n_f32(c8);
+
+  for (; x + 4 <= pixelCount; x += 4) {
+    float32x4x3_t rgb = vld3q_f32(data);
+    float32x4_t r = rgb.val[0];
+    float32x4_t g = rgb.val[1];
+    float32x4_t b = rgb.val[2];
+
+    float32x4_t newR = vfmaq_f32(vfmaq_f32(vmulq_f32(r, vc0), g, vc1), b, vc2);
+    float32x4_t newG = vfmaq_f32(vfmaq_f32(vmulq_f32(r, vc3), g, vc4), b, vc5);
+    float32x4_t newB = vfmaq_f32(vfmaq_f32(vmulq_f32(r, vc6), g, vc7), b, vc8);
+
+    float32x4x3_t out = {{newR, newG, newB}};
+    vst3q_f32(data, out);
+    data += 12;
+  }
+  // Scalar tail
+  for (; x < pixelCount; ++x) {
+    float r = data[0], g = data[1], b = data[2];
+    data[0] = r * c0 + g * c1 + b * c2;
+    data[1] = r * c3 + g * c4 + b * c5;
+    data[2] = r * c6 + g * c7 + b * c8;
+    data += 3;
+  }
+#else
+  for (uint32_t x = 0; x < pixelCount; ++x) {
+    float r = data[0], g = data[1], b = data[2];
+    data[0] = r * c0 + g * c1 + b * c2;
+    data[1] = r * c3 + g * c4 + b * c5;
+    data[2] = r * c6 + g * c7 + b * c8;
+    data += 3;
+  }
+#endif
+}
+
 void applyColorMatrix(uint8_t *inPlace, uint32_t stride, uint32_t width, uint32_t height,
                       const float *matrix, TransferFunction intoLinear, TransferFunction intoGamma,
                       CurveToneMapper toneMapper, ITURColorCoefficients coeffs,
@@ -91,25 +138,10 @@ void applyColorMatrix(uint8_t *inPlace, uint32_t stride, uint32_t width, uint32_
       acesToneMapper.transferTone(rowVector.data(), width);
     }
 
+    applyMatrix3x3(rowVector.data(), width, c0, c1, c2, c3, c4, c5, c6, c7, c8);
+
     float *iter = rowVector.data();
-
-    for (uint32_t x = 0; x < width; ++x) {
-      float r = iter[0];
-      float g = iter[1];
-      float b = iter[2];
-
-      float newR = r * c0 + g * c1 + b * c2;
-      float newG = r * c3 + g * c4 + b * c5;
-      float newB = r * c6 + g * c7 + b * c8;
-
-      iter[0] = newR;
-      iter[1] = newG;
-      iter[2] = newB;
-      iter += 3;
-    }
-
     sourceRow = inPlace + y * stride;
-    iter = rowVector.data();
 
     for (uint32_t x = 0; x < width; ++x) {
       uint16_t scaledValue0 = std::min(
@@ -199,25 +231,10 @@ void applyColorMatrix16Bit(uint16_t *inPlace,
       acesToneMapper.transferTone(rowVector.data(), width);
     }
 
+    applyMatrix3x3(rowVector.data(), width, c0, c1, c2, c3, c4, c5, c6, c7, c8);
+
     float *iter = rowVector.data();
-
-    for (uint32_t x = 0; x < width; ++x) {
-      float r = iter[0];
-      float g = iter[1];
-      float b = iter[2];
-
-      float newR = r * c0 + g * c1 + b * c2;
-      float newG = r * c3 + g * c4 + b * c5;
-      float newB = r * c6 + g * c7 + b * c8;
-
-      iter[0] = newR;
-      iter[1] = newG;
-      iter[2] = newB;
-      iter += 3;
-    }
-
     sourceRow = reinterpret_cast<uint16_t *>(reinterpret_cast<uint8_t * >(inPlace) + y * stride);
-    iter = rowVector.data();
 
     for (uint32_t x = 0; x < width; ++x) {
       uint16_t scaledValue0 = std::min(

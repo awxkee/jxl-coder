@@ -47,6 +47,8 @@ object JxlCoder {
     /**
      * @author Radzivon Bartoshyk
      */
+    @JvmOverloads
+    @JvmStatic
     fun decode(
         byteArray: ByteArray,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
@@ -67,6 +69,8 @@ object JxlCoder {
     /**
      * @author Radzivon Bartoshyk
      */
+    @JvmOverloads
+    @JvmStatic
     fun decodeSampled(
         byteArray: ByteArray,
         width: Int,
@@ -90,6 +94,8 @@ object JxlCoder {
     /**
      * @author Radzivon Bartoshyk
      */
+    @JvmOverloads
+    @JvmStatic
     fun decodeSampled(
         byteArray: ByteBuffer,
         width: Int,
@@ -110,6 +116,8 @@ object JxlCoder {
         )
     }
 
+    @JvmOverloads
+    @JvmStatic
     fun encode(
         bitmap: Bitmap,
         channelsConfiguration: JxlChannelsConfiguration = JxlChannelsConfiguration.RGB,
@@ -149,6 +157,8 @@ object JxlCoder {
          * @param gifData - byte array contains the GIF data
          * @return Byte array contains converted JPEG XL
          */
+        @JvmOverloads
+        @JvmStatic
         fun gif2JXL(
             gifData: ByteArray,
             @IntRange(from = 0, to = 100) quality: Int = 0,
@@ -162,6 +172,8 @@ object JxlCoder {
          * @param apngData - byte array contains the APNG data
          * @return Byte array contains converted JPEG XL
          */
+        @JvmOverloads
+        @JvmStatic
         fun apng2JXL(
             apngData: ByteArray,
             @IntRange(from = 0, to = 100) quality: Int = 0,
@@ -176,6 +188,7 @@ object JxlCoder {
          * @param fromJpegData - JPEG data that will be used for JPEG XL lossless construction
          * @return Byte array that contains constructed JPEG XL
          */
+        @JvmStatic
         fun construct(fromJpegData: ByteArray): ByteArray {
             return constructImpl(fromJpegData)
         }
@@ -185,6 +198,7 @@ object JxlCoder {
          * @param fromJPEGXLData - JPEG XL data that will be used for JPEG lossless construction
          * @return Byte array that contains re-constructed JPEG
          */
+        @JvmStatic
         fun reconstructJPEG(fromJPEGXLData: ByteArray): ByteArray {
             return reconstructImpl(fromJPEGXLData)
         }
@@ -194,6 +208,7 @@ object JxlCoder {
     /**
      * @return NULL if byte array is not valid JPEG XL
      */
+    @JvmStatic
     fun getSize(byteArray: ByteArray): Size? {
         return getSizeImpl(byteArray)
     }
@@ -265,6 +280,7 @@ object JxlCoder {
         0x0A
     )
 
+    @JvmStatic
     fun isJXL(byteArray: ByteArray): Boolean {
         if (byteArray.size < MAGIC_2.size) {
             return false

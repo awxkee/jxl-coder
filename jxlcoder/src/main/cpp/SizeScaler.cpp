@@ -29,6 +29,7 @@
 #include "SizeScaler.h"
 #include <vector>
 #include <string>
+#include <cstring>
 #include <jni.h>
 #include "JniExceptions.h"
 #include "XScaler.h"
@@ -173,26 +174,12 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
       uint8_t *dstData = croppedImage.data();
       auto srcData = reinterpret_cast<const uint8_t *>(newImageData.data());
 
+      int pixelSize = useFloats ? (4 * sizeof(uint16_t)) : (4 * sizeof(uint8_t));
+      int rowBytes = croppedWidth * pixelSize;
       for (int y = top, yc = 0; y < bottom; ++y, ++yc) {
-        int x = 0;
-        int xc = 0;
-        auto srcRow = reinterpret_cast<const uint8_t *>(srcData + srcStride * y);
-        auto dstRow = reinterpret_cast<uint8_t *>(dstData + newStride * yc);
-        for (x = left, xc = 0; x < right; ++x, ++xc) {
-          if (useFloats) {
-            auto dst = reinterpret_cast<uint16_t *>(dstRow + xc * 4 * sizeof(uint16_t));
-            auto src = reinterpret_cast<const uint16_t *>(srcRow +
-                x * 4 * sizeof(uint16_t));
-            dst[0] = src[0];
-            dst[1] = src[1];
-            dst[2] = src[2];
-            dst[3] = src[3];
-          } else {
-            auto dst = reinterpret_cast<uint32_t *>(dstRow);
-            auto src = reinterpret_cast<const uint32_t *>(srcRow);
-            dst[xc] = src[x];
-          }
-        }
+        auto srcRow = srcData + srcStride * y + left * pixelSize;
+        auto dstRow = dstData + newStride * yc;
+        memcpy(dstRow, srcRow, rowBytes);
       }
 
       imageWidth = croppedWidth;

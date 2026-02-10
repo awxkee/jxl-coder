@@ -41,7 +41,8 @@
 #include "hwy/highway.h"
 #include "imagebit/CopyUnalignedRGBA.h"
 
-jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
+jobject decodeSampledImageImpl(JNIEnv *env, const uint8_t *imageData, size_t imageDataLength,
+                               jint scaledWidth,
                                jint scaledHeight,
                                jint javaPreferredColorConfig,
                                jint javaScaleMode, jint javaResizeFilter, jint javaToneMapper) {
@@ -68,14 +69,39 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   bool hasAlphaInOrigin = true;
   float intensityTarget = 255.f;
   try {
-    if (!DecodeJpegXlOneShot(reinterpret_cast<uint8_t *>(imageData.data()), imageData.size(),
-                             &rgbaPixels,
-                             &xsize, &ysize,
-                             &iccProfile, &useBitmapFloats, &bitDepth, &alphaPremultiplied,
-                             osVersion >= 26,
-                             &jxlOrientation,
-                             &preferEncoding, &colorEncoding,
-                             &hasAlphaInOrigin, &intensityTarget)) {
+    bool useProgressiveDC = false;
+    if (scaledWidth > 0 && scaledHeight > 0) {
+      size_t origW = 0, origH = 0;
+      if (DecodeBasicInfo(imageData, imageDataLength, &origW, &origH)) {
+        useProgressiveDC = (static_cast<size_t>(scaledWidth) <= origW / 4 &&
+                            static_cast<size_t>(scaledHeight) <= origH / 4);
+      }
+    }
+
+    bool decoded = false;
+    if (useProgressiveDC) {
+      decoded = DecodeJpegXlProgressive(imageData, imageDataLength,
+                                         &rgbaPixels,
+                                         &xsize, &ysize,
+                                         &iccProfile, &useBitmapFloats, &bitDepth,
+                                         &alphaPremultiplied,
+                                         osVersion >= 26,
+                                         &jxlOrientation,
+                                         &preferEncoding, &colorEncoding,
+                                         &hasAlphaInOrigin, &intensityTarget);
+    }
+    if (!decoded) {
+      decoded = DecodeJpegXlOneShot(imageData, imageDataLength,
+                                     &rgbaPixels,
+                                     &xsize, &ysize,
+                                     &iccProfile, &useBitmapFloats, &bitDepth,
+                                     &alphaPremultiplied,
+                                     osVersion >= 26,
+                                     &jxlOrientation,
+                                     &preferEncoding, &colorEncoding,
+                                     &hasAlphaInOrigin, &intensityTarget);
+    }
+    if (!decoded) {
       throwInvalidJXLException(env);
       return nullptr;
     }
@@ -99,8 +125,6 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
     xsize = ysize;
     ysize = xz;
   }
-
-  imageData.clear();
 
   if (!iccProfile.empty()) {
     size_t stride =
@@ -314,7 +338,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeSampledImpl(JNIEnv *env, jobject thiz,
     std::vector<uint8_t> srcBuffer(totalLength);
     env->GetByteArrayRegion(byte_array, 0, totalLength,
                             reinterpret_cast<jbyte *>(srcBuffer.data()));
-    return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
+    return decodeSampledImageImpl(env, srcBuffer.data(), srcBuffer.size(),
+                                  scaledWidth, scaledHeight,
                                   javaPreferredColorConfig, javaScaleMode,
                                   resizeSampler, javaToneMapper);
   } catch (std::bad_alloc &err) {
@@ -346,9 +371,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_decodeByteBufferSampledImpl(JNIEnv *env, jobje
       throwException(env, errorString);
       return nullptr;
     }
-    std::vector<uint8_t> srcBuffer(length);
-    std::copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
-    return decodeSampledImageImpl(env, srcBuffer, scaledWidth, scaledHeight,
+    return decodeSampledImageImpl(env, bufferAddress, static_cast<size_t>(length),
+                                  scaledWidth, scaledHeight,
                                   preferredColorConfig, scaleMode,
                                   resizeSampler, javaToneMapper);
   } catch (std::bad_alloc &err) {

@@ -62,4 +62,15 @@ bool DecodeJpegXlOneShot(const uint8_t *jxl, size_t size,
                          bool *hasAlphaInOrigin,
                          float* intensityTarget);
 
+bool DecodeJpegXlProgressive(const uint8_t *jxl, size_t size,
+                              std::vector<uint8_t> *pixels, size_t *xsize,
+                              size_t *ysize, std::vector<uint8_t> *iccProfile,
+                              bool *useFloats, uint32_t *bitDepth,
+                              bool *alphaPremultiplied, bool allowedFloats,
+                              JxlOrientation *jxlOrientation,
+                              bool *preferEncoding,
+                              JxlColorEncoding *colorEncoding,
+                              bool *hasAlphaInOrigin,
+                              float *intensityTarget);
+
 bool DecodeBasicInfo(const uint8_t *jxl, size_t size, size_t *xsize, size_t *ysize);

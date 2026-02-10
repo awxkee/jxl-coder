@@ -23,7 +23,7 @@ mavenPublishing {
     )
     )
 
-    coordinates("io.github.awxkee", "jxl-coder", System.getenv("VERSION_NAME") ?: "0.0.10")
+    coordinates("io.github.awxkee", "jxl-coder", System.getenv("VERSION_NAME") ?: "0.0.11")
 
     pom {
         name.set("Jxl Coder")

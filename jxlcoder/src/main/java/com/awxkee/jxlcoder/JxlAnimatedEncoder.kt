@@ -35,7 +35,7 @@ import androidx.annotation.Keep
 import java.io.Closeable
 
 @Keep
-class JxlAnimatedEncoder @Keep constructor(
+class JxlAnimatedEncoder @Keep @JvmOverloads constructor(
     width: Int,
     height: Int,
     numLoops: Int = 0,
