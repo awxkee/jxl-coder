@@ -70,6 +70,16 @@ encoder.addFrame(secondFrame, duration = 2000) // Duration in ms
 val compressedBuffer: ByteArray = encoder.encode() // Do something with buffer
 ```
 
+# Java Support
+
+All public APIs are annotated with `@JvmOverloads` and `@JvmStatic`, so you can call them naturally from Java:
+
+```java
+Bitmap bitmap = JxlCoder.decode(byteArray);
+Bitmap sampled = JxlCoder.decodeSampled(byteArray, 400, 300);
+byte[] encoded = JxlCoder.encode(bitmap);
+```
+
 # Add to project
 
 ```groovy
@@ -99,6 +109,23 @@ implementation 'io.github.awxkee:jxl-coder-glide:2.2.0' // or any version above 
 // Coil JPEG XL plugin if you need one
 implementation 'com.github.awxkee:jxl-coder-coil:2.1.9' // or any version above picker from release tags
 ```
+
+# Recent Changes
+
+## Performance Improvements
+
+- **Progressive DC decode for thumbnails** -- when the target size is <= 1/4 of the original, the decoder stops after the DC (1:8 resolution) pass, skipping full-resolution decoding entirely. Falls back automatically for modular/lossless images.
+- **Zero-copy DirectByteBuffer decoding** -- the Glide integration path (`decodeSampled(ByteBuffer, ...)`) no longer copies the compressed data before decoding.
+- **Fast `getSize()` calls** -- `DecodeBasicInfo` no longer creates a parallel runner or subscribes to unnecessary decoder events.
+- **Persistent thread pool** -- parallel color transforms reuse a static thread pool sized to `hardware_concurrency()` instead of creating and joining fresh threads per invocation.
+- **NEON SIMD color matrix** -- the 3x3 color matrix multiply uses ARM NEON intrinsics (`vld3q_f32`/`vst3q_f32` with fused multiply-add), processing 4 pixels per iteration on arm64.
+- **Crop memcpy optimization** -- post-scale cropping uses per-row `memcpy` instead of per-pixel copies.
+
+## Other
+
+- Updated libjxl to **v0.11.2**
+- All native libraries are built with 16KB ELF page alignment for Android 15+ support
+- `extractNativeLibs="false"` set in manifest for uncompressed native lib loading
 
 # Self-build
 
