@@ -40,6 +40,7 @@
 #include "colorspaces/ColorSpaceProfile.h"
 #include "hwy/highway.h"
 #include "imagebit/CopyUnalignedRGBA.h"
+#include "NativeColorSpace.h"
 
 jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jint scaledWidth,
                                jint scaledHeight,
@@ -142,7 +143,7 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709 ||
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA ||
       colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)
-      && colorEncoding.color_space == JXL_COLOR_SPACE_RGB) {
+      && colorEncoding.color_space == JXL_COLOR_SPACE_RGB && osVersion < 34) {
     Eigen::Matrix3f sourceProfile;
     TransferFunction transferFunction = TransferFunction::Srgb;
     if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
@@ -232,15 +233,33 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
                       finalWidth, finalHeight, &stride, &useBitmapFloats,
                       &hwBuffer, alphaPremultiplied, hasAlphaInOrigin);
 
+  jobject colorSpace = nullptr;
+  if (androidOSVersion() >= 34) {
+    if (colorEncoding.primaries == JXL_PRIMARIES_2100 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
+      colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::Pq2100);
+    } else if (colorEncoding.primaries == JXL_PRIMARIES_2100 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
+      colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::Hlg2100);
+    } else if (colorEncoding.primaries == JXL_PRIMARIES_P3 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
+      colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::DisplayP3);
+    } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_LINEAR) {
+      colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::LinearSrgb);
+    } else if (colorEncoding.primaries == JXL_PRIMARIES_P3 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
+      colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::DciP3);
+    } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
+      colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::Hlg2100);
+    } else {
+      colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::DefaultSrgb);
+    }
+  }
+
   if (bitmapPixelConfig == "HARDWARE") {
     jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
     jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
                                                             "wrapHardwareBuffer",
                                                             "(Landroid/hardware/HardwareBuffer;Landroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;");
-    jobject emptyObject = nullptr;
     jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass,
                                                     createBitmapMethodID,
-                                                    hwBuffer, emptyObject);
+                                                    hwBuffer, colorSpace);
     return bitmapObj;
   }
 
@@ -251,13 +270,24 @@ jobject decodeSampledImageImpl(JNIEnv *env, std::vector<uint8_t> &imageData, jin
   jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
 
   jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-  jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
-                                                          "createBitmap",
-                                                          "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-  jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
-                                                  static_cast<jint>(finalWidth),
-                                                  static_cast<jint>(finalHeight),
-                                                  rgba8888Obj);
+  jobject bitmapObj;
+  if (androidOSVersion() >= 34 && colorSpace) {
+    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
+                                                            "createBitmap",
+                                                            "(IILandroid/graphics/Bitmap$Config;ZLandroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;");
+    bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+                                            static_cast<jint>(finalWidth),
+                                            static_cast<jint>(finalHeight),
+                                            rgba8888Obj, true, colorSpace);
+  } else {
+    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
+                                                            "createBitmap",
+                                                            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+                                            static_cast<jint>(finalWidth),
+                                            static_cast<jint>(finalHeight),
+                                            rgba8888Obj);
+  }
 
   AndroidBitmapInfo info;
   if (AndroidBitmap_getInfo(env, bitmapObj, &info) < 0) {

@@ -27,7 +27,7 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         imagebit/CopyUnalignedRGBA.cpp imagebit/half.cpp imagebit/Rgb565.cpp imagebit/Rgb1010102.cpp
         imagebit/Rgba8ToF16.cpp imagebit/Rgba16.cpp imagebit/RgbaF16bitNBitU8.cpp imagebit/RgbaF16bitToNBitU16.cpp
         imagebit/RGBAlpha.cpp imagebit/RgbaU16toHF.cpp imagebit/ScanAlpha.cpp
-        imagebit/RgbaToRgb.cpp
+        imagebit/RgbaToRgb.cpp NativeColorSpace.cpp
 )
 
 set_target_properties(jxlcoder libweaver PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libweaver.a)

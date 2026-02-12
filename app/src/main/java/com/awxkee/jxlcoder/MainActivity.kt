@@ -2,8 +2,10 @@ package com.awxkee.jxlcoder
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
+import android.hardware.DataSpace
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -127,7 +129,7 @@ class MainActivity : ComponentActivity() {
                                                 buffer4,
                                                 width = largeImageSize.width / 3,
                                                 height = largeImageSize.height / 3,
-                                                preferredColorConfig = PreferredColorConfig.RGBA_8888,
+                                                preferredColorConfig = PreferredColorConfig.RGBA_1010102,
                                                 com.awxkee.jxlcoder.ScaleMode.FIT,
                                                 jxlResizeFilter = JxlResizeFilter.LANCZOS
                                             )
