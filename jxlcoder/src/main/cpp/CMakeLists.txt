@@ -22,12 +22,12 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         JxlAnimatedDecoderCoordinator.cpp JxlAnimatedEncoderCoordinator.cpp
         hwy/aligned_allocator.cc hwy/nanobenchmark.cc hwy/per_target.cc hwy/print.cc hwy/targets.cc
         hwy/timer.cc JXLJpegInterop.cpp EasyGifReader.cpp JXLConventions.cpp
-        conversion/RgbChannels.cpp colorspaces/ColorMatrix.cpp colorspaces/LogarithmicToneMapper.cpp
+        conversion/RgbChannels.cpp colorspaces/ColorMatrix.cpp
         colorspaces/Rec2408ToneMapper.cpp colorspaces/Trc.cpp
         imagebit/CopyUnalignedRGBA.cpp imagebit/half.cpp imagebit/Rgb565.cpp imagebit/Rgb1010102.cpp
         imagebit/Rgba8ToF16.cpp imagebit/Rgba16.cpp imagebit/RgbaF16bitNBitU8.cpp imagebit/RgbaF16bitToNBitU16.cpp
-        imagebit/RGBAlpha.cpp imagebit/RgbaU16toHF.cpp imagebit/ScanAlpha.cpp colorspaces/FilmicToneMapper.cpp
-        imagebit/RgbaToRgb.cpp colorspaces/AcesToneMapper.cpp
+        imagebit/RGBAlpha.cpp imagebit/RgbaU16toHF.cpp imagebit/ScanAlpha.cpp
+        imagebit/RgbaToRgb.cpp NativeColorSpace.cpp
 )
 
 set_target_properties(jxlcoder libweaver PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/lib/${ANDROID_ABI}/libweaver.a)

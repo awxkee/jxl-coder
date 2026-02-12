@@ -30,14 +30,11 @@
 #include "concurrency.hpp"
 #include "definitions.h"
 #include "Rec2408ToneMapper.h"
-#include "LogarithmicToneMapper.h"
 #include "ITUR.h"
-#include "FilmicToneMapper.h"
-#include "AcesToneMapper.h"
 
 void applyColorMatrix(uint8_t *inPlace, uint32_t stride, uint32_t width, uint32_t height,
                       const float *matrix, TransferFunction intoLinear, TransferFunction intoGamma,
-                      CurveToneMapper toneMapper, ITURColorCoefficients coeffs,
+                      bool tonemap, ITURColorCoefficients coeffs,
                       float contentBrightness) {
   float c0 = matrix[0];
   float c1 = matrix[1];
@@ -77,18 +74,9 @@ void applyColorMatrix(uint8_t *inPlace, uint32_t stride, uint32_t width, uint32_
     }
 
     float mCoeffs[3] = {coeffs.kr, coeffs.kg, coeffs.kb};
-    if (toneMapper == CurveToneMapper::REC2408 || toneMapper == CurveToneMapper::REC2408_PERCEPTUAL) {
-      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs, toneMapper == CurveToneMapper::REC2408_PERCEPTUAL);
+    if (tonemap) {
+      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs);
       mToneMapper.transferTone(rowVector.data(), width);
-    } else if (toneMapper == CurveToneMapper::LOGARITHMIC) {
-      LogarithmicToneMapper mToneMapper(mCoeffs);
-      mToneMapper.transferTone(rowVector.data(), width);
-    } else if (toneMapper == CurveToneMapper::FILMIC) {
-      FilmicToneMapper filmicToneMapper;
-      filmicToneMapper.transferTone(rowVector.data(), width);
-    } else if (toneMapper == CurveToneMapper::ACES) {
-      AcesToneMapper acesToneMapper;
-      acesToneMapper.transferTone(rowVector.data(), width);
     }
 
     float *iter = rowVector.data();
@@ -138,7 +126,7 @@ void applyColorMatrix16Bit(uint16_t *inPlace,
                            const float *matrix,
                            TransferFunction intoLinear,
                            TransferFunction intoGamma,
-                           CurveToneMapper toneMapper,
+                           bool tonemap,
                            ITURColorCoefficients coeffs,
                            float contentBrightness) {
 
@@ -185,18 +173,9 @@ void applyColorMatrix16Bit(uint16_t *inPlace,
     }
 
     float mCoeffs[3] = {coeffs.kr, coeffs.kg, coeffs.kb};
-    if (toneMapper == CurveToneMapper::REC2408 || toneMapper == CurveToneMapper::REC2408_PERCEPTUAL) {
-      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs, toneMapper == CurveToneMapper::REC2408_PERCEPTUAL);
+    if (tonemap) {
+      Rec2408ToneMapper mToneMapper(contentBrightness, 250.f, 203.f, mCoeffs);
       mToneMapper.transferTone(rowVector.data(), width);
-    } else if (toneMapper == CurveToneMapper::LOGARITHMIC) {
-      LogarithmicToneMapper mToneMapper(mCoeffs);
-      mToneMapper.transferTone(rowVector.data(), width);
-    } else if (toneMapper == CurveToneMapper::FILMIC) {
-      FilmicToneMapper filmicToneMapper;
-      filmicToneMapper.transferTone(rowVector.data(), width);
-    } else if (toneMapper == CurveToneMapper::ACES) {
-      AcesToneMapper acesToneMapper;
-      acesToneMapper.transferTone(rowVector.data(), width);
     }
 
     float *iter = rowVector.data();

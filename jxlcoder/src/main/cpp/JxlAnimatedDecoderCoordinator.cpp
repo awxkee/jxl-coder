@@ -38,6 +38,7 @@
 #include "hwy/highway.h"
 #include "colorspaces/ColorSpaceProfile.h"
 #include "imagebit/CopyUnalignedRGBA.h"
+#include "NativeColorSpace.h"
 
 using namespace std;
 
@@ -47,15 +48,12 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject
                                                             jobject byteBuffer,
                                                             jint javaPreferredColorConfig,
                                                             jint javaScaleMode,
-                                                            jint javaJxlResizeSampler,
-                                                            jint javaToneMapper) {
+                                                            jint javaJxlResizeSampler) {
   ScaleMode scaleMode;
   PreferredColorConfig preferredColorConfig;
   XSampler sampler;
-  CurveToneMapper toneMapper;
   if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler,
-                                javaToneMapper, &toneMapper)) {
+                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler)) {
     return 0;
   }
 
@@ -78,7 +76,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinator(JNIEnv *env, jobject
     copy(bufferAddress, bufferAddress + length, srcBuffer.begin());
     auto decoder = new JxlAnimatedDecoder(srcBuffer);
     auto coordinator = new JxlAnimatedDecoderCoordinator(
-        decoder, scaleMode, preferredColorConfig, sampler, toneMapper
+        decoder, scaleMode, preferredColorConfig, sampler
     );
     return reinterpret_cast<jlong >(coordinator);
   } catch (AnimatedDecoderError &err) {
@@ -98,15 +96,12 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
                                                                      jbyteArray byteArray,
                                                                      jint javaPreferredColorConfig,
                                                                      jint javaScaleMode,
-                                                                     jint javaJxlResizeSampler,
-                                                                     jint javaToneMapper) {
+                                                                     jint javaJxlResizeSampler) {
   ScaleMode scaleMode;
   PreferredColorConfig preferredColorConfig;
   XSampler sampler;
-  CurveToneMapper toneMapper;
   if (!checkDecodePreconditions(env, javaPreferredColorConfig, &preferredColorConfig,
-                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler,
-                                javaToneMapper, &toneMapper)) {
+                                javaScaleMode, &scaleMode, javaJxlResizeSampler, &sampler)) {
     return 0;
   }
 
@@ -117,7 +112,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_createCoordinatorByteArray(JNIEnv *env
                             reinterpret_cast<jbyte *>(srcBuffer.data()));
     auto decoder = new JxlAnimatedDecoder(srcBuffer);
     auto coordinator = new JxlAnimatedDecoderCoordinator(
-        decoder, scaleMode, preferredColorConfig, sampler, toneMapper
+        decoder, scaleMode, preferredColorConfig, sampler
     );
     return reinterpret_cast<jlong >(coordinator);
   } catch (AnimatedDecoderError &err) {
@@ -181,6 +176,8 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
     auto preferEncoding = frame.preferColorEncoding;
     auto colorEncoding = frame.colorEncoding;
 
+    int osVersion = androidOSVersion();
+
     uint32_t stride = coordinator->getWidth() * 4 * static_cast<uint32_t>(useFloat16 ? sizeof(uint16_t) : sizeof(uint8_t));
 
     if (preferEncoding && (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ ||
@@ -189,29 +186,29 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
         colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709 ||
         colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA ||
         colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB)
-        && colorEncoding.color_space == JXL_COLOR_SPACE_RGB) {
+        && colorEncoding.color_space == JXL_COLOR_SPACE_RGB && osVersion < 34) {
       Eigen::Matrix3f sourceProfile;
       TransferFunction transferFunction = TransferFunction::Srgb;
-      CurveToneMapper toneMapper = CurveToneMapper::TONE_SKIP;
+      bool tonemap = true;
       bool useChromaticAdaptation = false;
       float gamma = 2.2f;
       if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
         transferFunction = TransferFunction::Hlg;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         transferFunction = TransferFunction::Smpte428;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
         transferFunction = TransferFunction::Pq;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_GAMMA) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         // Make real gamma
         transferFunction = TransferFunction::Gamma2p2;
         gamma = 1.f / colorEncoding.gamma;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         transferFunction = TransferFunction::Itur709;
       } else if (colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
-        toneMapper = TONE_SKIP;
+        tonemap = false;
         transferFunction = TransferFunction::Srgb;
       }
 
@@ -263,7 +260,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                        matrix,
                        transferFunction,
                        TransferFunction::Srgb,
-                       toneMapper,
+                       tonemap,
                        coeffs, 255.);
     }
 
@@ -302,15 +299,33 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
                         finalWidth, finalHeight, &stride, &useFloat16,
                         &hwBuffer, alphaPremultiplied, frame.hasAlphaInOrigin);
 
+    jobject colorSpace = nullptr;
+    if (androidOSVersion() >= 34) {
+      if (colorEncoding.primaries == JXL_PRIMARIES_2100 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_PQ) {
+        colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::Pq2100);
+      } else if (colorEncoding.primaries == JXL_PRIMARIES_2100 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
+        colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::Hlg2100);
+      } else if (colorEncoding.primaries == JXL_PRIMARIES_P3 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_SRGB) {
+        colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::DisplayP3);
+      } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_LINEAR) {
+        colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::LinearSrgb);
+      } else if (colorEncoding.primaries == JXL_PRIMARIES_P3 && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_DCI) {
+        colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::DciP3);
+      } else if (colorEncoding.primaries == JXL_PRIMARIES_SRGB && colorEncoding.transfer_function == JXL_TRANSFER_FUNCTION_709) {
+        colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::Hlg2100);
+      } else {
+        colorSpace = colorspace::getJNIColorSpace(env, NativeColorSpace::DefaultSrgb);
+      }
+    }
+
     if (bitmapPixelConfig == "HARDWARE") {
       jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
       jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
                                                               "wrapHardwareBuffer",
                                                               "(Landroid/hardware/HardwareBuffer;Landroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;");
-      jobject emptyObject = nullptr;
       jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass,
                                                       createBitmapMethodID,
-                                                      hwBuffer, emptyObject);
+                                                      hwBuffer, colorSpace);
       return bitmapObj;
     }
 
@@ -321,12 +336,24 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
     jobject rgba8888Obj = env->GetStaticObjectField(bitmapConfig, rgba8888FieldID);
 
     jclass bitmapClass = env->FindClass("android/graphics/Bitmap");
-    jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass, "createBitmap",
-                                                            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    jobject bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
-                                                    static_cast<jint>(finalWidth),
-                                                    static_cast<jint>(finalHeight),
-                                                    rgba8888Obj);
+    jobject bitmapObj;
+    if (androidOSVersion() >= 34 && colorSpace) {
+      jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
+                                                              "createBitmap",
+                                                              "(IILandroid/graphics/Bitmap$Config;ZLandroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;");
+      bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+                                              static_cast<jint>(finalWidth),
+                                              static_cast<jint>(finalHeight),
+                                              rgba8888Obj, true, colorSpace);
+    } else {
+      jmethodID createBitmapMethodID = env->GetStaticMethodID(bitmapClass,
+                                                              "createBitmap",
+                                                              "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+      bitmapObj = env->CallStaticObjectMethod(bitmapClass, createBitmapMethodID,
+                                              static_cast<jint>(finalWidth),
+                                              static_cast<jint>(finalHeight),
+                                              rgba8888Obj);
+    }
 
     AndroidBitmapInfo info;
     if (AndroidBitmap_getInfo(env, bitmapObj, &info) < 0) {

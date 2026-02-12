@@ -34,7 +34,7 @@
 
 bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorConfig *config,
                               jint javaScaleMode, ScaleMode *scaleMode, jint javaSampler,
-                              XSampler *sampler, jint javaToneMapper, CurveToneMapper *toneMapper) {
+                              XSampler *sampler) {
   auto preferredColorConfig = static_cast<PreferredColorConfig>(javaColorspace);
   if (!preferredColorConfig) {
     std::string errorString =
@@ -85,17 +85,8 @@ bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorCo
     return false;
   }
 
-  auto xToneMapper = static_cast<CurveToneMapper>(javaToneMapper);
-  if (!xToneMapper) {
-    std::string errorString =
-        "Invalid Tone Mapper: " + std::to_string(javaToneMapper) + " was passed";
-    throwException(env, errorString);
-    return false;
-  }
-
   *scaleMode = mScaleMode;
   *config = preferredColorConfig;
   *sampler = xSampler;
-  *toneMapper = xToneMapper;
   return true;
 }

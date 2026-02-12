@@ -45,6 +45,6 @@ enum PreferredColorConfig {
 
 bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorConfig *config,
                               jint javaScaleMode, ScaleMode *scaleMode, jint javaSampler,
-                              XSampler *sampler, jint javaToneMapper, CurveToneMapper *toneMapper);
+                              XSampler *sampler);
 
 #endif //AVIF_SUPPORT_H

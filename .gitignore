@@ -23,3 +23,7 @@ build
 /app/release/output-metadata.json
 libsparkyuv.a
 jxlcoder/src/main/cpp/sparkyuv
+third_party
+/app/src/main/assets/
+/app/release
+.kotlin/

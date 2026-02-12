@@ -51,7 +51,6 @@ object JxlCoder {
         byteArray: ByteArray,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        toneMapper: JxlToneMapper = JxlToneMapper.REC2408,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
@@ -60,7 +59,6 @@ object JxlCoder {
             preferredColorConfig.value,
             scaleMode.value,
             JxlResizeFilter.CATMULL_ROM.value,
-            jxlToneMapper = toneMapper.value,
         )
     }
 
@@ -74,7 +72,6 @@ object JxlCoder {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
-        toneMapper: JxlToneMapper = JxlToneMapper.REC2408,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
@@ -83,7 +80,6 @@ object JxlCoder {
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
-            jxlToneMapper = toneMapper.value,
         )
     }
 
@@ -97,7 +93,6 @@ object JxlCoder {
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
         jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
-        toneMapper: JxlToneMapper = JxlToneMapper.REC2408,
     ): Bitmap {
         return decodeByteBufferSampledImpl(
             byteArray,
@@ -106,7 +101,6 @@ object JxlCoder {
             preferredColorConfig.value,
             scaleMode.value,
             jxlResizeFilter.value,
-            jxlToneMapper = toneMapper.value,
         )
     }
 
@@ -225,7 +219,6 @@ object JxlCoder {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
-        jxlToneMapper: Int,
     ): Bitmap
 
     private external fun decodeByteBufferSampledImpl(
@@ -235,7 +228,6 @@ object JxlCoder {
         preferredColorConfig: Int,
         scaleMode: Int,
         jxlResizeSampler: Int,
-        jxlToneMapper: Int,
     ): Bitmap
 
     private external fun encodeImpl(
