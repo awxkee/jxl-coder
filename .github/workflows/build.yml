@@ -19,11 +19,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: Maven Local
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'adopt'
@@ -33,9 +32,9 @@ jobs:
       - name: Compile to maven local
         env:
           VERSION_NAME: 0.0.1
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEYID }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGINMEMORYKEYPASSWORD }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: "stub"
+          ORG_GRADLE_PROJECT_mavenCentralPassword: "stub"
+          ORG_GRADLE_PROJECT_signingInMemoryKey: "stub"
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: "stub"
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: "stub"
         run: bash ./gradlew jxlcoder:publishToMavenLocal
