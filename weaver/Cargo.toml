@@ -4,15 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-colorutils-rs = "0.7.6"
+colorutils-rs = "0.8.0"
 num-traits = "0.2.19"
-pic-scale = { version = "0.6.15", default-features = false}
+pic-scale = { version = "0.7.6", default-features = false}
 
 [features]
-arm_set = ["pic-scale/nightly_i8mm", "pic-scale/rdm"]
+arm_set = ["pic-scale/nightly_i8mm", "pic-scale/rdm", "pic-scale/sve"]
 
 [build-dependencies]
-cbindgen = "0.29.0"
+cbindgen = "0.29.2"
 
 [lib]
 crate-type = ["staticlib"]

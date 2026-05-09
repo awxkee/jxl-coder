@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdarg>
 #include <cstdint>
 #include <cstdlib>
@@ -17,29 +19,55 @@ enum class ScalingFunction {
   Box = 10,
 };
 
+enum class WeaveScaleMode {
+  JustResize,
+  ScaleToFill,
+  ScaleToFit,
+};
+
+struct ScalingResultU8 {
+  uint8_t *data;
+  uintptr_t width;
+  uintptr_t height;
+  uintptr_t stride;
+  uintptr_t length;
+  uintptr_t capacity;
+};
+
+struct ScalingResultU16 {
+  uint16_t *data;
+  uintptr_t width;
+  uintptr_t height;
+  uintptr_t stride;
+  uintptr_t length;
+  uintptr_t capacity;
+};
+
 extern "C" {
 
-uintptr_t weave_scale_u8(const uint8_t *src,
-                         uint32_t src_stride,
-                         uint32_t width,
-                         uint32_t height,
-                         uint8_t *dst,
-                         uint32_t dst_stride,
-                         uint32_t new_width,
-                         uint32_t new_height,
-                         ScalingFunction scaling_function,
-                         bool premultiply_alpha);
+void weave_scaling_result_free(ScalingResultU8 result);
 
-uintptr_t weave_scale_u16(const uint16_t *src,
-                          uintptr_t src_stride,
-                          uint32_t width,
-                          uint32_t height,
-                          uint16_t *dst,
-                          uintptr_t dst_stride,
-                          uint32_t new_width,
-                          uint32_t new_height,
-                          uintptr_t bit_depth,
-                          ScalingFunction scaling_function,
-                          bool premultiply_alpha);
+void weave_scaling_result16_free(ScalingResultU16 result);
+
+ScalingResultU8 weave_scale_u8(const uint8_t *src,
+                               uint32_t src_stride,
+                               uint32_t width,
+                               uint32_t height,
+                               int32_t new_width,
+                               int32_t new_height,
+                               ScalingFunction scaling_function,
+                               bool premultiply_alpha,
+                               WeaveScaleMode scale_mode);
+
+ScalingResultU16 weave_scale_u16(const uint16_t *src,
+                                 uintptr_t src_stride,
+                                 uint32_t width,
+                                 uint32_t height,
+                                 int32_t new_width,
+                                 int32_t new_height,
+                                 uintptr_t bit_depth,
+                                 ScalingFunction scaling_function,
+                                 bool premultiply_alpha,
+                                 WeaveScaleMode scale_mode);
 
 }  // extern "C"
