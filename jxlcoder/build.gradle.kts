@@ -1,27 +1,29 @@
-import com.android.build.gradle.internal.tasks.factory.dependsOn
 import com.vanniktech.maven.publish.AndroidMultiVariantLibrary
+import com.vanniktech.maven.publish.DeploymentValidation
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.SourcesJar
 
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("maven-publish")
-    id("signing")
     id("com.vanniktech.maven.publish") version "0.36.0"
 }
 
 
 mavenPublishing {
     if (System.getenv("PUBLISH_STATE") == "Release") {
+        publishToMavenCentral(
+            automaticRelease = true,
+            validateDeployment = DeploymentValidation.PUBLISHED
+        )
         signAllPublications()
     }
-}
 
-mavenPublishing {
     configure(
         AndroidMultiVariantLibrary(
-        sourcesJar = true,
-        publishJavadocJar = true,
-    )
+            JavadocJar.Javadoc(),
+            SourcesJar.Sources(),
+        )
     )
 
     coordinates("io.github.awxkee", "jxl-coder", System.getenv("VERSION_NAME") ?: "0.0.10")
@@ -61,7 +63,7 @@ mavenPublishing {
 
 android {
     namespace = "io.github.awxkee.jxlcoder"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 21
@@ -71,16 +73,16 @@ android {
         externalNativeBuild {
             cmake {
                 ndkVersion = "26.1.10909125"
-                cppFlags.add ("-std=c++20")
+                cppFlags.add("-std=c++20")
                 abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
             }
         }
+    }
 
-        publishing {
-            singleVariant("release") {
-                withSourcesJar()
-                withJavadocJar()
-            }
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
         }
     }
 
@@ -94,9 +96,9 @@ android {
         }
     }
 
-    sourceSets.named("main") {
-        this.jniLibs {
-            this.srcDir("src/main/cpp/lib")
+    sourceSets {
+        getByName("main") {
+            jniLibs.directories.add("src/main/cpp/lib")
         }
     }
 
@@ -110,15 +112,17 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        jvmToolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
     }
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.core:core-ktx:1.18.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.android.material:material:1.13.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")

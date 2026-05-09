@@ -31,6 +31,8 @@ mod scale;
 mod scaling_function;
 
 pub use colorutils_rs::TransferFunction;
-pub use scale::weave_scale_u16;
-pub use scale::weave_scale_u8;
+pub use scale::{
+    weave_scale_u16, weave_scale_u8, weave_scaling_result16_free, weave_scaling_result_free,
+    ScalingResultU16, ScalingResultU8, WeaveScaleMode,
+};
 pub use scaling_function::ScalingFunction;

@@ -51,16 +51,4 @@ bool RescaleImage(std::vector<uint8_t> &rgbaData,
                   XSampler sampler,
                   bool doesOriginHasAlpha);
 
-std::pair<int, int>
-ResizeAspectFit(std::pair<int, int> sourceSize, std::pair<int, int> dstSize, float *scale);
-
-std::pair<int, int>
-ResizeAspectFill(std::pair<int, int> sourceSize, std::pair<int, int> dstSize, float *scale);
-
-std::pair<int, int>
-ResizeAspectHeight(std::pair<int, int> sourceSize, int maxHeight, bool multipleBy2);
-
-std::pair<int, int>
-ResizeAspectWidth(std::pair<int, int> sourceSize, int maxWidth, bool multipleBy2);
-
 #endif //AVIF_SIZESCALER_H
