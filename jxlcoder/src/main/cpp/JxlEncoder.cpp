@@ -29,7 +29,7 @@
 #include <jni.h>
 #include <string>
 #include <vector>
-#include <inttypes.h>
+#include <cinttypes>
 #include "android/bitmap.h"
 #include <android/log.h>
 #include "JniExceptions.h"
