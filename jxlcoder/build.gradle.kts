@@ -6,19 +6,13 @@ import com.vanniktech.maven.publish.SourcesJar
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("maven-publish")
+    id("signing")
     id("com.vanniktech.maven.publish") version "0.36.0"
 }
 
 
 mavenPublishing {
-    if (System.getenv("PUBLISH_STATE") == "Release") {
-        publishToMavenCentral(
-            automaticRelease = true,
-            validateDeployment = DeploymentValidation.PUBLISHED
-        )
-        signAllPublications()
-    }
-
     configure(
         AndroidMultiVariantLibrary(
             JavadocJar.Javadoc(),
@@ -58,6 +52,14 @@ mavenPublishing {
             connection.set("scm:git:git@github.com:awxkee/jxl-coder.git")
             developerConnection.set("scm:git:ssh://git@github.com/awxkee/jxl-coder.git")
         }
+    }
+
+    if (System.getenv("PUBLISH_STATE") == "Release") {
+        publishToMavenCentral(
+            automaticRelease = true,
+            validateDeployment = DeploymentValidation.PUBLISHED
+        )
+        signAllPublications()
     }
 }
 
