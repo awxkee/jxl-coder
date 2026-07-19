@@ -32,14 +32,6 @@ package com.awxkee.jxlcoder
  * Sets encoder effort/speed level without affecting decoding speed
  */
 enum class JxlEffort(internal val value: Int) {
-    LIGHTNING(1),
-    THUNDER(2),
-    FALCON(3),
-    CHEETAH(4),
-    HARE(5),
-    WOMBAT(6),
-    SQUIRREL(7),
-    KITTEN(8),
-    TORTOISE(9),
-    GLACIER(10),
+    FAST(1),
+    SLOW(2),
 }

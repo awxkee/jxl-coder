@@ -27,3 +27,4 @@ third_party
 /app/src/main/assets/
 /app/release
 .kotlin/
+*.a

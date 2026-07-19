@@ -40,7 +40,7 @@ object JxlCoder {
 
     init {
         if (Build.VERSION.SDK_INT >= 21) {
-            System.loadLibrary("jxlcoder")
+            System.loadLibrary("rjxlcoder")
         }
     }
 
@@ -58,7 +58,6 @@ object JxlCoder {
             -1,
             preferredColorConfig.value,
             scaleMode.value,
-            JxlResizeFilter.CATMULL_ROM.value,
         )
     }
 
@@ -71,7 +70,6 @@ object JxlCoder {
         height: Int,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
     ): Bitmap {
         return decodeSampledImpl(
             byteArray,
@@ -79,7 +77,6 @@ object JxlCoder {
             height,
             preferredColorConfig.value,
             scaleMode.value,
-            jxlResizeFilter.value,
         )
     }
 
@@ -92,7 +89,6 @@ object JxlCoder {
         height: Int,
         preferredColorConfig: PreferredColorConfig = PreferredColorConfig.DEFAULT,
         scaleMode: ScaleMode = ScaleMode.FIT,
-        jxlResizeFilter: JxlResizeFilter = JxlResizeFilter.MITCHELL_NETRAVALI,
     ): Bitmap {
         return decodeByteBufferSampledImpl(
             byteArray,
@@ -100,7 +96,6 @@ object JxlCoder {
             height,
             preferredColorConfig.value,
             scaleMode.value,
-            jxlResizeFilter.value,
         )
     }
 
@@ -108,9 +103,8 @@ object JxlCoder {
         bitmap: Bitmap,
         channelsConfiguration: JxlChannelsConfiguration = JxlChannelsConfiguration.RGB,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
-        effort: JxlEffort = JxlEffort.SQUIRREL,
-        @IntRange(from = 0, to = 100) quality: Int = 0,
-        decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.SLOWEST,
+        effort: JxlEffort = JxlEffort.FAST,
+        @IntRange(from = 0, to = 100) quality: Int = 90,
     ): ByteArray {
         var dataSpaceValue: Int = -1
         var bitmapColorSpace: String? = null
@@ -133,56 +127,7 @@ object JxlCoder {
             bitmapColorSpace,
             dataSpaceValue,
             quality,
-            decodingSpeed.value,
         )
-    }
-
-    object Convenience {
-
-        /**
-         * @param gifData - byte array contains the GIF data
-         * @return Byte array contains converted JPEG XL
-         */
-        fun gif2JXL(
-            gifData: ByteArray,
-            @IntRange(from = 0, to = 100) quality: Int = 0,
-            effort: JxlEffort = JxlEffort.SQUIRREL,
-            decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.SLOWEST,
-        ): ByteArray {
-            return gif2JXLImpl(gifData, quality, effort.value, decodingSpeed.value)
-        }
-
-        /**
-         * @param apngData - byte array contains the APNG data
-         * @return Byte array contains converted JPEG XL
-         */
-        fun apng2JXL(
-            apngData: ByteArray,
-            @IntRange(from = 0, to = 100) quality: Int = 0,
-            effort: JxlEffort = JxlEffort.SQUIRREL,
-            decodingSpeed: JxlDecodingSpeed = JxlDecodingSpeed.FAST,
-        ): ByteArray {
-            return apng2JXLImpl(apngData, quality, effort.value, decodingSpeed.value)
-        }
-
-        /**
-         * @author Radzivon Bartoshyk
-         * @param fromJpegData - JPEG data that will be used for JPEG XL lossless construction
-         * @return Byte array that contains constructed JPEG XL
-         */
-        fun construct(fromJpegData: ByteArray): ByteArray {
-            return constructImpl(fromJpegData)
-        }
-
-        /**
-         * @author Radzivon Bartoshyk
-         * @param fromJPEGXLData - JPEG XL data that will be used for JPEG lossless construction
-         * @return Byte array that contains re-constructed JPEG
-         */
-        fun reconstructJPEG(fromJPEGXLData: ByteArray): ByteArray {
-            return reconstructImpl(fromJPEGXLData)
-        }
-
     }
 
     /**
@@ -192,24 +137,6 @@ object JxlCoder {
         return getSizeImpl(byteArray)
     }
 
-    private external fun apng2JXLImpl(
-        apngData: ByteArray,
-        quality: Int,
-        effort: Int,
-        decodingSpeed: Int,
-    ): ByteArray
-
-    private external fun gif2JXLImpl(
-        gifData: ByteArray,
-        quality: Int,
-        effort: Int,
-        decodingSpeed: Int,
-    ): ByteArray
-
-    private external fun reconstructImpl(fromJPEGXLData: ByteArray): ByteArray
-
-    private external fun constructImpl(fromJpegData: ByteArray): ByteArray
-
     private external fun getSizeImpl(byteArray: ByteArray): Size?
 
     private external fun decodeSampledImpl(
@@ -218,7 +145,6 @@ object JxlCoder {
         height: Int,
         preferredColorConfig: Int,
         scaleMode: Int,
-        jxlResizeSampler: Int,
     ): Bitmap
 
     private external fun decodeByteBufferSampledImpl(
@@ -227,18 +153,16 @@ object JxlCoder {
         height: Int,
         preferredColorConfig: Int,
         scaleMode: Int,
-        jxlResizeSampler: Int,
     ): Bitmap
 
     private external fun encodeImpl(
         bitmap: Bitmap,
         colorSpace: Int,
         compressionOption: Int,
-        loosyLevel: Int,
+        effort: Int,
         bitmapColorSpace: String?,
         dataSpaceValue: Int,
         quality: Int,
-        decodingSpeed: Int
     ): ByteArray
 
     private val MAGIC_1 = byteArrayOf(0xFF.toByte(), 0x0A)

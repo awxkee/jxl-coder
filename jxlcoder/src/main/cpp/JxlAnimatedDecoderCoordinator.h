@@ -29,82 +29,9 @@
 #ifndef JXLCODER_JXLANIMATEDDECODERCOORDINATOR_H
 #define JXLCODER_JXLANIMATEDDECODERCOORDINATOR_H
 
-#include "interop/JxlAnimatedDecoder.hpp"
-#include "SizeScaler.h"
 #include "Support.h"
 #include <vector>
 
 using namespace std;
-
-class JxlAnimatedDecoderCoordinator {
-
- public:
-  JxlAnimatedDecoderCoordinator(JxlAnimatedDecoder *decoder,
-                                ScaleMode scaleMode,
-                                PreferredColorConfig preferredColorConfig,
-                                XSampler sample) :
-      decoder(decoder), scaleMode(scaleMode),
-      preferredColorConfig(preferredColorConfig),
-      sampler(sample) {
-
-  }
-
-  int numberOfFrames() {
-    return decoder->getNumberOfFrames();
-  }
-
-  uint32_t frameDuration(int frame) {
-    return decoder->getFrameDuration(frame);
-  }
-
-  uint32_t loopsCount() {
-    return decoder->getLoopCount();
-  }
-
-  JxlFrame getFrame(uint32_t at) {
-    return decoder->getFrame(at);
-  }
-
-  JxlFrame nextFrame() {
-    return decoder->nextFrame();
-  }
-
-  ~JxlAnimatedDecoderCoordinator() {
-    if (decoder) {
-      delete decoder;
-      decoder = nullptr;
-    }
-  }
-
-  ScaleMode getScaleMode() {
-    return scaleMode;
-  }
-
-  PreferredColorConfig getPreferredColorConfig() {
-    return preferredColorConfig;
-  }
-
-  XSampler getSampler() {
-    return sampler;
-  }
-
-  size_t getWidth() {
-    return decoder->getWidth();
-  }
-
-  size_t getHeight() {
-    return decoder->getHeight();
-  }
-
-  bool isAlphaAttenuated() {
-    return decoder->isAlphaAttenuated();
-  }
-
- private:
-  JxlAnimatedDecoder *decoder;
-  ScaleMode scaleMode;
-  PreferredColorConfig preferredColorConfig;
-  XSampler sampler;
-};
 
 #endif //JXLCODER_JXLANIMATEDDECODERCOORDINATOR_H
