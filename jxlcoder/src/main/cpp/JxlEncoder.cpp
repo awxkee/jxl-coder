@@ -40,8 +40,10 @@ using namespace std;
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject bitmap,
-                                             jint javaColorSpace, jint javaCompressionOption,
+Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz,
+                                             jobject bitmap,
+                                             jobject exifData,
+                                             jint javaCompressionOption,
                                              jint effort, jstring bitmapColorProfile,
                                              jint dataSpace, jint jQuality) {
   try {
@@ -61,7 +63,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz, jobject 
     if (javaCompressionOption == 1) {
       lossless = true;
     }
-    auto compressedData = encode_jixel_file(env, bitmap, nullptr, javaColorSpace, jQuality, lossless, encodingSpeed);
+
+    auto compressedData = encode_jixel_file(env, bitmap, exifData, dataSpace, jQuality, lossless, encodingSpeed);
     return compressedData;
   } catch (std::bad_alloc &err) {
     std::string errorString = "Not enough memory to encode this image";

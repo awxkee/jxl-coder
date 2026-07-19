@@ -101,7 +101,7 @@ object JxlCoder {
 
     fun encode(
         bitmap: Bitmap,
-        channelsConfiguration: JxlChannelsConfiguration = JxlChannelsConfiguration.RGB,
+        exif: ByteBuffer?,
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         effort: JxlEffort = JxlEffort.FAST,
         @IntRange(from = 0, to = 100) quality: Int = 90,
@@ -121,7 +121,7 @@ object JxlCoder {
 
         return encodeImpl(
             bitmap,
-            channelsConfiguration.cValue,
+            exif,
             compressionOption.cValue,
             effort.value,
             bitmapColorSpace,
@@ -157,7 +157,7 @@ object JxlCoder {
 
     private external fun encodeImpl(
         bitmap: Bitmap,
-        colorSpace: Int,
+        exifData: ByteBuffer?,
         compressionOption: Int,
         effort: Int,
         bitmapColorSpace: String?,
