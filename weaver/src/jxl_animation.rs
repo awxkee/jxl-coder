@@ -27,10 +27,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-use crate::jxl_decode::{is_jxl, BitDepth, DecodedJxlPacket};
+use crate::jxl_decode::{
+    is_jxl, limited_decoder_options, validate_jxl_dimensions, BitDepth, DecodedJxlPacket,
+};
 use jxl::api::{
-    states, JxlColorType, JxlDataFormat, JxlDecoder, JxlDecoderOptions, JxlOutputBuffer,
-    JxlPixelFormat, ProcessingResult, VisibleFrameInfo,
+    states, JxlColorType, JxlDataFormat, JxlDecoder, JxlOutputBuffer, JxlPixelFormat,
+    ProcessingResult, VisibleFrameInfo,
 };
 use jxl::headers::extra_channels::ExtraChannel;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -220,15 +222,15 @@ impl JxlAnimationCoordinator {
         })?;
         owned.extend_from_slice(data);
 
-        let mut options = JxlDecoderOptions::default();
+        let mut options = limited_decoder_options();
         options.scan_frames_only = true;
-        options.pixel_limit = Some(i32::MAX as usize);
         let mut input = owned.as_slice();
         let decoder = JxlDecoder::<states::Initialized>::new(options);
         let mut decoder = complete(decoder.process(&mut input), "image metadata")?;
 
         let basic = decoder.basic_info().clone();
         let (width, height) = basic.size;
+        validate_jxl_dimensions(width, height).map_err(AnimationError::decode)?;
         let pixels = width
             .checked_mul(height)
             .and_then(|value| value.checked_mul(4))
@@ -328,8 +330,7 @@ impl JxlAnimationCoordinator {
         })?;
 
         let mut initial_input = self.data.as_slice();
-        let mut options = JxlDecoderOptions::default();
-        options.pixel_limit = Some(i32::MAX as usize);
+        let options = limited_decoder_options();
         let decoder = JxlDecoder::<states::Initialized>::new(options);
         let mut decoder = complete(decoder.process(&mut initial_input), "image metadata")?;
         decoder.set_pixel_format(JxlPixelFormat {

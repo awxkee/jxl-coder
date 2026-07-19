@@ -47,6 +47,43 @@ pub enum WeaverError {
     FailedToAllocateMemory(u64),
     #[error("Pixel format is not supported: {0}")]
     PixelFormatIsNotSupported(String),
+    #[error(
+        "JPEG XL dimensions {width}x{height} exceed the limit of {max_dimension} per axis and {max_pixels} total pixels"
+    )]
+    ImageTooLarge {
+        width: usize,
+        height: usize,
+        max_dimension: usize,
+        max_pixels: usize,
+    },
+}
+
+pub(crate) const MAX_JXL_DIMENSION: usize = 16 * 1024;
+pub(crate) const MAX_JXL_PIXELS: usize = MAX_JXL_DIMENSION * MAX_JXL_DIMENSION;
+// jxl-rs counts RGB plus every extra channel and rejects totals equal to the
+// configured limit. Four channels covers the normal RGBA output case; +1 keeps
+// an exactly 16384x16384 RGBA image within the declared boundary.
+pub(crate) const MAX_JXL_SAMPLES_EXCLUSIVE: usize = MAX_JXL_PIXELS * 4 + 1;
+
+pub(crate) fn limited_decoder_options() -> JxlDecoderOptions {
+    let mut options = JxlDecoderOptions::default();
+    options.pixel_limit = Some(MAX_JXL_SAMPLES_EXCLUSIVE);
+    options
+}
+
+pub(crate) fn validate_jxl_dimensions(width: usize, height: usize) -> Result<(), WeaverError> {
+    let area_is_too_large = width
+        .checked_mul(height)
+        .is_none_or(|pixels| pixels > MAX_JXL_PIXELS);
+    if width > MAX_JXL_DIMENSION || height > MAX_JXL_DIMENSION || area_is_too_large {
+        return Err(WeaverError::ImageTooLarge {
+            width,
+            height,
+            max_dimension: MAX_JXL_DIMENSION,
+            max_pixels: MAX_JXL_PIXELS,
+        });
+    }
+    Ok(())
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -101,7 +138,7 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
     }
 
     let mut input = data;
-    let mut decoder = match JxlDecoder::new(JxlDecoderOptions::default())
+    let mut decoder = match JxlDecoder::new(limited_decoder_options())
         .process(&mut input)
         .map_err(decode_error)?
     {
@@ -115,6 +152,7 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
 
     let info = decoder.basic_info();
     let (width, height) = info.size;
+    validate_jxl_dimensions(width, height)?;
     let source_bit_depth = info.bit_depth.bits_per_sample();
     // Android's bitmap paths consume full-range 8- or 16-bit RGBA. Asking
     // jxl-rs to normalize here also handles uncommon JXL depths (for example
@@ -226,7 +264,7 @@ pub(crate) fn read_jxl_info(data: &[u8]) -> Result<(usize, usize, u32), WeaverEr
     }
 
     let mut input = data;
-    let decoder = match JxlDecoder::new(JxlDecoderOptions::default())
+    let decoder = match JxlDecoder::new(limited_decoder_options())
         .process(&mut input)
         .map_err(decode_error)?
     {
@@ -238,12 +276,16 @@ pub(crate) fn read_jxl_info(data: &[u8]) -> Result<(usize, usize, u32), WeaverEr
         }
     };
     let info = decoder.basic_info();
+    validate_jxl_dimensions(info.size.0, info.size.1)?;
     Ok((info.size.0, info.size.1, info.bit_depth.bits_per_sample()))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::is_jxl;
+    use super::{
+        is_jxl, limited_decoder_options, validate_jxl_dimensions, MAX_JXL_DIMENSION,
+        MAX_JXL_SAMPLES_EXCLUSIVE,
+    };
 
     #[test]
     fn recognizes_both_jxl_signatures() {
@@ -258,5 +300,17 @@ mod tests {
         assert!(!is_jxl(&[]));
         assert!(!is_jxl(&[0xff]));
         assert!(!is_jxl(b"not a JPEG XL image"));
+    }
+
+    #[test]
+    fn applies_decoder_and_dimension_limits() {
+        assert_eq!(
+            limited_decoder_options().pixel_limit,
+            Some(MAX_JXL_SAMPLES_EXCLUSIVE)
+        );
+        assert!(validate_jxl_dimensions(MAX_JXL_DIMENSION, MAX_JXL_DIMENSION).is_ok());
+        assert!(validate_jxl_dimensions(MAX_JXL_DIMENSION + 1, 1).is_err());
+        assert!(validate_jxl_dimensions(1, MAX_JXL_DIMENSION + 1).is_err());
+        assert!(validate_jxl_dimensions(usize::MAX, 2).is_err());
     }
 }
