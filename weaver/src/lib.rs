@@ -69,7 +69,7 @@ pub use cvt::{
     target_os = "android",
     any(target_arch = "aarch64", target_arch = "arm")
 ))]
-pub use jixel_encode_android::encode_jixel_file;
+pub use jixel_encode_android::{encode_jixel_file, transcode_jpeg_to_jxl};
 pub use jxl_animation::{
     jxl_animation_buffer_release, jxl_animation_coordinator_create,
     jxl_animation_coordinator_decode_frame, jxl_animation_coordinator_destroy,
@@ -91,7 +91,7 @@ pub use tonemapper::{apply_tone_mapping_rgba16, apply_tone_mapping_rgba8, FfiTrc
     target_os = "android",
     any(target_arch = "aarch64", target_arch = "arm")
 )))]
-pub use unsupported_jixel_encode_android::encode_jixel_file;
+pub use unsupported_jixel_encode_android::{encode_jixel_file, transcode_jpeg_to_jxl};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Ord, PartialOrd, Eq)]

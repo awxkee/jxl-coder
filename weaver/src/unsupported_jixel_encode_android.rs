@@ -27,13 +27,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-use crate::jxl_decode_android::JxlInfo;
 use crate::support::{init_logging, throw_runtime_exception_raw};
-use crate::{JixelEncodingSpeed, WeaveScaleMode, WeaverPreferredColorConfig};
+use crate::JixelEncodingSpeed;
 use jni::sys::{jbyteArray, jobject};
 use std::ptr::null_mut;
 
-const SUPPORTED_AV2_DECODING_TARGETS: &str = "aarch64-linux-android and armv7-linux-androideabi";
+const SUPPORTED_JIXEL_TARGETS: &str = "aarch64-linux-android and armv7-linux-androideabi";
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn encode_jixel_file(
@@ -46,9 +45,25 @@ pub unsafe extern "C" fn encode_jixel_file(
     speed: JixelEncodingSpeed,
 ) -> jbyteArray {
     init_logging();
+    let message = format!(
+        "JPEG XL encoding is not supported on target architecture '{}'. Supported targets: {SUPPORTED_JIXEL_TARGETS}",
+        std::env::consts::ARCH,
+    );
+    unsafe { throw_runtime_exception_raw(env, message) };
+    null_mut()
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn transcode_jpeg_to_jxl(
+    env: *mut jni::sys::JNIEnv,
+    _jpeg: *const u8,
+    _length: usize,
+    _jpeg_reconstruction: bool,
+    _num_threads: usize,
+) -> jbyteArray {
     init_logging();
     let message = format!(
-        "AV2 decoding is not supported on target architecture '{}'. Supported targets: {SUPPORTED_AV2_DECODING_TARGETS}",
+        "JPEG to JPEG XL transcoding is not supported on target architecture '{}'. Supported targets: {SUPPORTED_JIXEL_TARGETS}",
         std::env::consts::ARCH,
     );
     unsafe { throw_runtime_exception_raw(env, message) };

@@ -41,6 +41,7 @@ use jni::{EnvUnowned, Outcome};
 use ndk_sys::ADataSpace;
 use std::num::NonZero;
 use std::ptr::null_mut;
+use std::slice;
 use std::thread::available_parallelism;
 
 impl JixelEncodingSpeed {
@@ -534,6 +535,78 @@ pub unsafe extern "C" fn encode_jixel_file(
             );
             dbg_log!(error, "{msg}");
             unsafe { throw_runtime_exception_raw(env, msg) };
+            null_mut()
+        }
+    }
+}
+
+/// Losslessly transcodes JPEG DCT coefficients into JPEG XL.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn transcode_jpeg_to_jxl(
+    env: *mut jni::sys::JNIEnv,
+    jpeg: *const u8,
+    length: usize,
+    jpeg_reconstruction: bool,
+    num_threads: usize,
+) -> jbyteArray {
+    if env.is_null() {
+        return null_mut();
+    }
+
+    init_logging();
+    let mut unowned = unsafe { EnvUnowned::from_raw(env) };
+    let outcome = unowned.with_env(|env| -> Result<jobject, jni::errors::Error> {
+        let result = (|| -> Result<jobject, anyhow::Error> {
+            let jpeg = if length == 0 {
+                &[]
+            } else if jpeg.is_null() {
+                return Err(anyhow::anyhow!("JPEG input pointer is null"));
+            } else {
+                unsafe { slice::from_raw_parts(jpeg, length) }
+            };
+
+            let mut config =
+                jixel::JpegTranscodeConfig::default().with_jpeg_reconstruction(jpeg_reconstruction);
+            if num_threads != 0 {
+                config = config.with_num_threads(num_threads);
+            }
+
+            let encoded = jixel::encode_jpeg_lossless_with_config(jpeg, &config)
+                .map_err(|error| anyhow::anyhow!(error))?;
+            let output = env
+                .byte_array_from_slice(&encoded)
+                .map_err(|error| anyhow::anyhow!(error))?;
+            Ok(output.into_raw())
+        })();
+
+        match result {
+            Ok(output) => Ok(output),
+            Err(error) => {
+                dbg_log!(error, "JPEG to JPEG XL transcoding failed: {error:#}");
+                throw_runtime_exception(
+                    env,
+                    format!("JPEG to JPEG XL transcoding failed: {error:#}"),
+                );
+                Ok(JObject::null().into_raw())
+            }
+        }
+    });
+
+    match outcome.into_outcome() {
+        Outcome::Ok(output) => output,
+        Outcome::Err(error) => {
+            let message = format!("JNI error while transcoding JPEG to JPEG XL: {error}");
+            dbg_log!(error, "{message}");
+            unsafe { throw_runtime_exception_raw(env, message) };
+            null_mut()
+        }
+        Outcome::Panic(panic) => {
+            let message = format!(
+                "panic while transcoding JPEG to JPEG XL: {}",
+                panic_payload_to_string(panic.as_ref())
+            );
+            dbg_log!(error, "{message}");
+            unsafe { throw_runtime_exception_raw(env, message) };
             null_mut()
         }
     }

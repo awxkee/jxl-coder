@@ -100,12 +100,6 @@ enum class ToneMapping {
   Rec2408,
 };
 
-enum class AvEncodingSpeed {
-  Slow,
-  Medium,
-  Fast,
-};
-
 /// Opaque Rust-owned decoder state. C++ must only use pointers to this type.
 struct JxlAnimationCoordinator;
 
@@ -265,6 +259,13 @@ jbyteArray encode_jixel_file(JNIEnv *env,
                              bool lossless,
                              JixelEncodingSpeed speed);
 
+/// Losslessly transcodes JPEG DCT coefficients into JPEG XL.
+jbyteArray transcode_jpeg_to_jxl(JNIEnv *env,
+                                 const uint8_t *jpeg,
+                                 uintptr_t length,
+                                 bool jpeg_reconstruction,
+                                 uintptr_t num_threads);
+
 JxlAnimationCreateResult jxl_animation_coordinator_create(const uint8_t *data, uintptr_t length);
 
 void jxl_animation_coordinator_destroy(JxlAnimationCoordinator *coordinator);
@@ -359,40 +360,18 @@ void apply_tone_mapping_rgba16(uint16_t *image,
                                ToneMapping mapping,
                                float brightness);
 
-jobject decode_av2_file(JNIEnv *env,
-                        const uint8_t *_data,
-                        uintptr_t _length,
-                        int32_t _scaled_width,
-                        int32_t _scaled_height,
-                        WeaveScaleMode _scale_mode,
-                        WeaverPreferredColorConfig _preferred_color_config);
+jbyteArray encode_jixel_file(JNIEnv *env,
+                             jobject image,
+                             jobject exif,
+                             int32_t color_space,
+                             int32_t quality,
+                             bool lossless,
+                             JixelEncodingSpeed speed);
 
-JxlInfo read_av2_file_info(const uint8_t *_data, uintptr_t _length);
-
-jbyteArray encode_avif_av1_file(JNIEnv *env,
-                                jobject _image,
-                                jobject _exif,
-                                int32_t _color_space,
-                                int32_t _quality,
-                                bool _lossless,
-                                int32_t _chroma_subsampling_code,
-                                AvEncodingSpeed _speed);
-
-jbyteArray encode_avif_av2_file(JNIEnv *env,
-                                jobject _image,
-                                jobject _exif,
-                                int32_t _color_space,
-                                int32_t _quality,
-                                bool _lossless,
-                                int32_t _chroma_subsampling_code,
-                                AvEncodingSpeed _speed);
-
-jbyteArray encode_heic_file(JNIEnv *env,
-                            jobject _image,
-                            jobject _exif,
-                            int32_t _color_space,
-                            int32_t _quality,
-                            int32_t _chroma_subsampling_code,
-                            bool _lossless);
+jbyteArray transcode_jpeg_to_jxl(JNIEnv *env,
+                                 const uint8_t *_jpeg,
+                                 uintptr_t _length,
+                                 bool _jpeg_reconstruction,
+                                 uintptr_t _num_threads);
 
 }  // extern "C"

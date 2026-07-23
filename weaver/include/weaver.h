@@ -259,6 +259,13 @@ jbyteArray encode_jixel_file(JNIEnv *env,
                              bool lossless,
                              JixelEncodingSpeed speed);
 
+/// Losslessly transcodes JPEG DCT coefficients into JPEG XL.
+jbyteArray transcode_jpeg_to_jxl(JNIEnv *env,
+                                 const uint8_t *jpeg,
+                                 uintptr_t length,
+                                 bool jpeg_reconstruction,
+                                 uintptr_t num_threads);
+
 JxlAnimationCreateResult jxl_animation_coordinator_create(const uint8_t *data, uintptr_t length);
 
 void jxl_animation_coordinator_destroy(JxlAnimationCoordinator *coordinator);
@@ -360,5 +367,11 @@ jbyteArray encode_jixel_file(JNIEnv *env,
                              int32_t quality,
                              bool lossless,
                              JixelEncodingSpeed speed);
+
+jbyteArray transcode_jpeg_to_jxl(JNIEnv *env,
+                                 const uint8_t *_jpeg,
+                                 uintptr_t _length,
+                                 bool _jpeg_reconstruction,
+                                 uintptr_t _num_threads);
 
 }  // extern "C"

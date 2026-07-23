@@ -77,3 +77,15 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz,
     return nullptr;
   }
 }
+extern "C"
+JNIEXPORT jbyteArray JNICALL
+Java_com_awxkee_jxlcoder_JxlCoder_transcodeImpl(JNIEnv *env, jobject thiz, jobject byteBuffer, jboolean allow_reconstruction) {
+  auto bufferAddress = reinterpret_cast<uint8_t *>(env->GetDirectBufferAddress(byteBuffer));
+  int length = (int) env->GetDirectBufferCapacity(byteBuffer);
+  if (!bufferAddress || length <= 0) {
+    std::string errorString = "Only direct byte buffers are supported";
+    throwException(env, errorString);
+    return nullptr;
+  }
+  return transcode_jpeg_to_jxl(env, bufferAddress, length, allow_reconstruction, 0);
+}

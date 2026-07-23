@@ -130,6 +130,10 @@ object JxlCoder {
         )
     }
 
+    fun transcode(jpegByteBuffer: ByteBuffer, allowReconstruction: Boolean): ByteArray {
+        return transcodeImpl(jpegByteBuffer, allowReconstruction)
+    }
+
     /**
      * @return NULL if byte array is not valid JPEG XL
      */
@@ -163,6 +167,11 @@ object JxlCoder {
         bitmapColorSpace: String?,
         dataSpaceValue: Int,
         quality: Int,
+    ): ByteArray
+
+    private external fun transcodeImpl(
+        byteBuffer: ByteBuffer,
+        allowReconstruction: Boolean
     ): ByteArray
 
     private val MAGIC_1 = byteArrayOf(0xFF.toByte(), 0x0A)
