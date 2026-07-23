@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2023 Radzivon Bartoshyk
+ * Copyright (c) 2023-2026 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
  * Created by Radzivon Bartoshyk on 04/09/2023
