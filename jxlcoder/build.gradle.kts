@@ -65,7 +65,7 @@ mavenPublishing {
 
 android {
     namespace = "io.github.awxkee.jxlcoder"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 21
