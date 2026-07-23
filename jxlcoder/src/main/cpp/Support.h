@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2023 Radzivon Bartoshyk
+ * Copyright (c) 2023-2026 Radzivon Bartoshyk
  * jxl-coder [https://github.com/awxkee/jxl-coder]
  *
  * Created by Radzivon Bartoshyk on 15/09/2023
@@ -30,9 +30,7 @@
 #define AVIF_SUPPORT_H
 
 #include <jni.h>
-#include "SizeScaler.h"
-#include "XScaler.h"
-#include "colorspaces/ColorMatrix.h"
+#include "weaver.h"
 
 enum PreferredColorConfig {
   Default = 1,
@@ -43,8 +41,30 @@ enum PreferredColorConfig {
   Hardware = 6
 };
 
-bool checkDecodePreconditions(JNIEnv *env, jint javaColorspace, PreferredColorConfig *config,
-                              jint javaScaleMode, ScaleMode *scaleMode, jint javaSampler,
-                              XSampler *sampler);
+inline WeaverPreferredColorConfig javeConfigToRust(jint javaPreferredColorConfig) {
+  if (javaPreferredColorConfig == 1) {
+    return WeaverPreferredColorConfig::Default;
+  } else if (javaPreferredColorConfig == 2) {
+    return WeaverPreferredColorConfig::Rgba8888;
+  } else if (javaPreferredColorConfig == 3) {
+    return WeaverPreferredColorConfig::RgbaF16;
+  } else if (javaPreferredColorConfig == 4) {
+    return WeaverPreferredColorConfig::Rgb565;
+  } else if (javaPreferredColorConfig == 5) {
+    return WeaverPreferredColorConfig::Rgba1010102;
+  } else if (javaPreferredColorConfig == 6) {
+    return WeaverPreferredColorConfig::Hardware;
+  }
+  return WeaverPreferredColorConfig::Rgba8888;
+}
+
+inline WeaveScaleMode javaScaleModeToRust(jint javaScaleMode) {
+  if (javaScaleMode == 1) {
+    return WeaveScaleMode::ScaleToFit;
+  } else if (javaScaleMode == 2) {
+    return WeaveScaleMode::ScaleToFill;
+  }
+  return WeaveScaleMode::JustResize;
+}
 
 #endif //AVIF_SUPPORT_H

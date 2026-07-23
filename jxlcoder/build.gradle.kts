@@ -8,7 +8,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("maven-publish")
     id("signing")
-    id("com.vanniktech.maven.publish") version "0.36.0"
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
 
@@ -25,7 +25,7 @@ mavenPublishing {
     pom {
         name.set("Jxl Coder")
         description.set("JPEG XL encoder/decoder for Android")
-        inceptionYear.set("2023")
+        inceptionYear.set("2026")
         url.set("https://github.com/awxkee/jxl-coder")
         licenses {
             license {
@@ -65,7 +65,7 @@ mavenPublishing {
 
 android {
     namespace = "io.github.awxkee.jxlcoder"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 21
@@ -122,9 +122,9 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("com.google.android.material:material:1.13.0")
+    implementation("com.google.android.material:material:1.14.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")

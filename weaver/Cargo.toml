@@ -4,19 +4,40 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-colorutils-rs = "0.8.0"
-num-traits = "0.2.19"
-pic-scale = { version = "0.7.6", default-features = false}
+num-traits = "0.2"
+pic-scale = { version = "0.7.10", default-features = false, features = ["nightly_f16"] }
+bytemuck = { version = "1.25", features = ["nightly_float"] }
+moxcms = { version = "0.9.0", default-features = false }
+gainforge = "0.5.1"
+thiserror = "2.0.18"
+libc = "1.0.0-alpha.3"
+log = "0.4.32"
+jxl = { version = "0.4.3", default-features = false }
+yuv = { version = "0.8.16", default-features = false, features = ["nightly_f16"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { version = "0.22.4", default-features = false }
+ndk-sys = "0.6"
+android_logger = { version = "0.15", optional = true }   # pulled in only by `logging`
+anyhow = "1.0.102"
+
+[target.'cfg(any(target_arch = "aarch64", target_arch = "arm"))'.dependencies]
+jixel = { version = "0.2.9", default-features = false }
 
 [features]
-arm_set = ["pic-scale/nightly_i8mm", "pic-scale/rdm", "pic-scale/sve"]
-
-[build-dependencies]
-cbindgen = "0.29.2"
+rdm = ["pic-scale/rdm", "moxcms/neon_shaper_fixed_point_paths", "jixel/neon", "jxl/neon"]
+i8mm = ["pic-scale/nightly_i8mm"]
+sve = ["pic-scale/sve"]
+logging = ["dep:android_logger"]
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["cdylib", "staticlib"]
 
 [profile.release]
+strip = true
+opt-level = 3
 lto = true
 codegen-units = 1
+
+[build-dependencies]
+cbindgen = "0.29.4"
