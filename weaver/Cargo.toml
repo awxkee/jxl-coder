@@ -22,7 +22,7 @@ android_logger = { version = "0.15", optional = true }   # pulled in only by `lo
 anyhow = "1.0.102"
 
 [target.'cfg(any(target_arch = "aarch64", target_arch = "arm"))'.dependencies]
-jixel = { version = "0.2.9", default-features = false }
+jixel = { version = "0.2.13", default-features = false }
 
 [features]
 rdm = ["pic-scale/rdm", "moxcms/neon_shaper_fixed_point_paths", "jixel/neon", "jxl/neon"]
