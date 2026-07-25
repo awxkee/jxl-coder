@@ -66,7 +66,7 @@ class JxlAnimatedImage : Closeable {
         scaleMode: ScaleMode = ScaleMode.FIT,
     ) {
         if (Build.VERSION.SDK_INT >= 21) {
-            System.loadLibrary("jxlcoder")
+            System.loadLibrary("rjxlcoder")
         }
         this.scaleMode = scaleMode
         coordinator = createCoordinator(
@@ -83,7 +83,7 @@ class JxlAnimatedImage : Closeable {
         scaleMode: ScaleMode = ScaleMode.FIT,
     ) {
         if (Build.VERSION.SDK_INT >= 21) {
-            System.loadLibrary("jxlcoder")
+            System.loadLibrary("rjxlcoder")
         }
         this.scaleMode = scaleMode
         coordinator = createCoordinatorByteArray(

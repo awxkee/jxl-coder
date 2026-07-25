@@ -303,9 +303,9 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
 name = "jixel"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26b3fd07c7e1e980e8cdae753156f321fafd0889c92c95df1e2648fa7bdba228"
+checksum = "8d2b6ecdc17c4c1e31adf5a0b98820aaebf149781e9d17a97b276eee9c8574af"
 
 [[package]]
 name = "jni"
@@ -903,6 +903,7 @@ dependencies = [
  "num-traits",
  "pic-scale",
  "thiserror",
+ "yuv",
 ]
 
 [[package]]
@@ -1021,6 +1022,15 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "yuv"
+version = "0.8.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d85a782d94ee43f078bcfd6fa82d4e6a5b2d1cfbbad168e4df5a9f7b39ef48c"
+dependencies = [
+ "num-traits",
 ]
 
 [[package]]
