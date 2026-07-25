@@ -57,7 +57,7 @@ mavenPublishing {
     if (System.getenv("PUBLISH_STATE") == "Release") {
         publishToMavenCentral(
             automaticRelease = true,
-            validateDeployment = DeploymentValidation.PUBLISHED
+            validateDeployment = DeploymentValidation.VALIDATED
         )
         signAllPublications()
     }
