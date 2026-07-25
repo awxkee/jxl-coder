@@ -22,24 +22,10 @@ val bytes: ByteArray = JxlCoder.encode(decodedBitmap) // Encode Bitmap to JPEG X
 
 # Convenience for conversion
 
-## Construct from JPEG or Reconstruct JPEG from JXL
+## Construct from JPEG
 ```kotlin
 // Construct JPEG XL from JPEG data
- val jxlData = JxlCoder.Convenience.construct(jpegByteArray)
-// Re-construct JPEG from JXL data
- val jpegData = JxlCoder.Convenience.reconstructJPEG(jxlByteArray)
-```
-
-## Create JPEG XL from GIF
-```kotlin
-// Construct animated JPEG XL from GIF data
- val jxlData = JxlCoder.Convenience.gif2JXL(gifByteArray)
-```
-
-## Create JPEG XL from APNG
-```kotlin
-// Construct animated JPEG XL from APNG data
- val jxlData = JxlCoder.Convenience.apng2JXL(gifByteArray)
+ val jxlData = JxlCoder.transcode(jpegByteArray)
 ```
 
 # Animation Decoding
@@ -80,24 +66,6 @@ implementation 'io.github.awxkee:jxl-coder-glide:2.2.0' // or any version above 
 implementation 'io.github.awxkee:jxl-coder-coil:2.2.0' // or any version above picker from release tags
 ```
 
-### ~~Add Jitpack repository~~ Deprecated since 2.2.0, from 2.2.0 only Maven central will receive support
-
-```groovy
-repositories {
-    maven { url "https://jitpack.io" }
-}
-```
-
-```groovy
-implementation 'io.github.awxkee:jxl-coder:2.2.0' // or any version above picker from release tags
-
-// Glide JPEG XL plugin if you need one
-implementation 'io.github.awxkee:jxl-coder-glide:2.2.0' // or any version above picker from release tags
-
-// Coil JPEG XL plugin if you need one
-implementation 'com.github.awxkee:jxl-coder-coil:2.1.9' // or any version above picker from release tags
-```
-
 # Self-build
 
 ## Requirements
@@ -120,22 +88,6 @@ NDK_PATH=/path/to/ndk INCLUDE_X86=yes bash build_jxl.sh
 
 # Copyrights
 
-This library created with [`libjxl`](https://github.com/libjxl/libjxl/tree/main) which belongs to
+This library created with [`jixel`](https://github.com/awxkee/jixel) and ['jxl-rs'](https://github.com/libjxl/jxl-rs) which belongs to
 JPEG XL Project
 Authors which licensed with BSD-3 license
-
-# Disclaimer
-
-The JPEG XL call for proposals talks about the requirement of a next generation image compression
-standard with substantially better compression efficiency (60% improvement) comparing to JPEG. The
-standard is expected to outperform the still image compression performance shown by HEIC, AVIF,
-WebP, and JPEG 2000. It also provides efficient lossless recompression options for images in the
-traditional/legacy JPEG format.
-
-JPEG XL supports lossy compression and lossless compression of ultra-high-resolution images (up to 1
-terapixel), up to 32 bits per component, up to 4099 components (including alpha transparency),
-animated images, and embedded previews. It has features aimed at web delivery such as advanced
-progressive decoding[13] and minimal header overhead, as well as features aimed at image editing and
-digital printing, such as support for multiple layers, CMYK, and spot colors. It is specifically
-designed to seamlessly handle wide color gamut color spaces with high dynamic range such as Rec.
-2100 with the PQ or HLG transfer function.
