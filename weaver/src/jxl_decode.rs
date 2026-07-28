@@ -67,7 +67,7 @@ pub(crate) const MAX_JXL_SAMPLES_EXCLUSIVE: usize = MAX_JXL_PIXELS * 4 + 1;
 
 pub(crate) fn limited_decoder_options() -> JxlDecoderOptions {
     let mut options = JxlDecoderOptions::default();
-    options.pixel_limit = Some(MAX_JXL_SAMPLES_EXCLUSIVE);
+    options.sample_limit = Some(MAX_JXL_SAMPLES_EXCLUSIVE);
     options
 }
 
@@ -305,7 +305,7 @@ mod tests {
     #[test]
     fn applies_decoder_and_dimension_limits() {
         assert_eq!(
-            limited_decoder_options().pixel_limit,
+            limited_decoder_options().sample_limit,
             Some(MAX_JXL_SAMPLES_EXCLUSIVE)
         );
         assert!(validate_jxl_dimensions(MAX_JXL_DIMENSION, MAX_JXL_DIMENSION).is_ok());
