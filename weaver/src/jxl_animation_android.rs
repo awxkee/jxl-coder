@@ -92,15 +92,26 @@ pub unsafe extern "C" fn jxl_animation_coordinator_get_frame_bitmap(
 
     match outcome.into_outcome() {
         Outcome::Ok(bitmap) => bitmap,
-        Outcome::Err(_error) => {
+        Outcome::Err(error) => {
             dbg_log!(
                 error,
-                "JNI error while creating animation bitmap: {_error:?}"
+                "JNI error while creating animation bitmap: {error:?}"
             );
+            unsafe { crate::support::throw_runtime_exception_raw(env, error.to_string()) };
             null_mut()
         }
-        Outcome::Panic(_panic) => {
-            dbg_log!(error, "Rust panic while creating animation bitmap");
+        Outcome::Panic(panic) => {
+            let message = crate::support::panic_payload_to_string(panic.as_ref());
+            dbg_log!(
+                error,
+                "Rust panic while creating animation bitmap: {message}"
+            );
+            unsafe {
+                crate::support::throw_runtime_exception_raw(
+                    env,
+                    format!("JPEG XL animation decoder panicked: {message}"),
+                )
+            };
             null_mut()
         }
     }

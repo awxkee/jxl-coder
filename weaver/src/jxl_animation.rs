@@ -30,6 +30,7 @@
 use crate::jxl_decode::{
     is_jxl, limited_decoder_options, validate_jxl_dimensions, BitDepth, DecodedJxlPacket,
 };
+use crate::jxl_thread_runner::JxlThreadRunner;
 use jxl::api::{
     states, JxlColorType, JxlDataFormat, JxlDecoder, JxlOutputBuffer, JxlPixelFormat,
     ProcessingResult, VisibleFrameInfo,
@@ -226,7 +227,7 @@ impl JxlAnimationCoordinator {
         options.scan_frames_only = true;
         let mut input = owned.as_slice();
         let decoder = JxlDecoder::<states::Initialized>::new(options);
-        let mut decoder = complete(decoder.process(&mut input), "image metadata")?;
+        let mut decoder = complete(decoder.process(&mut input, None), "image metadata")?;
 
         let basic = decoder.basic_info().clone();
         let (width, height) = basic.size;
@@ -248,7 +249,7 @@ impl JxlAnimationCoordinator {
         }
 
         while decoder.has_more_frames() {
-            let frame_decoder = complete(decoder.process(&mut input), "frame metadata")?;
+            let frame_decoder = complete(decoder.process(&mut input, None), "frame metadata")?;
             decoder = complete(frame_decoder.skip_frame(&mut input), "frame data")?;
         }
 
@@ -329,15 +330,21 @@ impl JxlAnimationCoordinator {
             )
         })?;
 
+        let mut runner = JxlThreadRunner::default();
         let mut initial_input = self.data.as_slice();
         let options = limited_decoder_options();
         let decoder = JxlDecoder::<states::Initialized>::new(options);
-        let mut decoder = complete(decoder.process(&mut initial_input), "image metadata")?;
-        decoder.set_pixel_format(JxlPixelFormat {
-            color_type: JxlColorType::Rgba,
-            color_data_format: Some(JxlDataFormat::U8 { bit_depth: 8 }),
-            extra_channel_format: vec![None; decoder.basic_info().extra_channels.len()],
-        });
+        let mut decoder = complete(
+            decoder.process(&mut initial_input, Some(&mut runner)),
+            "image metadata",
+        )?;
+        decoder
+            .set_pixel_format(JxlPixelFormat {
+                color_type: JxlColorType::Rgba,
+                color_data_format: Some(JxlDataFormat::U8 { bit_depth: 8 }),
+                extra_channel_format: vec![None; decoder.basic_info().extra_channels.len()],
+            })
+            .map_err(AnimationError::decode)?;
         let icc = decoder
             .output_color_profile()
             .try_as_icc()
@@ -348,10 +355,16 @@ impl JxlAnimationCoordinator {
         // preserves all reference frames and also works for boxed streams whose
         // first frame begins in the middle of a jxlp box.
         for _ in 0..index {
-            let frame_decoder = complete(decoder.process(&mut initial_input), "frame metadata")?;
+            let frame_decoder = complete(
+                decoder.process(&mut initial_input, Some(&mut runner)),
+                "frame metadata",
+            )?;
             decoder = complete(frame_decoder.skip_frame(&mut initial_input), "frame data")?;
         }
-        let decoder = complete(decoder.process(&mut initial_input), "frame metadata")?;
+        let decoder = complete(
+            decoder.process(&mut initial_input, Some(&mut runner)),
+            "frame metadata",
+        )?;
 
         let stride = self.width.checked_mul(4).ok_or_else(|| {
             AnimationError::new(
@@ -369,7 +382,7 @@ impl JxlAnimationCoordinator {
             stride,
         )];
         let _decoder = complete(
-            decoder.process(&mut initial_input, &mut output),
+            decoder.process(&mut initial_input, &mut output, Some(&mut runner)),
             "frame pixels",
         )?;
 
@@ -561,7 +574,36 @@ pub unsafe extern "C" fn jxl_animation_frame_release(frame: JxlAnimationFrame) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::jxl_decode::{decode_packed_jxl, PackedJxl};
     use std::ptr::null;
+
+    #[test]
+    fn tall_frame_matches_lossless_source_and_still_decoder() {
+        let data = include_bytes!("../../jxlcoder/src/androidTest/assets/tall-pattern.jxl");
+        let coordinator = JxlAnimationCoordinator::create(data)
+            .unwrap_or_else(|error| panic!("{}", error.message));
+        let frame = coordinator.decode_frame_packet(0).unwrap();
+        assert_eq!((frame.width, frame.height), (32, 512));
+        assert_eq!(coordinator.frames.len(), 1);
+        for y in 0..512 {
+            for x in 0..32 {
+                let offset = (y * 32 + x) * 4;
+                assert_eq!(
+                    &frame.data[offset..offset + 4],
+                    &[
+                        if (x / 4 + y / 4) % 2 != 0 { 255 } else { 0 },
+                        (y % 256) as u8,
+                        (x * 8) as u8,
+                        255
+                    ],
+                );
+            }
+        }
+        let PackedJxl::Regular(still) = decode_packed_jxl(data).unwrap() else {
+            panic!("expected an 8-bit image");
+        };
+        assert_eq!(frame.data, still.data);
+    }
 
     #[test]
     fn null_create_is_reported_without_unwinding() {

@@ -32,6 +32,7 @@
 
 mod box_walker;
 mod cvt;
+#[cfg(target_os = "android")]
 mod ffi;
 mod icc;
 #[cfg(all(
@@ -45,15 +46,17 @@ mod jxl_animation_android;
 mod jxl_decode;
 #[cfg(target_os = "android")]
 mod jxl_decode_android;
+mod jxl_thread_runner;
+#[cfg(target_os = "android")]
 mod native_color_space;
 mod orientation;
 mod scaling;
 mod support;
 mod tonemapper;
-#[cfg(not(all(
+#[cfg(all(
     target_os = "android",
-    any(target_arch = "aarch64", target_arch = "arm")
-)))]
+    not(any(target_arch = "aarch64", target_arch = "arm"))
+))]
 mod unsupported_jixel_encode_android;
 
 use std::fmt::Debug;
@@ -87,10 +90,10 @@ pub use scaling::{
     weave_scaling_result_free, ScalingFunction, ScalingResult, ScalingResultU16, WeaveScaleMode,
 };
 pub use tonemapper::{apply_tone_mapping_rgba16, apply_tone_mapping_rgba8, FfiTrc, ToneMapping};
-#[cfg(not(all(
+#[cfg(all(
     target_os = "android",
-    any(target_arch = "aarch64", target_arch = "arm")
-)))]
+    not(any(target_arch = "aarch64", target_arch = "arm"))
+))]
 pub use unsupported_jixel_encode_android::{encode_jixel_file, transcode_jpeg_to_jxl};
 
 #[repr(C)]

@@ -704,7 +704,7 @@ mod tests {
             .collect::<Vec<f16>>();
         assert_eq!(dst, v_src);
 
-        let mut origin = vec![512; width * height * 4];
+        let mut origin = origin.clone();
         weave_cvt_rgba16_to_rgba_f16(
             origin.as_ptr(),
             width as u32 * 4 * 2,
@@ -742,7 +742,7 @@ mod tests {
             .collect::<Vec<f16>>();
         assert_eq!(dst, v_src);
 
-        let mut origin = vec![512; width * height * 4];
+        let mut origin = origin.clone();
         weave_cvt_rgba16_to_rgba_f16(
             origin.as_ptr(),
             width as u32 * 4 * 2,

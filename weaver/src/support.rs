@@ -26,14 +26,16 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-use jni::objects::JObject;
-use jni::strings::JNIString;
-use jni::sys::jobject;
-use jni::{jni_sig, jni_str, Env, EnvUnowned, JValue, Outcome};
+#[cfg(target_os = "android")]
+use jni::{
+    jni_sig, jni_str, objects::JObject, strings::JNIString, sys::jobject, Env, EnvUnowned, JValue,
+    Outcome,
+};
 use num_traits::AsPrimitive;
 use std::fmt::Debug;
 use std::ops::{AddAssign, BitXor};
 use std::slice;
+#[cfg(target_os = "android")]
 use std::sync::OnceLock;
 
 #[inline]
@@ -115,13 +117,16 @@ pub(crate) struct PackedImageBuffer {
     pub(crate) format: WeaverPreferredColorConfig,
 }
 
+#[cfg(target_os = "android")]
 pub(crate) enum PackedImageTransfer {
     Image(PackedImageBuffer),
     HardwareBuffer(jobject),
 }
 
+#[cfg(target_os = "android")]
 static SDK_VERSION: OnceLock<i32> = OnceLock::new();
 
+#[cfg(target_os = "android")]
 pub(crate) fn android_os_version() -> i32 {
     *SDK_VERSION.get_or_init(|| {
         let key = b"ro.build.version.sdk\0";
@@ -156,9 +161,10 @@ macro_rules! dbg_log {
 }
 pub(crate) use dbg_log;
 
-#[cfg(feature = "logging")]
+#[cfg(all(target_os = "android", feature = "logging"))]
 static LOGGER: OnceLock<()> = OnceLock::new();
 
+#[cfg(target_os = "android")]
 pub(crate) fn init_logging() {
     #[cfg(feature = "logging")]
     LOGGER.get_or_init(|| {
@@ -179,6 +185,7 @@ pub(crate) fn panic_payload_to_string(payload: &(dyn std::any::Any + Send + 'sta
         .unwrap_or_else(|| "unknown panic".to_string())
 }
 
+#[cfg(target_os = "android")]
 pub(crate) fn throw_runtime_exception(env: &mut Env, message: impl Into<String>) {
     let message = message.into();
 
@@ -201,6 +208,7 @@ pub(crate) fn throw_runtime_exception(env: &mut Env, message: impl Into<String>)
     }
 }
 
+#[cfg(target_os = "android")]
 pub(crate) unsafe fn throw_runtime_exception_raw(
     env: *mut jni::sys::JNIEnv,
     message: impl Into<String>,
@@ -231,6 +239,7 @@ pub(crate) unsafe fn throw_runtime_exception_raw(
     }
 }
 
+#[cfg(target_os = "android")]
 pub(crate) fn optional_bytebuffer_to_vec(
     env: &mut Env,
     obj: jobject,
