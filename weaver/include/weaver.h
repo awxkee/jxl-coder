@@ -48,7 +48,7 @@ enum class FfiTrc {
   /// For future use by ITU-T | ISO/IEC
   Reserved,
   /// Rec. ITU-R BT.709-6<br />
-  /// Rec. ITU-R BT.1361-0 conventional colour gamut system (historical)<br />
+  /// Rec. ITU-R BT.1361-0 conventional color gamut system (historical)<br />
   /// (functionally the same as the values 6, 14 and 15)    <br />
   Bt709 = 1,
   /// Image characteristics are unknown or are determined by the application.<br />
@@ -75,7 +75,7 @@ enum class FfiTrc {
   Log100sqrt10 = 10,
   /// IEC 61966-2-4<br />
   Iec61966 = 11,
-  /// Rec. ITU-R BT.1361-0 extended colour gamut system (historical)<br />
+  /// Rec. ITU-R BT.1361-0 extended color gamut system (historical)<br />
   Bt1361 = 12,
   /// IEC 61966-2-1 sRGB or sYCC<br />
   Srgb = 13,

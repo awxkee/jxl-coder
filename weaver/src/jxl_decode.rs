@@ -28,6 +28,7 @@
  */
 
 use crate::check_image_size_overflow;
+use crate::jxl_thread_runner::JxlThreadRunner;
 use crate::support::try_vec;
 use jxl::api::{
     check_signature, Endianness, JxlColorType, JxlDataFormat, JxlDecoder, JxlDecoderOptions,
@@ -137,9 +138,10 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
         return Err(WeaverError::InvalidJxl);
     }
 
+    let mut runner = JxlThreadRunner::default();
     let mut input = data;
     let mut decoder = match JxlDecoder::new(limited_decoder_options())
-        .process(&mut input)
+        .process(&mut input, Some(&mut runner))
         .map_err(decode_error)?
     {
         ProcessingResult::Complete { result } => result,
@@ -176,13 +178,15 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
             bit_depth: 16,
         }
     };
-    decoder.set_pixel_format(JxlPixelFormat {
-        color_type: JxlColorType::Rgba,
-        color_data_format: Some(format),
-        // Alpha is requested interleaved through Rgba; all other extra channels
-        // are deliberately ignored by this still-image Android API.
-        extra_channel_format: vec![None; extra_channels],
-    });
+    decoder
+        .set_pixel_format(JxlPixelFormat {
+            color_type: JxlColorType::Rgba,
+            color_data_format: Some(format),
+            // Alpha is requested interleaved through Rgba; all other extra channels
+            // are deliberately ignored by this still-image Android API.
+            extra_channel_format: vec![None; extra_channels],
+        })
+        .map_err(decode_error)?;
     // This must describe the pixels jxl-rs actually emits. For XYB files with
     // an ICC profile and no external CMS, jxl-rs intentionally falls back to
     // sRGB output, so using the embedded profile here would double-transform.
@@ -191,7 +195,10 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
         .try_as_icc()
         .map(|profile| profile.into_owned());
 
-    let decoder = match decoder.process(&mut input).map_err(decode_error)? {
+    let decoder = match decoder
+        .process(&mut input, Some(&mut runner))
+        .map_err(decode_error)?
+    {
         ProcessingResult::Complete { result } => result,
         ProcessingResult::NeedsMoreInput { .. } => {
             return Err(WeaverError::FailedToDecodeJxl(
@@ -210,7 +217,7 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
         let stride = width * 4;
         let mut output = [JxlOutputBuffer::new(&mut pixels, height, stride)];
         match decoder
-            .process(&mut input, &mut output)
+            .process(&mut input, &mut output, Some(&mut runner))
             .map_err(decode_error)?
         {
             ProcessingResult::Complete { .. } => {}
@@ -237,7 +244,7 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
             stride,
         )];
         match decoder
-            .process(&mut input, &mut output)
+            .process(&mut input, &mut output, Some(&mut runner))
             .map_err(decode_error)?
         {
             ProcessingResult::Complete { .. } => {}
@@ -265,7 +272,7 @@ pub(crate) fn read_jxl_info(data: &[u8]) -> Result<(usize, usize, u32), WeaverEr
 
     let mut input = data;
     let decoder = match JxlDecoder::new(limited_decoder_options())
-        .process(&mut input)
+        .process(&mut input, None)
         .map_err(decode_error)?
     {
         ProcessingResult::Complete { result } => result,

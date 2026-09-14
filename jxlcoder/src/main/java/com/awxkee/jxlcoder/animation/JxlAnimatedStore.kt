@@ -32,8 +32,6 @@ import android.graphics.Bitmap
 import android.util.Size
 import com.awxkee.jxlcoder.JxlAnimatedImage
 import com.awxkee.jxlcoder.ScaleMode
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 public class JxlAnimatedStore(
@@ -45,24 +43,55 @@ public class JxlAnimatedStore(
     private val cachedOriginalWidth: Int = jxlAnimatedImage.getWidth()
     private val cachedOriginalHeight: Int = jxlAnimatedImage.getHeight()
 
-    private val dstSize: Size = if (targetWidth > 0 && targetHeight > 0) {
-        val xf = targetWidth.toFloat() / cachedOriginalWidth.toFloat()
-        val yf = targetHeight.toFloat() / cachedOriginalHeight.toFloat()
-        val factor: Float = if (jxlAnimatedImage.scaleMode == ScaleMode.FILL) {
-            max(xf, yf)
-        } else {
-            min(xf, yf)
+    private val dstSize: Size = resolveSize()
+
+    private fun resolveSize(): Size {
+        // Match the dimension sentinels and rounding in weaver/src/scaling.rs.
+        fun even(value: Int): Int = (value.toLong().coerceAtLeast(1) + 1L)
+            .and(-2L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
+        val requested = when {
+            targetWidth == -2 && targetHeight == -2 ->
+                Size(even(cachedOriginalWidth), even(cachedOriginalHeight))
+            targetWidth <= 0 && targetHeight <= 0 ->
+                Size(cachedOriginalWidth, cachedOriginalHeight)
+            targetWidth > 0 && targetHeight in -2..-1 -> {
+                val height = (cachedOriginalHeight.toDouble() * targetWidth / cachedOriginalWidth)
+                    .roundToInt().coerceAtLeast(1)
+                Size(targetWidth, if (targetHeight == -2) even(height) else height)
+            }
+            targetHeight > 0 && targetWidth in -2..-1 -> {
+                val width = (cachedOriginalWidth.toDouble() * targetHeight / cachedOriginalHeight)
+                    .roundToInt().coerceAtLeast(1)
+                Size(if (targetWidth == -2) even(width) else width, targetHeight)
+            }
+            else -> Size(targetWidth.coerceAtLeast(1), targetHeight.coerceAtLeast(1))
         }
-        val newSize = Size((cachedOriginalWidth * factor).roundToInt(), (cachedOriginalHeight * factor).roundToInt())
-        newSize
-    } else {
-        Size(0,0)
+
+        // FILL crops to the requested rectangle, and RESIZE stretches to it.
+        if (jxlAnimatedImage.scaleMode != ScaleMode.FIT) return requested
+
+        return if (requested.width.toLong() * cachedOriginalHeight <=
+            requested.height.toLong() * cachedOriginalWidth
+        ) {
+            Size(
+                requested.width,
+                (cachedOriginalHeight.toDouble() * requested.width / cachedOriginalWidth)
+                    .roundToInt().coerceIn(1, requested.height)
+            )
+        } else {
+            Size(
+                (cachedOriginalWidth.toDouble() * requested.height / cachedOriginalHeight)
+                    .roundToInt().coerceIn(1, requested.width),
+                requested.height
+            )
+        }
     }
 
     override val width: Int
-        get() = if (targetWidth > 0 && targetHeight > 0) dstSize.width else cachedOriginalWidth
+        get() = dstSize.width
     override val height: Int
-        get() = if (targetWidth > 0 && targetHeight > 0) dstSize.height else cachedOriginalHeight
+        get() = dstSize.height
 
     override fun getFrame(frame: Int): Bitmap {
         return jxlAnimatedImage.getFrame(frame, scaleWidth = targetWidth, scaleHeight = targetHeight)

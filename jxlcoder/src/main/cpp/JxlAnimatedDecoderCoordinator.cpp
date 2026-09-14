@@ -135,7 +135,7 @@ Java_com_awxkee_jxlcoder_JxlAnimatedImage_getFrameImpl(JNIEnv *env, jobject thiz
   try {
     auto coordinator = reinterpret_cast<RustJxlAnimationCoordinator *>(coordinatorPtr);
 
-    return coordinator->getFrame(env, frameIndex, scaleWidth, scaleWidth);
+    return coordinator->getFrame(env, frameIndex, scaleWidth, scaleHeight);
   } catch (std::bad_alloc &err) {
     std::string errorString = "OOM: " + string(err.what());
     throwException(env, errorString);

@@ -165,7 +165,7 @@ fn crop_rgba_for_scale_to_fill<T: Copy>(
         scale_to_fill_crop(width, height, target_width, target_height);
     if crop_x == 0 && crop_y == 0 && crop_width == width && crop_height == height {
         return Ok(CropView {
-            data: src.clone(),
+            data: src,
             stride: src_stride,
             width,
             height,
@@ -759,7 +759,8 @@ pub extern "C" fn weave_scale_f16(
 
 #[cfg(test)]
 mod tests {
-    use super::resolve_dimensions;
+    use super::*;
+    use std::borrow::Cow;
 
     #[test]
     fn resolve_dimensions_keeps_original_for_zero_pair() {
@@ -781,7 +782,119 @@ mod tests {
     fn resolve_dimensions_preserves_auto_single_axis_modes() {
         assert_eq!(resolve_dimensions(4000, 2000, 1000, -1), (1000, 500));
         assert_eq!(resolve_dimensions(4000, 2000, -1, 500), (1000, 500));
-        assert_eq!(resolve_dimensions(4000, 2001, 1000, -2), (1000, 502));
-        assert_eq!(resolve_dimensions(4001, 2000, -2, 500), (1002, 500));
+        assert_eq!(resolve_dimensions(4000, 2001, 1000, -2), (1000, 500));
+        assert_eq!(resolve_dimensions(4001, 2000, -2, 500), (1000, 500));
+        assert_eq!(resolve_dimensions(4000, 2003, 1000, -2), (1000, 502));
+        assert_eq!(resolve_dimensions(4003, 2000, -2, 500), (1002, 500));
+    }
+
+    #[test]
+    fn rectangular_targets_preserve_both_axes_for_u8_and_u16() {
+        for (width, height, target_width, target_height, fit) in [
+            (32, 512, 16, 128, (8, 128)),
+            (512, 32, 128, 16, (128, 8)),
+            (1, 512, 16, 16, (1, 16)),
+            (512, 1, 16, 16, (16, 1)),
+        ] {
+            for mode in [
+                WeaveScaleMode::ScaleToFit,
+                WeaveScaleMode::ScaleToFill,
+                WeaveScaleMode::JustResize,
+            ] {
+                let expected = if mode == WeaveScaleMode::ScaleToFit {
+                    fit
+                } else {
+                    (target_width as usize, target_height as usize)
+                };
+                let source8 = [64, 128, 192, 255].repeat(width * height);
+                let scaled8 = internal_scale_u8(
+                    Cow::Owned(source8),
+                    (width * 4) as u32,
+                    width as u32,
+                    height as u32,
+                    target_width,
+                    target_height,
+                    false,
+                    mode,
+                )
+                .unwrap();
+                assert_eq!((scaled8.width, scaled8.height), expected);
+                for pixel in scaled8.buffer.borrow().chunks_exact(4) {
+                    for (&actual, expected) in pixel.iter().zip([64u8, 128, 192, 255]) {
+                        assert!(actual.abs_diff(expected) <= 1);
+                    }
+                }
+
+                let source16 = [16384, 32768, 49152, 65535].repeat(width * height);
+                let scaled16 = internal_scale_u16(
+                    Cow::Owned(source16),
+                    width * 4,
+                    width as u32,
+                    height as u32,
+                    target_width,
+                    target_height,
+                    16,
+                    false,
+                    mode,
+                )
+                .unwrap();
+                assert_eq!((scaled16.width, scaled16.height), expected);
+                for pixel in scaled16.buffer.borrow().chunks_exact(4) {
+                    for (&actual, expected) in pixel.iter().zip([16384u16, 32768, 49152, 65535]) {
+                        assert!(actual.abs_diff(expected) <= 1);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn fill_selects_center_pixels_in_tall_and_wide_images() {
+        for (width, height) in [(4, 64), (64, 4)] {
+            // Padded rows exercise stride handling as well as the crop origin.
+            let stride = width * 4 + 8;
+            let mut source = vec![0; stride * height];
+            for y in 0..height {
+                for x in 0..width {
+                    let offset = y * stride + x * 4;
+                    source[offset..offset + 4].copy_from_slice(&[x as u8, y as u8, 127, 255]);
+                }
+            }
+            for input in [Cow::Borrowed(source.as_slice()), Cow::Owned(source.clone())] {
+                let scaled = internal_scale_u8(
+                    input,
+                    stride as u32,
+                    width as u32,
+                    height as u32,
+                    4,
+                    4,
+                    false,
+                    WeaveScaleMode::ScaleToFill,
+                )
+                .unwrap();
+                for y in 0..4 {
+                    for x in 0..4 {
+                        let offset = y * scaled.stride() + x * 4;
+                        assert_eq!(
+                            &scaled.buffer.borrow()[offset..offset + 4],
+                            &[
+                                (x + (width - 4) / 2) as u8,
+                                (y + (height - 4) / 2) as u8,
+                                127,
+                                255
+                            ],
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn fill_reuses_owned_source_when_no_crop_is_needed() {
+        let source = vec![255u8; 32 * 512 * 4];
+        let original_allocation = source.as_ptr();
+        let view = crop_rgba_for_scale_to_fill(Cow::Owned(source), 128, 32, 512, 16, 256).unwrap();
+        assert_eq!(view.data.as_ptr(), original_allocation);
     }
 }

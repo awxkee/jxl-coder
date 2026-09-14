@@ -518,17 +518,20 @@ pub unsafe extern "C" fn decode_jxl_file(
     let o = outcome.into_outcome();
     match o {
         Outcome::Ok(v) => v,
-        Outcome::Err(_e) => {
-            dbg_log!(error, "JNI error in with_env: {_e:?}");
+        Outcome::Err(error) => {
+            dbg_log!(error, "JNI error in with_env: {error:?}");
+            unsafe { crate::support::throw_runtime_exception_raw(env, error.to_string()) };
             null_mut()
         }
-        Outcome::Panic(_p) => {
-            let _msg = _p
-                .downcast_ref::<&str>()
-                .map(|s| s.to_string())
-                .or_else(|| _p.downcast_ref::<String>().cloned())
-                .unwrap_or_else(|| "unknown panic".to_string());
-            dbg_log!(error, "panic in with_env: {_msg:?}");
+        Outcome::Panic(panic) => {
+            let message = crate::support::panic_payload_to_string(panic.as_ref());
+            dbg_log!(error, "panic in with_env: {message:?}");
+            unsafe {
+                crate::support::throw_runtime_exception_raw(
+                    env,
+                    format!("JPEG XL decoder panicked: {message}"),
+                )
+            };
             null_mut()
         }
     }
