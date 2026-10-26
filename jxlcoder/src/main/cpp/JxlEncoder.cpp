@@ -45,8 +45,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz,
                                              jobject exifData,
                                              jint javaCompressionOption,
                                              jint effort, jstring bitmapColorProfile,
-                                             jint dataSpace, jint jQuality,
-                                             jboolean splines, jboolean dots) {
+                                             jint dataSpace, jint jQuality) {
   try {
 
     if (jQuality < 0 || jQuality > 100) {
@@ -76,8 +75,7 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz,
     }
 
     auto compressedData = encode_jixel_file(env, bitmap, exifData, dataSpace, jQuality,
-                                            lossless, encodingSpeed,
-                                            splines == JNI_TRUE, dots == JNI_TRUE);
+                                            lossless, encodingSpeed);
     return compressedData;
   } catch (std::bad_alloc &err) {
     std::string errorString = "Not enough memory to encode this image";

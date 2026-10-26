@@ -43,8 +43,6 @@ pub unsafe extern "C" fn encode_jixel_file(
     quality: i32,
     lossless: bool,
     speed: JixelEncodingSpeed,
-    splines: bool,
-    dots: bool,
 ) -> jbyteArray {
     init_logging();
     let message = format!(
