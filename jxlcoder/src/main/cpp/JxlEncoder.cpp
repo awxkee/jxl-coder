@@ -45,7 +45,8 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz,
                                              jobject exifData,
                                              jint javaCompressionOption,
                                              jint effort, jstring bitmapColorProfile,
-                                             jint dataSpace, jint jQuality) {
+                                             jint dataSpace, jint jQuality,
+                                             jboolean splines, jboolean dots) {
   try {
 
     if (jQuality < 0 || jQuality > 100) {
@@ -54,9 +55,19 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz,
       return static_cast<jbyteArray>(nullptr);
     }
 
-    JixelEncodingSpeed encodingSpeed = JixelEncodingSpeed::Fast;
-    if (effort == 2) {
-      encodingSpeed = JixelEncodingSpeed::Slow;
+    JixelEncodingSpeed encodingSpeed;
+    switch (effort) {
+      case 1: encodingSpeed = JixelEncodingSpeed::Fast; break;
+      case 2: encodingSpeed = JixelEncodingSpeed::Slow; break;
+      case 3: encodingSpeed = JixelEncodingSpeed::UltraFast; break;
+      case 4: encodingSpeed = JixelEncodingSpeed::Fastest; break;
+      case 5: encodingSpeed = JixelEncodingSpeed::Medium; break;
+      case 6: encodingSpeed = JixelEncodingSpeed::MediumSlow; break;
+      default: {
+        std::string errorString = "Unsupported JPEG XL encoding effort";
+        throwException(env, errorString);
+        return nullptr;
+      }
     }
 
     auto lossless = false;
@@ -64,7 +75,9 @@ Java_com_awxkee_jxlcoder_JxlCoder_encodeImpl(JNIEnv *env, jobject thiz,
       lossless = true;
     }
 
-    auto compressedData = encode_jixel_file(env, bitmap, exifData, dataSpace, jQuality, lossless, encodingSpeed);
+    auto compressedData = encode_jixel_file(env, bitmap, exifData, dataSpace, jQuality,
+                                            lossless, encodingSpeed,
+                                            splines == JNI_TRUE, dots == JNI_TRUE);
     return compressedData;
   } catch (std::bad_alloc &err) {
     std::string errorString = "Not enough memory to encode this image";

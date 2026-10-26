@@ -28,6 +28,7 @@
  */
 use crate::cvt::{ar30_bytes_to_rgba10, f16_bytes_to_rgba10, rgb565_bytes_to_rgba8888};
 use crate::ffi::{get_bitmap_data, BitmapData, BitmapPixelFormat};
+use crate::gainmap_android::read_gain_map;
 use crate::jxl_decode::WeaverError;
 use crate::support::{
     dbg_log, has_non_constant_alpha, init_logging, optional_bytebuffer_to_vec,
@@ -49,6 +50,10 @@ impl JixelEncodingSpeed {
         match self {
             JixelEncodingSpeed::Slow => jixel::Speed::Slow,
             JixelEncodingSpeed::Fast => jixel::Speed::Fast,
+            JixelEncodingSpeed::UltraFast => jixel::Speed::UltraFast,
+            JixelEncodingSpeed::Fastest => jixel::Speed::Fastest,
+            JixelEncodingSpeed::Medium => jixel::Speed::Medium,
+            JixelEncodingSpeed::MediumSlow => jixel::Speed::MediumSlow,
         }
     }
 }
@@ -192,9 +197,10 @@ fn encode_jixel_inner_u8(
     let quality = config.quality;
     let lossless = config.lossless;
     let exif = config.exif.as_ref();
+    let gain_map = config.gain_map.as_ref();
     dbg_log!(
         debug,
-        "encode_av1_inner_u8: {}x{} pixels={} quality={} lossless={} \
+        "encode_jixel_inner_u8: {}x{} pixels={} quality={} lossless={} \
          exif={}",
         bitmap_data.width,
         bitmap_data.height,
@@ -217,12 +223,17 @@ fn encode_jixel_inner_u8(
         .with_quality(quality as f32)
         .with_num_threads(threads)
         .with_speed(config.speed.to_jixel())
+        .with_splines(config.splines)
+        .with_dots(config.dots)
         .with_progressive(false)
         .with_lossless(lossless);
 
     if let Some(exif) = exif {
         dbg_log!(debug, "attaching exif: {} bytes", exif.len());
         config = config.with_exif(exif.to_vec());
+    }
+    if let Some(gain_map) = gain_map {
+        config = config.with_gain_map(gain_map.clone());
     }
 
     if has_real_alpha {
@@ -242,7 +253,7 @@ fn encode_jixel_inner_u8(
             &config,
         )
         .map_err(|x| {
-            dbg_log!(error, "encode_yuva8_with_alpha failed: {x}");
+            dbg_log!(error, "encode_rgba_with_alpha failed: {x}");
             anyhow::anyhow!(x)
         })?;
         return Ok(result);
@@ -263,7 +274,7 @@ fn encode_jixel_inner_u8(
         &config,
     )
     .map_err(|x| {
-        dbg_log!(error, "encode_yuv8 failed: {x}");
+        dbg_log!(error, "encode_rgb failed: {x}");
         anyhow::anyhow!(x)
     })?;
     dbg_log!(
@@ -275,7 +286,7 @@ fn encode_jixel_inner_u8(
     Ok(result)
 }
 
-fn encode_av1_inner_u16_10_bit(
+fn encode_jixel_inner_u16_10_bit(
     hd_plane: &[u16],
     bitmap_data: &BitmapData,
     config: &JixelEncodingConfig,
@@ -284,9 +295,10 @@ fn encode_av1_inner_u16_10_bit(
     let quality = config.quality;
     let lossless = config.lossless;
     let exif = config.exif.as_ref();
+    let gain_map = config.gain_map.as_ref();
     dbg_log!(
         debug,
-        "encode_av1_inner_u8: {}x{} pixels={} quality={} lossless={} \
+        "encode_jixel_inner_u8: {}x{} pixels={} quality={} lossless={} \
          exif={}",
         bitmap_data.width,
         bitmap_data.height,
@@ -296,7 +308,7 @@ fn encode_av1_inner_u16_10_bit(
         exif.map_or_else(|| "none".to_string(), |e| format!("{} bytes", e.len()))
     );
 
-    let mut local_cicp = config.color_encoding;
+    let local_cicp = config.color_encoding;
     dbg_log!(debug, "has_real_alpha={has_real_alpha}");
 
     let threads = available_parallelism()
@@ -309,12 +321,17 @@ fn encode_av1_inner_u16_10_bit(
         .with_quality(quality as f32)
         .with_num_threads(threads)
         .with_speed(config.speed.to_jixel())
+        .with_splines(config.splines)
+        .with_dots(config.dots)
         .with_progressive(false)
         .with_lossless(lossless);
 
     if let Some(exif) = exif {
         dbg_log!(debug, "attaching exif: {} bytes", exif.len());
         config = config.with_exif(exif.to_vec());
+    }
+    if let Some(gain_map) = gain_map {
+        config = config.with_gain_map(gain_map.clone());
     }
 
     if has_real_alpha {
@@ -334,7 +351,7 @@ fn encode_av1_inner_u16_10_bit(
             &config,
         )
         .map_err(|x| {
-            dbg_log!(error, "encode_yuva8_with_alpha failed: {x}");
+            dbg_log!(error, "encode_rgba_with_alpha failed: {x}");
             anyhow::anyhow!(x)
         })?;
         return Ok(result);
@@ -354,7 +371,7 @@ fn encode_av1_inner_u16_10_bit(
         &config,
     )
     .map_err(|x| {
-        dbg_log!(error, "encode_yuv8 failed: {x}");
+        dbg_log!(error, "encode_rgb failed: {x}");
         anyhow::anyhow!(x)
     })?;
     dbg_log!(
@@ -370,7 +387,7 @@ fn encode_jixel_inner(
     bitmap_data: &mut BitmapData,
     config: &JixelEncodingConfig,
 ) -> Result<Vec<u8>, anyhow::Error> {
-    dbg_log!(debug, "encode_av1_inner: format={:?}", bitmap_data.format,);
+    dbg_log!(debug, "encode_jixel_inner: format={:?}", bitmap_data.format,);
     match bitmap_data.format {
         BitmapPixelFormat::Rgba8888 => {
             let has_real_alpha =
@@ -380,7 +397,7 @@ fn encode_jixel_inner(
         BitmapPixelFormat::Rgb565 => {
             dbg_log!(
                 debug,
-                "encode_av1_inner: converting Rgb565 → Rgba8888 before encode"
+                "encode_jixel_inner: converting Rgb565 → Rgba8888 before encode"
             );
             let rgba8888 = rgb565_bytes_to_rgba8888(&bitmap_data.data);
             bitmap_data.data = rgba8888;
@@ -389,22 +406,22 @@ fn encode_jixel_inner(
         BitmapPixelFormat::RgbaF16 => {
             dbg_log!(
                 debug,
-                "encode_av1_inner: converting RgbaF16 → RGBA10 before encode"
+                "encode_jixel_inner: converting RgbaF16 → RGBA10 before encode"
             );
             let hd_plane =
                 f16_bytes_to_rgba10(&bitmap_data.data, bitmap_data.width, bitmap_data.height)?;
-            encode_av1_inner_u16_10_bit(&hd_plane, bitmap_data, config, false)
+            encode_jixel_inner_u16_10_bit(&hd_plane, bitmap_data, config, false)
         }
         BitmapPixelFormat::Rgba1010102 => {
             dbg_log!(
                 debug,
-                "encode_av1_inner: unpacking AR30 → RGBA10 before encode"
+                "encode_jixel_inner: unpacking AR30 → RGBA10 before encode"
             );
             let hd_plane = ar30_bytes_to_rgba10(&bitmap_data.data);
-            encode_av1_inner_u16_10_bit(&hd_plane, bitmap_data, config, false)
+            encode_jixel_inner_u16_10_bit(&hd_plane, bitmap_data, config, false)
         }
         BitmapPixelFormat::A8 => {
-            dbg_log!(error, "encode_av1_inner: A8 format is not supported");
+            dbg_log!(error, "encode_jixel_inner: A8 format is not supported");
             Err(anyhow::anyhow!(WeaverError::PixelFormatIsNotSupported(
                 "BitmapPixelFormat::A8".to_string()
             )))
@@ -419,6 +436,9 @@ pub(crate) struct JixelEncodingConfig {
     pub(crate) exif: Option<Vec<u8>>,
     pub(crate) lossless: bool,
     pub(crate) speed: JixelEncodingSpeed,
+    pub(crate) gain_map: Option<jixel::GainMap>,
+    pub(crate) splines: bool,
+    pub(crate) dots: bool,
 }
 
 #[unsafe(no_mangle)]
@@ -430,12 +450,14 @@ pub unsafe extern "C" fn encode_jixel_file(
     quality: i32,
     lossless: bool,
     speed: JixelEncodingSpeed,
+    splines: bool,
+    dots: bool,
 ) -> jbyteArray {
     init_logging();
 
     dbg_log!(
         debug,
-        "encode_avif_file: color_space={color_space} quality={quality} lossless={lossless} \
+        "encode_jixel_file: color_space={color_space} quality={quality} lossless={lossless} \
          image_null={} exif_null={}",
         image.is_null(),
         exif.is_null(),
@@ -483,10 +505,13 @@ pub unsafe extern "C" fn encode_jixel_file(
                     lossless,
                     exif: exif_data.map(|x| x.to_vec()),
                     speed,
+                    splines,
+                    dots,
+                    gain_map: read_gain_map(env, image, lossless)?,
                 },
             )
             .map_err(|x| {
-                dbg_log!(error, "encode_av1_inner failed: {x:#}");
+                dbg_log!(error, "encode_jixel_inner failed: {x:#}");
                 x
             })?;
             dbg_log!(
@@ -505,12 +530,12 @@ pub unsafe extern "C" fn encode_jixel_file(
 
         match result {
             Ok(obj) => {
-                dbg_log!(debug, "encode_avif_file: success");
+                dbg_log!(debug, "encode_jixel_file: success");
                 Ok(obj)
             }
             Err(e) => {
-                dbg_log!(error, "encode_avif_file failed: {e:#}");
-                throw_runtime_exception(env, format!("AVIF/AV1 encoding failed: {e:#}"));
+                dbg_log!(error, "encode_jixel_file failed: {e:#}");
+                throw_runtime_exception(env, format!("JPEG XL encoding failed: {e:#}"));
                 Ok(JObject::null().into_raw())
             }
         }
@@ -519,18 +544,18 @@ pub unsafe extern "C" fn encode_jixel_file(
     let o = outcome.into_outcome();
     match o {
         Outcome::Ok(v) => {
-            dbg_log!(debug, "encode_avif_file: success");
+            dbg_log!(debug, "encode_jixel_file: success");
             v
         }
         Outcome::Err(_e) => {
-            let msg = format!("JNI error while encoding AVIF/AV1: {_e}");
+            let msg = format!("JNI error while encoding JPEG XL: {_e}");
             dbg_log!(error, "{msg}");
             unsafe { throw_runtime_exception_raw(env, msg) };
             null_mut()
         }
         Outcome::Panic(_p) => {
             let msg = format!(
-                "panic while encoding AVIF/AV1: {}",
+                "panic while encoding JPEG XL: {}",
                 panic_payload_to_string(_p.as_ref())
             );
             dbg_log!(error, "{msg}");

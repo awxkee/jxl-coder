@@ -65,13 +65,16 @@ jobs:
         run: |
           set -e
 
+          # Preserve unwinding; omit panic source locations and std backtraces.
           # arm64-v8a — full feature set (NEON + i8mm + SVE)
           RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 \
                      -C target-feature=+neon \
                      -C opt-level=3 \
-                     -C strip=symbols" \
+                     -C strip=symbols \
+                     -Z location-detail=none" \
           cargo +nightly build \
-            -Z build-std=std \
+            -Z build-std=std,panic_unwind \
+            -Z build-std-features=panic-unwind \
             --target aarch64-linux-android \
             --features rdm,i8mm,sve \
             --release \
@@ -79,9 +82,11 @@ jobs:
 
           RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 \
                      -C opt-level=z \
-                     -C strip=symbols" \
+                     -C strip=symbols \
+                     -Z location-detail=none" \
           cargo +nightly build \
-            -Z build-std=std \
+            -Z build-std=std,panic_unwind \
+            -Z build-std-features=panic-unwind \
             --no-default-features \
             --target x86_64-linux-android \
             --release \
@@ -90,9 +95,11 @@ jobs:
           # armeabi-v7a — size-optimised
           RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 \
                      -C opt-level=z \
-                     -C strip=symbols" \
+                     -C strip=symbols \
+                     -Z location-detail=none" \
           cargo +nightly build \
-            -Z build-std=std \
+            -Z build-std=std,panic_unwind \
+            -Z build-std-features=panic-unwind \
             --no-default-features \
             --target armv7-linux-androideabi \
             --release \
@@ -101,9 +108,11 @@ jobs:
           # x86 — size-optimised
           RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384 \
                      -C opt-level=z \
-                     -C strip=symbols" \
+                     -C strip=symbols \
+                     -Z location-detail=none" \
           cargo +nightly build \
-            -Z build-std=std \
+            -Z build-std=std,panic_unwind \
+            -Z build-std-features=panic-unwind \
             --target i686-linux-android \
             --release \
             --manifest-path Cargo.toml
