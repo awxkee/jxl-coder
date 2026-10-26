@@ -223,8 +223,6 @@ fn encode_jixel_inner_u8(
         .with_quality(quality as f32)
         .with_num_threads(threads)
         .with_speed(config.speed.to_jixel())
-        .with_splines(config.splines)
-        .with_dots(config.dots)
         .with_progressive(false)
         .with_lossless(lossless);
 
@@ -321,8 +319,6 @@ fn encode_jixel_inner_u16_10_bit(
         .with_quality(quality as f32)
         .with_num_threads(threads)
         .with_speed(config.speed.to_jixel())
-        .with_splines(config.splines)
-        .with_dots(config.dots)
         .with_progressive(false)
         .with_lossless(lossless);
 
@@ -437,8 +433,6 @@ pub(crate) struct JixelEncodingConfig {
     pub(crate) lossless: bool,
     pub(crate) speed: JixelEncodingSpeed,
     pub(crate) gain_map: Option<jixel::GainMap>,
-    pub(crate) splines: bool,
-    pub(crate) dots: bool,
 }
 
 #[unsafe(no_mangle)]
@@ -450,8 +444,6 @@ pub unsafe extern "C" fn encode_jixel_file(
     quality: i32,
     lossless: bool,
     speed: JixelEncodingSpeed,
-    splines: bool,
-    dots: bool,
 ) -> jbyteArray {
     init_logging();
 
@@ -505,8 +497,6 @@ pub unsafe extern "C" fn encode_jixel_file(
                     lossless,
                     exif: exif_data.map(|x| x.to_vec()),
                     speed,
-                    splines,
-                    dots,
                     gain_map: read_gain_map(env, image, lossless)?,
                 },
             )

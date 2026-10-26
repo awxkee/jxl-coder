@@ -261,9 +261,7 @@ jbyteArray encode_jixel_file(JNIEnv *env,
                              int32_t color_space,
                              int32_t quality,
                              bool lossless,
-                             JixelEncodingSpeed speed,
-                             bool splines,
-                             bool dots);
+                             JixelEncodingSpeed speed);
 
 /// Losslessly transcodes JPEG DCT coefficients into JPEG XL.
 jbyteArray transcode_jpeg_to_jxl(JNIEnv *env,
@@ -372,9 +370,7 @@ jbyteArray encode_jixel_file(JNIEnv *env,
                              int32_t color_space,
                              int32_t quality,
                              bool lossless,
-                             JixelEncodingSpeed speed,
-                             bool splines,
-                             bool dots);
+                             JixelEncodingSpeed speed);
 
 jbyteArray transcode_jpeg_to_jxl(JNIEnv *env,
                                  const uint8_t *_jpeg,

@@ -99,22 +99,8 @@ object JxlCoder {
         )
     }
 
-    fun encode(
-        bitmap: Bitmap,
-        exif: ByteBuffer?,
-        compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
-        effort: JxlEffort = JxlEffort.FAST,
-        @IntRange(from = 0, to = 100) quality: Int = 90,
-    ): ByteArray {
-        return encode(bitmap, exif, compressionOption, effort, quality, splines = false, dots = false)
-    }
-
     /**
      * Encodes a bitmap to JPEG XL, preserving an attached gainmap on Android 14+.
-     *
-     * [splines] detects thin curves and [dots] detects isolated bright or dark spots.
-     * These experimental tools are used by lossy encoding at [JxlEffort.SLOW];
-     * other effort levels and lossless encoding ignore them.
      */
     fun encode(
         bitmap: Bitmap,
@@ -122,8 +108,6 @@ object JxlCoder {
         compressionOption: JxlCompressionOption = JxlCompressionOption.LOSSY,
         effort: JxlEffort = JxlEffort.FAST,
         @IntRange(from = 0, to = 100) quality: Int = 90,
-        splines: Boolean = false,
-        dots: Boolean = false,
     ): ByteArray {
         var dataSpaceValue: Int = -1
         var bitmapColorSpace: String? = null
@@ -146,8 +130,6 @@ object JxlCoder {
             bitmapColorSpace,
             dataSpaceValue,
             quality,
-            splines,
-            dots,
         )
     }
 
@@ -188,8 +170,6 @@ object JxlCoder {
         bitmapColorSpace: String?,
         dataSpaceValue: Int,
         quality: Int,
-        splines: Boolean,
-        dots: Boolean,
     ): ByteArray
 
     private external fun transcodeImpl(

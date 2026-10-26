@@ -12,22 +12,6 @@ cbindgen --config cbindgen.toml --crate weaver --output include/weaver.h
 `JxlEffort` exposes `ULTRA_FAST`, `FASTEST`, `FAST`, `MEDIUM`, `MEDIUM_SLOW`, and
 `SLOW`. The default remains `FAST`. ExtraSlow is not exposed or enabled.
 
-Splines and dots are separate, optional tools, both disabled by default:
-
-```kotlin
-val encoded = JxlCoder.encode(
-    bitmap,
-    exif = null,
-    effort = JxlEffort.SLOW,
-    splines = true,
-    dots = true,
-)
-```
-
-Jixel uses splines for thin curves and dots for isolated bright or dark spots.
-Both tools are experimental and apply only to lossy encoding at `SLOW` effort;
-other effort levels and lossless encoding ignore these switches.
-
 ## Gainmap encoding
 
 On Android 14 (API 34) and later, `JxlCoder.encode(bitmap, exif)` automatically
