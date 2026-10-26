@@ -31,10 +31,9 @@ use crate::check_image_size_overflow;
 use crate::jxl_thread_runner::JxlThreadRunner;
 use crate::support::try_vec;
 use jxl::api::{
-    check_signature, Endianness, JxlColorType, JxlDataFormat, JxlDecoder, JxlDecoderOptions,
-    JxlOutputBuffer, JxlPixelFormat, ProcessingResult,
+    check_signature, Endianness, Event, ExtraChannel, JxlColorType, JxlDataFormat, JxlDecoder,
+    JxlDecoderOptions, JxlOutputBuffer, JxlPixelFormat, JxlSignature,
 };
-use jxl::headers::extra_channels::ExtraChannel;
 use std::mem::size_of;
 use thiserror::Error;
 
@@ -125,7 +124,7 @@ pub(crate) enum PackedJxl {
 pub(crate) fn is_jxl(bytes: &[u8]) -> bool {
     matches!(
         check_signature(bytes),
-        ProcessingResult::Complete { result: Some(_) }
+        JxlSignature::Codestream | JxlSignature::Container
     )
 }
 
@@ -140,19 +139,22 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
 
     let mut runner = JxlThreadRunner::default();
     let mut input = data;
-    let mut decoder = match JxlDecoder::new(limited_decoder_options())
-        .process(&mut input, Some(&mut runner))
+    let mut decoder = JxlDecoder::new(limited_decoder_options());
+    match decoder
+        .process(&mut input, None, Some(&mut runner))
         .map_err(decode_error)?
     {
-        ProcessingResult::Complete { result } => result,
-        ProcessingResult::NeedsMoreInput { .. } => {
-            return Err(WeaverError::FailedToDecodeJxl(
-                "truncated before image metadata".into(),
-            ));
+        Event::BasicInfo => {}
+        event => {
+            return Err(WeaverError::FailedToDecodeJxl(format!(
+                "expected image metadata, received {event:?}"
+            )));
         }
     };
 
-    let info = decoder.basic_info();
+    let info = decoder
+        .basic_info()
+        .ok_or_else(|| decode_error("missing image metadata"))?;
     let (width, height) = info.size;
     validate_jxl_dimensions(width, height)?;
     let source_bit_depth = info.bit_depth.bits_per_sample();
@@ -192,18 +194,18 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
     // sRGB output, so using the embedded profile here would double-transform.
     let icc = decoder
         .output_color_profile()
-        .try_as_icc()
+        .and_then(|profile| profile.try_as_icc())
         .map(|profile| profile.into_owned());
 
-    let decoder = match decoder
-        .process(&mut input, Some(&mut runner))
+    match decoder
+        .process(&mut input, None, Some(&mut runner))
         .map_err(decode_error)?
     {
-        ProcessingResult::Complete { result } => result,
-        ProcessingResult::NeedsMoreInput { .. } => {
-            return Err(WeaverError::FailedToDecodeJxl(
-                "truncated before frame metadata".into(),
-            ));
+        Event::FrameHeader => {}
+        event => {
+            return Err(WeaverError::FailedToDecodeJxl(format!(
+                "expected frame metadata, received {event:?}"
+            )));
         }
     };
 
@@ -217,14 +219,14 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
         let stride = width * 4;
         let mut output = [JxlOutputBuffer::new(&mut pixels, height, stride)];
         match decoder
-            .process(&mut input, &mut output, Some(&mut runner))
+            .process(&mut input, Some(&mut output), Some(&mut runner))
             .map_err(decode_error)?
         {
-            ProcessingResult::Complete { .. } => {}
-            ProcessingResult::NeedsMoreInput { .. } => {
-                return Err(WeaverError::FailedToDecodeJxl(
-                    "truncated while decoding pixels".into(),
-                ));
+            Event::FrameComplete { .. } => {}
+            event => {
+                return Err(WeaverError::FailedToDecodeJxl(format!(
+                    "expected frame pixels, received {event:?}"
+                )));
             }
         }
         Ok(PackedJxl::Regular(DecodedJxlPacket {
@@ -244,14 +246,14 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
             stride,
         )];
         match decoder
-            .process(&mut input, &mut output, Some(&mut runner))
+            .process(&mut input, Some(&mut output), Some(&mut runner))
             .map_err(decode_error)?
         {
-            ProcessingResult::Complete { .. } => {}
-            ProcessingResult::NeedsMoreInput { .. } => {
-                return Err(WeaverError::FailedToDecodeJxl(
-                    "truncated while decoding pixels".into(),
-                ));
+            Event::FrameComplete { .. } => {}
+            event => {
+                return Err(WeaverError::FailedToDecodeJxl(format!(
+                    "expected frame pixels, received {event:?}"
+                )));
             }
         }
         Ok(PackedJxl::HighBitDepth(DecodedJxlPacket {
@@ -271,18 +273,21 @@ pub(crate) fn read_jxl_info(data: &[u8]) -> Result<(usize, usize, u32), WeaverEr
     }
 
     let mut input = data;
-    let decoder = match JxlDecoder::new(limited_decoder_options())
-        .process(&mut input, None)
+    let mut decoder = JxlDecoder::new(limited_decoder_options());
+    match decoder
+        .process(&mut input, None, None)
         .map_err(decode_error)?
     {
-        ProcessingResult::Complete { result } => result,
-        ProcessingResult::NeedsMoreInput { .. } => {
-            return Err(WeaverError::FailedToDecodeJxl(
-                "truncated before image metadata".into(),
-            ));
+        Event::BasicInfo => {}
+        event => {
+            return Err(WeaverError::FailedToDecodeJxl(format!(
+                "expected image metadata, received {event:?}"
+            )));
         }
     };
-    let info = decoder.basic_info();
+    let info = decoder
+        .basic_info()
+        .ok_or_else(|| decode_error("missing image metadata"))?;
     validate_jxl_dimensions(info.size.0, info.size.1)?;
     Ok((info.size.0, info.size.1, info.bit_depth.bits_per_sample()))
 }

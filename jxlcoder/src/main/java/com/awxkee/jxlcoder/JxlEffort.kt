@@ -29,9 +29,13 @@
 package com.awxkee.jxlcoder
 
 /**
- * Sets encoder effort/speed level without affecting decoding speed
+ * Controls the Jixel encoding speed and compression search effort.
  */
 enum class JxlEffort(internal val value: Int) {
     FAST(1),
     SLOW(2),
+    ULTRA_FAST(3),
+    FASTEST(4),
+    MEDIUM(5),
+    MEDIUM_SLOW(6),
 }

@@ -32,10 +32,9 @@ use crate::jxl_decode::{
 };
 use crate::jxl_thread_runner::JxlThreadRunner;
 use jxl::api::{
-    states, JxlColorType, JxlDataFormat, JxlDecoder, JxlOutputBuffer, JxlPixelFormat,
-    ProcessingResult, VisibleFrameInfo,
+    Event, ExtraChannel, JxlColorType, JxlDataFormat, JxlDecoder, JxlOutputBuffer, JxlPixelFormat,
+    VisibleFrameInfo,
 };
-use jxl::headers::extra_channels::ExtraChannel;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr::null_mut;
 use std::slice;
@@ -180,16 +179,28 @@ impl AnimationError {
     }
 }
 
-fn complete<T, U>(
-    result: Result<ProcessingResult<T, U>, jxl::error::Error>,
+fn complete(
+    result: Result<Event, jxl::error::Error>,
+    expected: Event,
     stage: &str,
-) -> Result<T, AnimationError> {
+) -> Result<Event, AnimationError> {
     match result.map_err(AnimationError::decode)? {
-        ProcessingResult::Complete { result } => Ok(result),
-        ProcessingResult::NeedsMoreInput { .. } => Err(AnimationError::new(
+        Event::NeedMoreInput { .. } => Err(AnimationError::new(
             JxlAnimationStatus::TruncatedInput,
             format!("JPEG XL input ended while reading {stage}"),
         )),
+        event
+            if event == expected
+                || matches!(
+                    (event, expected),
+                    (Event::FrameComplete { .. }, Event::FrameComplete { .. })
+                ) =>
+        {
+            Ok(event)
+        }
+        event => Err(AnimationError::decode(format!(
+            "Expected {expected:?} while reading {stage}, received {event:?}"
+        ))),
     }
 }
 
@@ -226,10 +237,17 @@ impl JxlAnimationCoordinator {
         let mut options = limited_decoder_options();
         options.scan_frames_only = true;
         let mut input = owned.as_slice();
-        let decoder = JxlDecoder::<states::Initialized>::new(options);
-        let mut decoder = complete(decoder.process(&mut input, None), "image metadata")?;
+        let mut decoder = JxlDecoder::new(options);
+        complete(
+            decoder.process(&mut input, None, None),
+            Event::BasicInfo,
+            "image metadata",
+        )?;
 
-        let basic = decoder.basic_info().clone();
+        let basic = decoder
+            .basic_info()
+            .ok_or_else(|| AnimationError::decode("Missing image metadata"))?
+            .clone();
         let (width, height) = basic.size;
         validate_jxl_dimensions(width, height).map_err(AnimationError::decode)?;
         let pixels = width
@@ -248,9 +266,26 @@ impl JxlAnimationCoordinator {
             ));
         }
 
-        while decoder.has_more_frames() {
-            let frame_decoder = complete(decoder.process(&mut input, None), "frame metadata")?;
-            decoder = complete(frame_decoder.skip_frame(&mut input), "frame data")?;
+        loop {
+            complete(
+                decoder.process(&mut input, None, None),
+                Event::FrameHeader,
+                "frame metadata",
+            )?;
+            let event = complete(
+                decoder.process(&mut input, None, None),
+                Event::FrameComplete {
+                    has_more_frames: false,
+                },
+                "frame data",
+            )?;
+            if event
+                == (Event::FrameComplete {
+                    has_more_frames: false,
+                })
+            {
+                break;
+            }
         }
 
         let frames = decoder.scanned_frames().to_vec();
@@ -333,36 +368,51 @@ impl JxlAnimationCoordinator {
         let mut runner = JxlThreadRunner::default();
         let mut initial_input = self.data.as_slice();
         let options = limited_decoder_options();
-        let decoder = JxlDecoder::<states::Initialized>::new(options);
-        let mut decoder = complete(
-            decoder.process(&mut initial_input, Some(&mut runner)),
+        let mut decoder = JxlDecoder::new(options);
+        complete(
+            decoder.process(&mut initial_input, None, Some(&mut runner)),
+            Event::BasicInfo,
             "image metadata",
         )?;
         decoder
             .set_pixel_format(JxlPixelFormat {
                 color_type: JxlColorType::Rgba,
                 color_data_format: Some(JxlDataFormat::U8 { bit_depth: 8 }),
-                extra_channel_format: vec![None; decoder.basic_info().extra_channels.len()],
+                extra_channel_format: vec![
+                    None;
+                    decoder
+                        .basic_info()
+                        .ok_or_else(|| AnimationError::decode("Missing image metadata"))?
+                        .extra_channels
+                        .len()
+                ],
             })
             .map_err(AnimationError::decode)?;
         let icc = decoder
             .output_color_profile()
-            .try_as_icc()
+            .and_then(|profile| profile.try_as_icc())
             .map_or_else(Vec::new, |profile| profile.into_owned());
 
-        // Decode from the beginning and skip visible frames in decoder state.
-        // This is intentionally preferred over byte-offset seeking here: it
-        // preserves all reference frames and also works for boxed streams whose
-        // first frame begins in the middle of a jxlp box.
+        // Read preceding frames without producing output so their reference
+        // data remains available. This also handles boxed streams whose first
+        // frame begins in the middle of a jxlp box.
         for _ in 0..index {
-            let frame_decoder = complete(
-                decoder.process(&mut initial_input, Some(&mut runner)),
+            complete(
+                decoder.process(&mut initial_input, None, Some(&mut runner)),
+                Event::FrameHeader,
                 "frame metadata",
             )?;
-            decoder = complete(frame_decoder.skip_frame(&mut initial_input), "frame data")?;
+            complete(
+                decoder.process(&mut initial_input, None, Some(&mut runner)),
+                Event::FrameComplete {
+                    has_more_frames: true,
+                },
+                "frame data",
+            )?;
         }
-        let decoder = complete(
-            decoder.process(&mut initial_input, Some(&mut runner)),
+        complete(
+            decoder.process(&mut initial_input, None, Some(&mut runner)),
+            Event::FrameHeader,
             "frame metadata",
         )?;
 
@@ -381,8 +431,11 @@ impl JxlAnimationCoordinator {
             self.height,
             stride,
         )];
-        let _decoder = complete(
-            decoder.process(&mut initial_input, &mut output, Some(&mut runner)),
+        complete(
+            decoder.process(&mut initial_input, Some(&mut output), Some(&mut runner)),
+            Event::FrameComplete {
+                has_more_frames: false,
+            },
             "frame pixels",
         )?;
 
@@ -603,6 +656,38 @@ mod tests {
             panic!("expected an 8-bit image");
         };
         assert_eq!(frame.data, still.data);
+    }
+
+    #[test]
+    fn decodes_animation_frames_in_arbitrary_order() {
+        let data = include_bytes!("../../app/src/main/assets/animated_jxl.jxl");
+        let coordinator = JxlAnimationCoordinator::create(data)
+            .unwrap_or_else(|error| panic!("{}", error.message));
+        let count = coordinator.frames.len();
+        assert!(count > 1);
+        let first = coordinator.decode_frame_packet(0).unwrap();
+        for index in [count - 1, count / 2, 0] {
+            let frame = coordinator.decode_frame_packet(index as u32).unwrap();
+            assert_eq!((frame.width, frame.height), (first.width, first.height));
+            assert_eq!(frame.data.len(), first.data.len());
+            if index == 0 {
+                assert_eq!(frame.data, first.data);
+            }
+        }
+        let error = coordinator
+            .decode_frame_packet_inner(count as u32)
+            .err()
+            .unwrap();
+        assert_eq!(error.status, JxlAnimationStatus::FrameOutOfRange);
+    }
+
+    #[test]
+    fn truncated_animation_is_reported_without_unwinding() {
+        let data = include_bytes!("../../app/src/main/assets/animated_jxl.jxl");
+        let error = JxlAnimationCoordinator::create(&data[..data.len() / 2])
+            .err()
+            .unwrap();
+        assert_eq!(error.status, JxlAnimationStatus::TruncatedInput);
     }
 
     #[test]

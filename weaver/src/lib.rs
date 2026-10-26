@@ -34,6 +34,13 @@ mod box_walker;
 mod cvt;
 #[cfg(target_os = "android")]
 mod ffi;
+#[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
+mod gainmap;
+#[cfg(all(
+    target_os = "android",
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
+mod gainmap_android;
 mod icc;
 #[cfg(all(
     target_os = "android",
@@ -110,8 +117,12 @@ pub enum WeaverPreferredColorConfig {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub enum JixelEncodingSpeed {
-    Slow,
-    Fast,
+    Slow = 0,
+    Fast = 1,
+    UltraFast = 2,
+    Fastest = 3,
+    Medium = 4,
+    MediumSlow = 5,
 }
 
 pub(crate) fn check_image_size_overflow(width: u64, height: u64, chan: u64, t_size: isize) -> bool {
