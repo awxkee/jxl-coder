@@ -88,6 +88,6 @@ NDK_PATH=/path/to/ndk INCLUDE_X86=yes bash build_jxl.sh
 
 # Copyrights
 
-This library created with [`jixel`](https://github.com/awxkee/jixel) and ['jxl-rs'](https://github.com/libjxl/jxl-rs) which belongs to
+This library created with [`jixel`](https://github.com/awxkee/jixel) and [`jxl-rs`](https://github.com/libjxl/jxl-rs) which belongs to
 JPEG XL Project
 Authors which licensed with BSD-3 license
