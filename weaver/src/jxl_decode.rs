@@ -27,23 +27,32 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#[cfg(any(target_os = "android", test))]
 use crate::check_image_size_overflow;
+#[cfg(any(target_os = "android", test))]
 use crate::jxl_thread_runner::JxlThreadRunner;
+#[cfg(any(target_os = "android", test))]
 use crate::support::try_vec;
+use jxl::api::{check_signature, JxlDecoderOptions, JxlSignature};
+#[cfg(any(target_os = "android", test))]
 use jxl::api::{
-    check_signature, Endianness, Event, ExtraChannel, JxlColorType, JxlDataFormat, JxlDecoder,
-    JxlDecoderOptions, JxlOutputBuffer, JxlPixelFormat, JxlSignature,
+    Endianness, Event, ExtraChannel, JxlColorType, JxlDataFormat, JxlDecoder, JxlOutputBuffer,
+    JxlPixelFormat,
 };
+#[cfg(any(target_os = "android", test))]
 use std::mem::size_of;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum WeaverError {
     #[error("Data is not a JPEG XL image")]
+    #[cfg(any(target_os = "android", test))]
     InvalidJxl,
     #[error("JPEG XL decoder failed: {0}")]
+    #[cfg(any(target_os = "android", test))]
     FailedToDecodeJxl(String),
     #[error("Failed to allocate memory with size {0}")]
+    #[cfg(any(target_os = "android", test))]
     FailedToAllocateMemory(u64),
     #[error("Pixel format is not supported: {0}")]
     PixelFormatIsNotSupported(String),
@@ -102,6 +111,7 @@ impl BitDepth {
         Ok(Self(bits))
     }
 
+    #[cfg(any(target_os = "android", test))]
     pub(crate) fn bits(self) -> u8 {
         self.0
     }
@@ -112,10 +122,13 @@ pub(crate) struct DecodedJxlPacket<T> {
     pub(crate) width: usize,
     pub(crate) height: usize,
     pub(crate) icc: Option<Vec<u8>>,
+    // Read by Android's bitmap conversion; host builds exercise the codec core.
+    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
     pub(crate) bit_depth: BitDepth,
     pub(crate) has_real_alpha: bool,
 }
 
+#[cfg(any(target_os = "android", test))]
 pub(crate) enum PackedJxl {
     Regular(DecodedJxlPacket<u8>),
     HighBitDepth(DecodedJxlPacket<u16>),
@@ -128,10 +141,130 @@ pub(crate) fn is_jxl(bytes: &[u8]) -> bool {
     )
 }
 
+#[cfg(any(target_os = "android", test))]
 fn decode_error(error: impl std::fmt::Display) -> WeaverError {
     WeaverError::FailedToDecodeJxl(error.to_string())
 }
 
+#[cfg(any(
+    target_os = "android",
+    all(test, any(target_arch = "aarch64", target_arch = "arm"))
+))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GainmapSampleFormat {
+    U16,
+    F16,
+}
+
+#[cfg(any(
+    target_os = "android",
+    all(test, any(target_arch = "aarch64", target_arch = "arm"))
+))]
+pub(crate) struct GainmapBase {
+    pub(crate) image: DecodedJxlPacket<u16>,
+    pub(crate) format: GainmapSampleFormat,
+}
+
+/// Decode straight RGBA into 16-bit storage. Ordinary encoded RGB uses the
+/// full u16 range; floating sources and XYB/ICC fallback use half-float bits to
+/// retain negative/wide-gamut and HDR values until gain application.
+#[cfg(any(
+    target_os = "android",
+    all(test, any(target_arch = "aarch64", target_arch = "arm"))
+))]
+pub(crate) fn decode_gainmap_base(data: &[u8]) -> Result<GainmapBase, WeaverError> {
+    if !is_jxl(data) {
+        return Err(WeaverError::InvalidJxl);
+    }
+    let mut options = limited_decoder_options();
+    options.alpha_mode = jxl::api::AlphaMode::Unpremultiplied;
+    let mut decoder = JxlDecoder::new(options);
+    let mut input = data;
+    let mut runner = JxlThreadRunner::default();
+    let event = decoder
+        .process(&mut input, None, Some(&mut runner))
+        .map_err(decode_error)?;
+    if event != Event::BasicInfo {
+        return Err(decode_error("Missing image metadata"));
+    }
+    let info = decoder
+        .basic_info()
+        .ok_or_else(|| decode_error("Missing image metadata"))?;
+    let (width, height) = info.size;
+    validate_jxl_dimensions(width, height)?;
+    let has_real_alpha = info
+        .extra_channels
+        .iter()
+        .any(|c| c.ec_type == ExtraChannel::Alpha);
+    let extra_channels = info.extra_channels.len();
+    let floating_source = matches!(info.bit_depth, jxl::api::JxlBitDepth::Float { .. });
+    let needs_float = floating_source
+        || (!info.uses_original_profile
+            && matches!(
+                decoder.embedded_color_profile(),
+                Some(jxl::api::JxlColorProfile::Icc(_))
+            ));
+    let format = if needs_float {
+        GainmapSampleFormat::F16
+    } else {
+        GainmapSampleFormat::U16
+    };
+    let color_data_format = match format {
+        GainmapSampleFormat::F16 => JxlDataFormat::F16 {
+            endianness: Endianness::native(),
+        },
+        GainmapSampleFormat::U16 => JxlDataFormat::U16 {
+            endianness: Endianness::native(),
+            bit_depth: 16,
+        },
+    };
+    decoder
+        .set_pixel_format(JxlPixelFormat {
+            color_type: JxlColorType::Rgba,
+            color_data_format: Some(color_data_format),
+            extra_channel_format: vec![None; extra_channels],
+        })
+        .map_err(decode_error)?;
+    let icc = decoder
+        .output_color_profile()
+        .and_then(|p| p.try_as_icc())
+        .map(|p| p.into_owned());
+    let event = decoder
+        .process(&mut input, None, Some(&mut runner))
+        .map_err(decode_error)?;
+    if event != Event::FrameHeader {
+        return Err(decode_error("Missing frame metadata"));
+    }
+    let samples = width
+        .checked_mul(height)
+        .and_then(|n| n.checked_mul(4))
+        .ok_or(WeaverError::FailedToAllocateMemory(isize::MAX as u64))?;
+    let mut pixels = try_vec![0u16; samples];
+    let mut output = [JxlOutputBuffer::new(
+        bytemuck::cast_slice_mut(&mut pixels),
+        height,
+        width * 4 * size_of::<u16>(),
+    )];
+    let event = decoder
+        .process(&mut input, Some(&mut output), Some(&mut runner))
+        .map_err(decode_error)?;
+    if !matches!(event, Event::FrameComplete { .. }) {
+        return Err(decode_error("Missing frame pixels"));
+    }
+    Ok(GainmapBase {
+        image: DecodedJxlPacket {
+            data: pixels,
+            width,
+            height,
+            icc,
+            bit_depth: BitDepth::new(16)?,
+            has_real_alpha,
+        },
+        format,
+    })
+}
+
+#[cfg(any(target_os = "android", test))]
 pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
     if !is_jxl(data) {
         return Err(WeaverError::InvalidJxl);
@@ -267,6 +400,7 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
     }
 }
 
+#[cfg(any(target_os = "android", test))]
 pub(crate) fn read_jxl_info(data: &[u8]) -> Result<(usize, usize, u32), WeaverError> {
     if !is_jxl(data) {
         return Err(WeaverError::InvalidJxl);

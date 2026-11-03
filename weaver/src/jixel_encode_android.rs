@@ -27,12 +27,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 use crate::cvt::{ar30_bytes_to_rgba10, f16_bytes_to_rgba10, rgb565_bytes_to_rgba8888};
-use crate::ffi::{get_bitmap_data, BitmapData, BitmapPixelFormat};
-use crate::gainmap_android::read_gain_map;
+use crate::ffi::{get_bitmap_data, BitmapAlpha, BitmapData, BitmapPixelFormat};
+use crate::gainmap_android::{read_bitmap_icc, read_gain_map};
 use crate::jxl_decode::WeaverError;
 use crate::support::{
-    dbg_log, has_non_constant_alpha, init_logging, optional_bytebuffer_to_vec,
-    panic_payload_to_string, throw_runtime_exception, throw_runtime_exception_raw,
+    dbg_log, init_logging, optional_bytebuffer_to_vec, panic_payload_to_string,
+    throw_runtime_exception, throw_runtime_exception_raw,
 };
 use crate::JixelEncodingSpeed;
 use jixel::{Primaries, RenderingIntent, TransferFunction, WhitePoint};
@@ -63,7 +63,7 @@ pub(crate) fn resolve_cicp_jixel(color_space: i32) -> jixel::ColorEncoding {
 
     if ds == ADataSpace::ADATASPACE_UNKNOWN {
         return jixel::ColorEncoding {
-            primaries: Primaries::Bt601,
+            primaries: Primaries::Bt709,
             transfer: TransferFunction::Srgb,
             white_point: WhitePoint::D65,
             rendering_intent: RenderingIntent::Perceptual,
@@ -72,7 +72,7 @@ pub(crate) fn resolve_cicp_jixel(color_space: i32) -> jixel::ColorEncoding {
 
     if ds == ADataSpace::ADATASPACE_SCRGB {
         return jixel::ColorEncoding {
-            primaries: Primaries::Bt601,
+            primaries: Primaries::Bt709,
             transfer: TransferFunction::Srgb,
             white_point: WhitePoint::D65,
             rendering_intent: RenderingIntent::Perceptual,
@@ -120,7 +120,9 @@ pub(crate) fn resolve_cicp_jixel(color_space: i32) -> jixel::ColorEncoding {
 
     if ds == ADataSpace::ADATASPACE_DISPLAY_P3 {
         return jixel::ColorEncoding {
-            primaries: Primaries::Smpte432,
+            // JPEG XL uses 11 for P3 with either D65 or DCI white. The H.273
+            // Display P3 value 12 is not a valid JPEG XL Primaries enum value.
+            primaries: Primaries::Smpte431,
             transfer: TransferFunction::Srgb,
             white_point: WhitePoint::D65,
             rendering_intent: RenderingIntent::Perceptual,
@@ -198,6 +200,7 @@ fn encode_jixel_inner_u8(
     let lossless = config.lossless;
     let exif = config.exif.as_ref();
     let gain_map = config.gain_map.as_ref();
+    let icc = config.icc.as_ref();
     dbg_log!(
         debug,
         "encode_jixel_inner_u8: {}x{} pixels={} quality={} lossless={} \
@@ -233,17 +236,11 @@ fn encode_jixel_inner_u8(
     if let Some(gain_map) = gain_map {
         config = config.with_gain_map(gain_map.clone());
     }
+    if let Some(icc) = icc {
+        config = config.with_icc_profile(icc.clone());
+    }
 
     if has_real_alpha {
-        let alpha = bitmap_data
-            .data
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|x| x[3])
-            .collect::<Vec<_>>();
-        dbg_log!(debug, "alpha plane: {} samples", alpha.len());
-
         let result = jixel::encode_image_with_alpha(
             &bitmap_data.data,
             bitmap_data.width,
@@ -294,6 +291,7 @@ fn encode_jixel_inner_u16_10_bit(
     let lossless = config.lossless;
     let exif = config.exif.as_ref();
     let gain_map = config.gain_map.as_ref();
+    let icc = config.icc.as_ref();
     dbg_log!(
         debug,
         "encode_jixel_inner_u8: {}x{} pixels={} quality={} lossless={} \
@@ -329,19 +327,13 @@ fn encode_jixel_inner_u16_10_bit(
     if let Some(gain_map) = gain_map {
         config = config.with_gain_map(gain_map.clone());
     }
+    if let Some(icc) = icc {
+        config = config.with_icc_profile(icc.clone());
+    }
 
     if has_real_alpha {
-        let alpha = bitmap_data
-            .data
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|x| x[3])
-            .collect::<Vec<_>>();
-        dbg_log!(debug, "alpha plane: {} samples", alpha.len());
-
         let result = jixel::encode_image_with_alpha_10bit(
-            &hd_plane,
+            hd_plane,
             bitmap_data.width,
             bitmap_data.height,
             &config,
@@ -386,8 +378,23 @@ fn encode_jixel_inner(
     dbg_log!(debug, "encode_jixel_inner: format={:?}", bitmap_data.format,);
     match bitmap_data.format {
         BitmapPixelFormat::Rgba8888 => {
-            let has_real_alpha =
-                has_non_constant_alpha::<u8, u32, 3, 4>(&bitmap_data.data, bitmap_data.width);
+            let has_real_alpha = bitmap_data
+                .data
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[3] != 255);
+            if bitmap_data.alpha == BitmapAlpha::Premultiplied && has_real_alpha {
+                for pixel in bitmap_data.data.as_chunks_mut::<4>().0 {
+                    let alpha = u32::from(pixel[3]);
+                    for c in &mut pixel[..3] {
+                        *c = (u32::from(*c) * 255 + alpha / 2)
+                            .checked_div(alpha)
+                            .unwrap_or(0)
+                            .min(255) as u8;
+                    }
+                }
+            }
             encode_jixel_inner_u8(bitmap_data, config, has_real_alpha)
         }
         BitmapPixelFormat::Rgb565 => {
@@ -404,17 +411,19 @@ fn encode_jixel_inner(
                 debug,
                 "encode_jixel_inner: converting RgbaF16 → RGBA10 before encode"
             );
-            let hd_plane =
+            let mut hd_plane =
                 f16_bytes_to_rgba10(&bitmap_data.data, bitmap_data.width, bitmap_data.height)?;
-            encode_jixel_inner_u16_10_bit(&hd_plane, bitmap_data, config, false)
+            let alpha = prepare_rgba10_alpha(&mut hd_plane, bitmap_data.alpha);
+            encode_jixel_inner_u16_10_bit(&hd_plane, bitmap_data, config, alpha)
         }
         BitmapPixelFormat::Rgba1010102 => {
             dbg_log!(
                 debug,
                 "encode_jixel_inner: unpacking AR30 → RGBA10 before encode"
             );
-            let hd_plane = ar30_bytes_to_rgba10(&bitmap_data.data);
-            encode_jixel_inner_u16_10_bit(&hd_plane, bitmap_data, config, false)
+            let mut hd_plane = ar30_bytes_to_rgba10(&bitmap_data.data);
+            let alpha = prepare_rgba10_alpha(&mut hd_plane, bitmap_data.alpha);
+            encode_jixel_inner_u16_10_bit(&hd_plane, bitmap_data, config, alpha)
         }
         BitmapPixelFormat::A8 => {
             dbg_log!(error, "encode_jixel_inner: A8 format is not supported");
@@ -425,6 +434,22 @@ fn encode_jixel_inner(
     }
 }
 
+fn prepare_rgba10_alpha(pixels: &mut [u16], mode: BitmapAlpha) -> bool {
+    let has_alpha = pixels.as_chunks::<4>().0.iter().any(|p| p[3] != 1023);
+    if mode == BitmapAlpha::Premultiplied && has_alpha {
+        for pixel in pixels.as_chunks_mut::<4>().0 {
+            let alpha = u32::from(pixel[3]);
+            for c in &mut pixel[..3] {
+                *c = (u32::from(*c) * 1023 + alpha / 2)
+                    .checked_div(alpha)
+                    .unwrap_or(0)
+                    .min(1023) as u16;
+            }
+        }
+    }
+    has_alpha
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct JixelEncodingConfig {
     pub(crate) quality: u32,
@@ -433,6 +458,7 @@ pub(crate) struct JixelEncodingConfig {
     pub(crate) lossless: bool,
     pub(crate) speed: JixelEncodingSpeed,
     pub(crate) gain_map: Option<jixel::GainMap>,
+    pub(crate) icc: Option<Vec<u8>>,
 }
 
 #[unsafe(no_mangle)]
@@ -489,6 +515,12 @@ pub unsafe extern "C" fn encode_jixel_file(
                     .map_or_else(|| "none".to_string(), |e| format!("{} bytes", e.len()))
             );
 
+            let gain_map = read_gain_map(env, image, lossless)?;
+            let icc = if gain_map.is_some() && (color_space == -1 || color_space == 0) {
+                read_bitmap_icc(env, image)?
+            } else {
+                None
+            };
             let encoded_data = encode_jixel_inner(
                 &mut bitmap_data,
                 &JixelEncodingConfig {
@@ -497,7 +529,8 @@ pub unsafe extern "C" fn encode_jixel_file(
                     lossless,
                     exif: exif_data.map(|x| x.to_vec()),
                     speed,
-                    gain_map: read_gain_map(env, image, lossless)?,
+                    gain_map,
+                    icc,
                 },
             )
             .map_err(|x| {

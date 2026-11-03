@@ -27,10 +27,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 mod android_bitmap;
+#[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
 mod bitmap_reader;
 mod hardware_buffers;
 
-pub(crate) use android_bitmap::{software_bitmap, wrap_hardware_buffer};
+pub(crate) use android_bitmap::{
+    software_bitmap, software_bitmap_with_color_space, wrap_hardware_buffer,
+    wrap_hardware_buffer_with_color_space,
+};
+#[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
 pub(crate) use bitmap_reader::*;
 pub(super) use hardware_buffers::{
     create_rgba8888_hardware_buffer, create_rgba8888_hardware_buffer_from_u16,

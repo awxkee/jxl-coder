@@ -100,7 +100,7 @@ fn rounded_ratio(numerator: u128, denominator: u128) -> usize {
 /// Returns the centered source crop whose aspect ratio most closely matches the
 /// requested output. Cropping before resampling avoids allocating a potentially
 /// enormous cover-scaled intermediate for very wide or very tall images.
-fn scale_to_fill_crop(
+pub(crate) fn scale_to_fill_crop(
     width: usize,
     height: usize,
     target_width: usize,
@@ -376,6 +376,76 @@ impl From<u32> for ScalingFunction {
     }
 }
 
+#[cfg(any(
+    target_os = "android",
+    all(test, any(target_arch = "aarch64", target_arch = "arm"))
+))]
+pub(crate) fn internal_scale_f16(
+    src: Vec<u16>,
+    width: usize,
+    height: usize,
+    new_width: i32,
+    new_height: i32,
+    premultiply_alpha: bool,
+    mode: WeaveScaleMode,
+) -> Result<ImageStoreMut<'static, u16, 4>, PicScaleError> {
+    let (tw, th) = resolve_dimensions(width as u32, height as u32, new_width, new_height);
+    let (src, stride, sw, sh, ow, oh) = match mode {
+        WeaveScaleMode::ScaleToFill => {
+            let crop = crop_rgba_for_scale_to_fill(
+                std::borrow::Cow::Owned(src),
+                width * 4,
+                width,
+                height,
+                tw,
+                th,
+            )?;
+            (crop.data, crop.stride, crop.width, crop.height, tw, th)
+        }
+        _ => {
+            let (ow, oh) = if mode == WeaveScaleMode::ScaleToFit {
+                scale_to_fit_dimensions(width, height, tw, th)
+            } else {
+                (tw, th)
+            };
+            (
+                std::borrow::Cow::Owned(src),
+                width * 4,
+                width,
+                height,
+                ow,
+                oh,
+            )
+        }
+    };
+    if (sw, sh) == (ow, oh) && stride == ow * 4 {
+        let mut output = ImageStoreMut::new(src.into_owned(), ow, oh)?;
+        output.bit_depth = 16;
+        return Ok(output);
+    }
+    // Keep the allocation as u16 words; the views reinterpret the same memory
+    // as half floats for pic-scale, without creating a full-size float copy.
+    let source = ImageStore {
+        buffer: std::borrow::Cow::Borrowed(bytemuck::cast_slice::<u16, f16>(src.as_ref())),
+        channels: 4,
+        width: sw,
+        height: sh,
+        stride,
+        bit_depth: 16,
+    };
+    let mut output = ImageStoreMut::<u16, 4>::try_alloc_with_depth(ow, oh, 16)?;
+    let mut target = ImageStoreMut::<f16, 4>::borrow(
+        bytemuck::cast_slice_mut(output.buffer.borrow_mut()),
+        ow,
+        oh,
+    )?;
+    let scaler = Scaler::new(ResamplingFunction::MitchellNetravalli)
+        .set_threading_policy(ThreadingPolicy::Single);
+    let plan = scaler.plan_rgba_resampling_f16(source.size(), target.size(), premultiply_alpha)?;
+    plan.resample(&source, &mut target)?;
+    Ok(output)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn internal_scale_u8(
     src: std::borrow::Cow<[u8]>,
@@ -616,6 +686,18 @@ pub(crate) fn internal_scale_u16(
         ),
     };
 
+    let src = match src {
+        std::borrow::Cow::Owned(data)
+            if (source_width, source_height) == (scale_width, scale_height)
+                && src_stride == source_width * 4
+                && (1..=16).contains(&bit_depth) =>
+        {
+            let mut output = ImageStoreMut::new(data, scale_width, scale_height)?;
+            output.bit_depth = bit_depth;
+            return Ok(output);
+        }
+        src => src,
+    };
     let source_store = ImageStore::<u16, 4> {
         buffer: src,
         channels: 4,
@@ -763,6 +845,59 @@ mod tests {
     use std::borrow::Cow;
 
     #[test]
+    fn unchanged_u16_dimensions_reuse_the_source_allocation() {
+        for mode in [
+            WeaveScaleMode::JustResize,
+            WeaveScaleMode::ScaleToFit,
+            WeaveScaleMode::ScaleToFill,
+        ] {
+            let pixels = vec![12345; 6 * 4 * 4];
+            let pointer = pixels.as_ptr();
+            let result =
+                internal_scale_u16(Cow::Owned(pixels), 24, 6, 4, -1, -1, 16, true, mode).unwrap();
+            assert_eq!(result.buffer.borrow().as_ptr(), pointer);
+            assert_eq!(result.buffer.borrow(), &[12345; 6 * 4 * 4]);
+        }
+    }
+
+    #[test]
+    #[cfg(any(target_os = "android", target_arch = "aarch64", target_arch = "arm"))]
+    fn unchanged_half_float_dimensions_reuse_the_u16_allocation() {
+        let values = [-0.125f32, 1.5, 4.0, 0.5].map(|v| (v as f16).to_bits());
+        for mode in [
+            WeaveScaleMode::JustResize,
+            WeaveScaleMode::ScaleToFit,
+            WeaveScaleMode::ScaleToFill,
+        ] {
+            let pixels = values.repeat(6 * 4);
+            let pointer = pixels.as_ptr();
+            let result = internal_scale_f16(pixels, 6, 4, -1, -1, true, mode).unwrap();
+            assert_eq!(result.buffer.borrow().as_ptr(), pointer);
+            assert_eq!(result.buffer.borrow(), values.repeat(6 * 4));
+        }
+    }
+
+    #[test]
+    #[cfg(any(target_os = "android", target_arch = "aarch64", target_arch = "arm"))]
+    fn half_float_resizing_preserves_extended_range_and_alpha() {
+        let values = [-0.125f32, 1.5, 4.0, 0.5];
+        let pixels = values.map(|v| (v as f16).to_bits()).repeat(32 * 16);
+        for (mode, size) in [
+            (WeaveScaleMode::JustResize, (8, 8)),
+            (WeaveScaleMode::ScaleToFit, (8, 4)),
+            (WeaveScaleMode::ScaleToFill, (8, 8)),
+        ] {
+            let scaled = internal_scale_f16(pixels.clone(), 32, 16, 8, 8, true, mode).unwrap();
+            assert_eq!((scaled.width, scaled.height), size);
+            for pixel in scaled.buffer.borrow().as_chunks::<4>().0 {
+                for (&actual, expected) in pixel.iter().zip(values) {
+                    assert!((f16::from_bits(actual) as f32 - expected).abs() < 0.005);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn resolve_dimensions_keeps_original_for_zero_pair() {
         assert_eq!(resolve_dimensions(4032, 3024, 0, 0), (4032, 3024));
     }
@@ -819,7 +954,7 @@ mod tests {
                 )
                 .unwrap();
                 assert_eq!((scaled8.width, scaled8.height), expected);
-                for pixel in scaled8.buffer.borrow().chunks_exact(4) {
+                for pixel in scaled8.buffer.borrow().as_chunks::<4>().0 {
                     for (&actual, expected) in pixel.iter().zip([64u8, 128, 192, 255]) {
                         assert!(actual.abs_diff(expected) <= 1);
                     }
@@ -839,7 +974,7 @@ mod tests {
                 )
                 .unwrap();
                 assert_eq!((scaled16.width, scaled16.height), expected);
-                for pixel in scaled16.buffer.borrow().chunks_exact(4) {
+                for pixel in scaled16.buffer.borrow().as_chunks::<4>().0 {
                     for (&actual, expected) in pixel.iter().zip([16384u16, 32768, 49152, 65535]) {
                         assert!(actual.abs_diff(expected) <= 1);
                     }

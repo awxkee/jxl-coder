@@ -31,13 +31,10 @@
 use crate::support::{PackedImageBuffer, PackedImageTransfer};
 use crate::WeaverPreferredColorConfig;
 
-use crate::native_color_space::{get_jni_color_space, NativeColorSpace};
 use jni::objects::{JObject, JValue};
 use jni::strings::JNIString;
 use jni::sys::{jboolean, jobject};
 use jni::{jni_sig, jni_str, Env};
-
-pub(crate) const MIN_OS_BITMAP_COLOR_SPACE: i32 = 34;
 
 /// Maps a packed pixel format onto the matching `android.graphics.Bitmap$Config`
 /// enum constant name.
@@ -72,7 +69,7 @@ fn bitmap_config<'local>(
 pub fn bitmap_from_transfer<'local>(
     env: &mut Env<'local>,
     transfer: PackedImageTransfer,
-    color_space: Option<NativeColorSpace>,
+    color_space: Option<&JObject>,
 ) -> Result<JObject<'local>, jni::errors::Error> {
     match transfer {
         PackedImageTransfer::Image(buffer) => software_bitmap(env, &buffer, color_space),
@@ -85,18 +82,23 @@ pub fn bitmap_from_transfer<'local>(
 pub fn wrap_hardware_buffer<'local>(
     env: &mut Env<'local>,
     hardware_buffer: jobject,
-    color_space: Option<NativeColorSpace>,
+    color_space: Option<&JObject>,
+) -> Result<JObject<'local>, jni::errors::Error> {
+    wrap_hardware_buffer_with_color_space(
+        env,
+        hardware_buffer,
+        color_space.unwrap_or(&JObject::null()),
+    )
+}
+
+pub(crate) fn wrap_hardware_buffer_with_color_space<'local>(
+    env: &mut Env<'local>,
+    hardware_buffer: jobject,
+    color_space: &JObject,
 ) -> Result<JObject<'local>, jni::errors::Error> {
     let bitmap_cls = env.find_class(jni_str!("android/graphics/Bitmap"))?;
-
-    // SAFETY: `hardware_buffer` is a valid local ref returned by
-    // `AHardwareBuffer_toHardwareBuffer`.
+    // SAFETY: hardware_buffer is a local ref from AHardwareBuffer_toHardwareBuffer.
     let hb_obj = unsafe { JObject::from_raw(env, hardware_buffer) };
-
-    let cs_obj = match color_space {
-        Some(cs) => get_jni_color_space(env, cs)?,
-        None => JObject::null(),
-    };
 
     env.call_static_method(
         &bitmap_cls,
@@ -104,15 +106,34 @@ pub fn wrap_hardware_buffer<'local>(
         jni_sig!(
             "(Landroid/hardware/HardwareBuffer;Landroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;"
         ),
-        &[JValue::Object(&hb_obj), JValue::Object(&cs_obj)],
+        &[JValue::Object(&hb_obj), JValue::Object(color_space)],
     )?
         .l()
+}
+
+/// Construct with the destination color space directly. In particular, an F16
+/// bitmap's default extended sRGB range cannot be narrowed by setColorSpace().
+pub(crate) fn software_bitmap_with_color_space<'local>(
+    env: &mut Env<'local>,
+    buffer: &PackedImageBuffer,
+    has_alpha: bool,
+    color_space: &JObject,
+) -> Result<JObject<'local>, jni::errors::Error> {
+    let config = bitmap_config(env, bitmap_config_name(buffer.format))?;
+    let bitmap = env.call_static_method(
+        jni_str!("android/graphics/Bitmap"), jni_str!("createBitmap"),
+        jni_sig!("(IILandroid/graphics/Bitmap$Config;ZLandroid/graphics/ColorSpace;)Landroid/graphics/Bitmap;"),
+        &[JValue::Int(buffer.width as i32), JValue::Int(buffer.height as i32),
+          JValue::Object(&config), JValue::Bool(has_alpha as jboolean), JValue::Object(color_space)],
+    )?.l()?;
+    copy_pixels_into(env, &bitmap, &buffer.data)?;
+    Ok(bitmap)
 }
 
 pub fn software_bitmap<'local>(
     env: &mut Env<'local>,
     buffer: &PackedImageBuffer,
-    color_space: Option<NativeColorSpace>,
+    color_space: Option<&JObject>,
 ) -> Result<JObject<'local>, jni::errors::Error> {
     software_bitmap_with_alpha(env, buffer, format_has_alpha(buffer.format), color_space)
 }
@@ -123,7 +144,7 @@ pub fn software_bitmap_with_alpha<'local>(
     env: &mut Env<'local>,
     buffer: &PackedImageBuffer,
     has_alpha: bool,
-    color_space: Option<NativeColorSpace>,
+    color_space: Option<&JObject>,
 ) -> Result<JObject<'local>, jni::errors::Error> {
     let config = bitmap_config(env, bitmap_config_name(buffer.format))?;
     let bitmap_cls = env.find_class(jni_str!("android/graphics/Bitmap"))?;
@@ -134,7 +155,6 @@ pub fn software_bitmap_with_alpha<'local>(
     let bitmap = match color_space {
         // createBitmap(int, int, Config, boolean, ColorSpace) — API 29+.
         Some(cs) => {
-            let cs_obj = get_jni_color_space(env, cs)?;
             env.call_static_method(
                 &bitmap_cls,
                 JNIString::from("createBitmap"),
@@ -146,7 +166,7 @@ pub fn software_bitmap_with_alpha<'local>(
                     JValue::Int(height),
                     JValue::Object(&config),
                     JValue::Bool(has_alpha as jboolean),
-                    JValue::Object(&cs_obj),
+                    JValue::Object(cs),
                 ],
             )?
                 .l()?
@@ -191,10 +211,4 @@ fn copy_pixels_into(
     )?;
 
     Ok(())
-}
-
-/// Whether `ColorSpace`-aware bitmap construction is available on this device.
-/// Callers should fall back to the no-colorspace overloads below this level.
-pub fn supports_bitmap_color_space(api_level: i32) -> bool {
-    api_level >= MIN_OS_BITMAP_COLOR_SPACE
 }

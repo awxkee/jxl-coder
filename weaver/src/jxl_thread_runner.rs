@@ -89,7 +89,7 @@ impl JxlThreadRunner {
             let mut workers = Vec::with_capacity(num_threads - 1);
             let mut outcomes = Vec::with_capacity(num_threads);
             for _ in 1..num_threads {
-                match spawn_worker(scope, &work) {
+                match spawn_worker(scope, work) {
                     Ok(worker) => workers.push(worker),
                     // If the OS cannot create more threads, the existing workers
                     // and caller can still finish the queue without losing jobs.
@@ -172,6 +172,8 @@ mod tests {
     const DEADLINE: Duration = Duration::from_secs(5);
 
     thread_local! {
+        #[cfg_attr(target_os = "android", allow(clippy::missing_const_for_thread_local,
+            reason = "Android's TLS macro expansion triggers this lint despite the explicit const initializer"))]
         static SPAWN_BUDGET: Cell<Option<usize>> = const { Cell::new(None) };
     }
 
@@ -221,6 +223,8 @@ mod tests {
     }
 
     thread_local! {
+        #[cfg_attr(target_os = "android", allow(clippy::missing_const_for_thread_local,
+            reason = "Android's TLS macro expansion triggers this lint despite the explicit const initializer"))]
         static WORKER_EXIT: RefCell<Option<WorkerExit>> = const { RefCell::new(None) };
     }
 
@@ -387,6 +391,8 @@ mod tests {
     }
 
     thread_local! {
+        #[cfg_attr(target_os = "android", allow(clippy::missing_const_for_thread_local,
+            reason = "Android's TLS macro expansion triggers this lint despite the explicit const initializer"))]
         static SHUTDOWN_PROBE: RefCell<Option<ShutdownProbe>> = const { RefCell::new(None) };
     }
 

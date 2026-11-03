@@ -346,6 +346,7 @@ impl JxlAnimationCoordinator {
         Ok(frame.duration_ms.round().clamp(0.0, u32::MAX as f64) as u32)
     }
 
+    #[cfg(any(target_os = "android", test))]
     pub(crate) fn decode_frame_packet(&self, index: u32) -> Result<DecodedJxlPacket<u8>, String> {
         self.decode_frame_packet_inner(index)
             .map_err(|error| error.message)

@@ -32,10 +32,13 @@ use crate::cvt::{
 };
 use crate::ffi::{
     create_rgba8888_hardware_buffer, create_rgba8888_hardware_buffer_from_u16, software_bitmap,
-    wrap_hardware_buffer,
+    software_bitmap_with_color_space, wrap_hardware_buffer, wrap_hardware_buffer_with_color_space,
 };
+use crate::gainmap_android::{attach_gainmap, gainmap_color_space};
+use crate::gainmap_decode::{prepare_gainmap, read_gainmap};
 use crate::jxl_decode::{
-    decode_packed_jxl, is_jxl, read_jxl_info, BitDepth, DecodedJxlPacket, PackedJxl, WeaverError,
+    decode_gainmap_base, decode_packed_jxl, is_jxl, read_jxl_info, BitDepth, DecodedJxlPacket,
+    PackedJxl, WeaverError,
 };
 use crate::scaling::{internal_scale_u16, internal_scale_u8};
 use crate::support::{
@@ -427,6 +430,65 @@ fn decode_pipeline<'local>(
     scale_mode: WeaveScaleMode,
     preferred_color: WeaverPreferredColorConfig,
 ) -> Result<JObject<'local>, anyhow::Error> {
+    if let Some(gainmap) = read_gainmap(data)? {
+        let decode = decode_gainmap_base(data)?;
+        let sdk = android_os_version();
+        let mut prepared = prepare_gainmap(
+            decode,
+            gainmap,
+            sdk,
+            scaled_width,
+            scaled_height,
+            scale_mode,
+        )?;
+        // Bitmap raw buffers use premultiplied alpha. Gain math and ICC
+        // conversion operate on straight RGB before this final packing step.
+        if let PackedJxl::HighBitDepth(base) = &mut prepared.base {
+            if base.has_real_alpha && preferred_color != WeaverPreferredColorConfig::Rgb565 {
+                for p in base.data.as_chunks_mut::<4>().0 {
+                    let a = u32::from(p[3]);
+                    for c in &mut p[..3] {
+                        *c = ((u32::from(*c) * a + 32767) / 65535) as u16;
+                    }
+                }
+            }
+        }
+        if sdk >= 34 {
+            let PackedJxl::HighBitDepth(base) = prepared.base else {
+                unreachable!()
+            };
+            let cs = gainmap_color_space(env, &prepared.profile)?;
+            let transfer = make_10_12bit_transfer(
+                env,
+                &base.data,
+                base.width,
+                base.height,
+                base.bit_depth,
+                preferred_color,
+            )?;
+            let bitmap = match transfer {
+                PackedImageTransfer::Image(buffer) => software_bitmap_with_color_space(
+                    env,
+                    &buffer,
+                    base.has_real_alpha && preferred_color != WeaverPreferredColorConfig::Rgb565,
+                    &cs,
+                )?,
+                PackedImageTransfer::HardwareBuffer(hb) => {
+                    wrap_hardware_buffer_with_color_space(env, hb, &cs)?
+                }
+            };
+            attach_gainmap(env, &bitmap, &prepared.map, prepared.metadata, sdk)?;
+            return Ok(bitmap);
+        }
+        return packed_jxl_to_bitmap(
+            env,
+            prepared.base,
+            -1,
+            -1,
+            WeaveScaleMode::JustResize,
+            preferred_color,
+        );
+    }
     let decode = decode_packed_jxl(data).map_err(|x| anyhow::anyhow!(x))?;
     packed_jxl_to_bitmap(
         env,

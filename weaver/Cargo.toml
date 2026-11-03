@@ -4,31 +4,30 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-num-traits = "0.2.19"
 anyhow = "1.0.104"
 pic-scale = { version = "0.7.12", default-features = false, features = ["nightly_f16"] }
 bytemuck = { version = "1.25.2", features = ["nightly_float"] }
-moxcms = { version = "0.9.1", default-features = false }
-gainforge = "0.5.1"
+moxcms = { version = "0.9.1", default-features = false, features = ["extended_range"] }
+gainforge = { version = "0.5.1", features = ["uhdr"] }
 thiserror = "2.0.21"
-libc = "1.0.0-alpha.5"
-log = "0.4.34"
-jxl = { git = "https://github.com/libjxl/jxl-rs.git", rev = "d7a831fae15b903f1b56a76668030c19ac07bb6f", default-features = false }
+jxl = { git = "https://github.com/libjxl/jxl-rs.git", rev = "08bb971ff493cbd77642a7f3de3398a2744c4405", default-features = false, features = ["brotli"] }
 yuv = { version = "0.8.19", default-features = false, features = ["nightly_f16"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 jni = { version = "0.22.4", default-features = false }
 ndk-sys = "0.6.0"
+libc = "1.0.0-alpha.5"
+log = { version = "0.4.34", optional = true }
 android_logger = { version = "0.15.1", optional = true }   # pulled in only by `logging`
 
 [target.'cfg(any(target_arch = "aarch64", target_arch = "arm"))'.dependencies]
-jixel = { version = "0.5.2", default-features = false }
+jixel = { version = "0.5.3", default-features = false }
 
 [features]
 rdm = ["pic-scale/rdm", "moxcms/neon_shaper_fixed_point_paths", "jixel/neon", "jxl/neon"]
 i8mm = ["pic-scale/nightly_i8mm"]
 sve = ["pic-scale/sve"]
-logging = ["dep:android_logger"]
+logging = ["dep:android_logger", "dep:log"]
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
