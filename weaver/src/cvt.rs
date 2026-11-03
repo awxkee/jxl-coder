@@ -26,12 +26,19 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#[cfg(target_os = "android")]
 use crate::jxl_decode::WeaverError;
+#[cfg(target_os = "android")]
 use crate::support::try_vec;
 use core::f16;
+#[cfg(all(
+    target_os = "android",
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
+use yuv::convert_rgba_f16_to_rgba16;
 use yuv::{
-    convert_rgba16_to_f16, convert_rgba_f16_to_rgba16, convert_rgba_to_f16, rgba10_to_ar30,
-    rgba12_to_ar30, rgba8_to_ar30, BufferStoreMut, Rgb30ByteOrder,
+    convert_rgba16_to_f16, convert_rgba_to_f16, rgba10_to_ar30, rgba12_to_ar30, rgba8_to_ar30,
+    BufferStoreMut, Rgb30ByteOrder,
 };
 
 #[inline(always)]
@@ -389,6 +396,7 @@ pub extern "C" fn weave_cvt_rgba16_to_rgba_f16(
     }
 }
 
+#[cfg(target_os = "android")]
 pub(crate) fn pack_10_or_12_to_ar30(
     bytes: &[u16],
     width: usize,
@@ -438,6 +446,7 @@ pub(crate) fn pack_10_or_12_to_ar30(
         .collect::<Vec<_>>())
 }
 
+#[cfg(target_os = "android")]
 pub(crate) fn pack_8_to_ar30(
     bytes: &[u8],
     width: usize,
@@ -462,6 +471,7 @@ pub(crate) fn pack_8_to_ar30(
         .collect::<Vec<_>>())
 }
 
+#[cfg(target_os = "android")]
 pub(crate) fn pack_8_to_f16(
     bytes: &[u8],
     width: usize,
@@ -479,6 +489,7 @@ pub(crate) fn pack_8_to_f16(
         .collect::<Vec<_>>())
 }
 
+#[cfg(target_os = "android")]
 pub(crate) fn pack_10_or_12_to_f16(
     bytes: &[u16],
     width: usize,
@@ -508,6 +519,7 @@ pub(crate) fn pack_10_or_12_to_f16(
 
 /// Converts 8-bit RGBA bytes → packed RGB565, 2 bytes per pixel (native-endian).
 /// Alpha is discarded — RGB565 carries no alpha channel.
+#[cfg(target_os = "android")]
 pub(crate) fn pack_8_to_565(
     bytes: &[u8],
     width: usize,
@@ -547,6 +559,7 @@ pub(crate) fn pack_8_to_565(
     Ok(out)
 }
 
+#[cfg(target_os = "android")]
 pub(crate) fn pack_10_or_12_to_565(
     bytes: &[u16],
     width: usize,
@@ -595,6 +608,10 @@ pub(crate) fn pack_10_or_12_to_565(
 }
 
 #[inline(always)]
+#[cfg(all(
+    target_os = "android",
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
 pub fn rgb565_to_rgba8888(px: u16) -> [u8; 4] {
     let r5 = ((px >> 11) & 0x1F) as u8;
     let g6 = ((px >> 5) & 0x3F) as u8;
@@ -608,6 +625,10 @@ pub fn rgb565_to_rgba8888(px: u16) -> [u8; 4] {
     ]
 }
 
+#[cfg(all(
+    target_os = "android",
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
 pub(crate) fn rgb565_bytes_to_rgba8888(src: &[u8]) -> Vec<u8> {
     assert_eq!(src.len() % 2, 0, "rgb565 buffer must have even length");
     let pixels: &[[u8; 2]] = src.as_chunks().0;
@@ -622,6 +643,13 @@ pub(crate) fn rgb565_bytes_to_rgba8888(src: &[u8]) -> Vec<u8> {
 }
 
 #[inline(always)]
+#[cfg(any(
+    all(
+        target_os = "android",
+        any(target_arch = "aarch64", target_arch = "arm")
+    ),
+    test
+))]
 pub fn ar30_to_rgba10_pixel(px: u32) -> [u16; 4] {
     let r10 = (px & 0x3FF) as u16;
     let g10 = ((px >> 10) & 0x3FF) as u16;
@@ -636,6 +664,13 @@ pub fn ar30_to_rgba10_pixel(px: u32) -> [u16; 4] {
 
 /// Convert a raw `&[u8]` (4 bytes per pixel, little-endian u32) produced by
 /// locking an Android `RGBA_1010102` Bitmap, into a RGBA u16 10-bit buffer.
+#[cfg(any(
+    all(
+        target_os = "android",
+        any(target_arch = "aarch64", target_arch = "arm")
+    ),
+    test
+))]
 pub(crate) fn ar30_bytes_to_rgba10(src: &[u8]) -> Vec<u16> {
     assert_eq!(
         src.len() % 4,
@@ -649,6 +684,10 @@ pub(crate) fn ar30_bytes_to_rgba10(src: &[u8]) -> Vec<u16> {
         .collect()
 }
 
+#[cfg(all(
+    target_os = "android",
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
 pub(crate) fn f16_bytes_to_rgba10(
     src: &[u8],
     width: usize,
@@ -787,7 +826,7 @@ mod tests {
 
     #[test]
     fn byte_slice_entry_point() {
-        let px: u32 = (3 << 30) | (1023 << 20) | (512 << 10) | 0;
+        let px: u32 = (3 << 30) | (1023 << 20) | (512 << 10);
         let bytes = px.to_le_bytes();
         let result = ar30_bytes_to_rgba10(&bytes);
         assert_eq!(result, &[0, 512, 1023, 1023]);

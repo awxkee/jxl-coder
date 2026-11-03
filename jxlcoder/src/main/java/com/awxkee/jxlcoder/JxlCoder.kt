@@ -45,7 +45,9 @@ object JxlCoder {
     }
 
     /**
-     * @author Radzivon Bartoshyk
+     * Restores an embedded gainmap on Android 14+ for system HDR rendering.
+     * Earlier Android versions receive the SDR rendition, applying an inverse
+     * gainmap when the encoded base is HDR.
      */
     fun decode(
         byteArray: ByteArray,
@@ -62,7 +64,8 @@ object JxlCoder {
     }
 
     /**
-     * @author Radzivon Bartoshyk
+     * Decodes and scales the base image and embedded gainmap together.
+     * Android 14+ receives a system gainmap; earlier versions receive SDR.
      */
     fun decodeSampled(
         byteArray: ByteArray,
@@ -81,7 +84,8 @@ object JxlCoder {
     }
 
     /**
-     * @author Radzivon Bartoshyk
+     * Decodes and scales the base image and embedded gainmap together.
+     * Android 14+ receives a system gainmap; earlier versions receive SDR.
      */
     fun decodeSampled(
         byteArray: ByteBuffer,

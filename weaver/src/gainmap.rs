@@ -238,8 +238,8 @@ mod tests {
         let PackedJxl::Regular(gain) = decode_packed_jxl(gain_stream).unwrap() else {
             panic!("expected 8-bit gainmap");
         };
-        for (pixel, value) in gain.data.chunks_exact(4).zip(map_pixels) {
-            assert_eq!(pixel, [value, value, value, 255]);
+        for (pixel, value) in gain.data.as_chunks::<4>().0.iter().zip(map_pixels) {
+            assert_eq!(*pixel, [value, value, value, 255]);
         }
         let PackedJxl::Regular(base) = decode_packed_jxl(&encoded).unwrap() else {
             panic!("expected 8-bit base");

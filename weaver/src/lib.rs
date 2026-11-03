@@ -34,13 +34,18 @@ mod box_walker;
 mod cvt;
 #[cfg(target_os = "android")]
 mod ffi;
-#[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
-mod gainmap;
 #[cfg(all(
-    target_os = "android",
+    any(target_os = "android", test),
     any(target_arch = "aarch64", target_arch = "arm")
 ))]
+mod gainmap;
+#[cfg(target_os = "android")]
 mod gainmap_android;
+#[cfg(any(
+    target_os = "android",
+    all(test, any(target_arch = "aarch64", target_arch = "arm"))
+))]
+mod gainmap_decode;
 mod icc;
 #[cfg(all(
     target_os = "android",
@@ -54,8 +59,6 @@ mod jxl_decode;
 #[cfg(target_os = "android")]
 mod jxl_decode_android;
 mod jxl_thread_runner;
-#[cfg(target_os = "android")]
-mod native_color_space;
 mod orientation;
 mod scaling;
 mod support;
@@ -125,6 +128,7 @@ pub enum JixelEncodingSpeed {
     MediumSlow = 5,
 }
 
+#[cfg(any(target_os = "android", test))]
 pub(crate) fn check_image_size_overflow(width: u64, height: u64, chan: u64, t_size: isize) -> bool {
     let Ok(w) = isize::try_from(width) else {
         return true;

@@ -26,71 +26,17 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#[cfg(all(
+    target_os = "android",
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
+use jni::{jni_sig, objects::JObject, JValue};
 #[cfg(target_os = "android")]
-use jni::{
-    jni_sig, jni_str, objects::JObject, strings::JNIString, sys::jobject, Env, EnvUnowned, JValue,
-    Outcome,
-};
-use num_traits::AsPrimitive;
-use std::fmt::Debug;
-use std::ops::{AddAssign, BitXor};
-use std::slice;
+use jni::{jni_str, strings::JNIString, sys::jobject, Env, EnvUnowned, Outcome};
 #[cfg(target_os = "android")]
 use std::sync::OnceLock;
 
-#[inline]
-pub(crate) fn transmute_const_ptr16(
-    ptr: *const u16,
-    stride: usize,
-    width: usize,
-    height: usize,
-    chans: usize,
-) -> (std::borrow::Cow<'static, [u16]>, usize) {
-    let slice = unsafe { slice::from_raw_parts(ptr as *const u8, stride * height) };
-    if let Ok(casted) = bytemuck::try_cast_slice(slice) {
-        return (std::borrow::Cow::Borrowed(casted), stride / 2);
-    }
-    let mut new_store = vec![0u16; width * height * chans];
-    let new_stride = width * chans;
-    for (dst, src) in new_store
-        .chunks_exact_mut(new_stride)
-        .zip(slice.chunks_exact(stride))
-    {
-        for (dst, src) in dst
-            .iter_mut()
-            .zip(src.as_chunks::<2>().0.iter())
-            .take(width * chans)
-        {
-            *dst = u16::from_ne_bytes([src[0], src[1]]);
-        }
-    }
-    (std::borrow::Cow::Owned(new_store), new_stride)
-}
-
-#[derive(Debug)]
-pub(crate) enum SliceStoreMut<'a, T: Copy + Debug> {
-    Borrowed(&'a mut [T]),
-    Owned(Vec<T>),
-}
-
-impl<T: Copy + Debug> SliceStoreMut<'_, T> {
-    #[allow(clippy::should_implement_trait)]
-    pub fn borrow(&self) -> &[T] {
-        match self {
-            Self::Borrowed(p_ref) => p_ref,
-            Self::Owned(vec) => vec,
-        }
-    }
-
-    #[allow(clippy::should_implement_trait)]
-    pub fn borrow_mut(&mut self) -> &mut [T] {
-        match self {
-            Self::Borrowed(p_ref) => p_ref,
-            Self::Owned(vec) => vec,
-        }
-    }
-}
-
+#[cfg(any(target_os = "android", test))]
 macro_rules! try_vec {
     () => {
         Vec::new()
@@ -104,12 +50,17 @@ macro_rules! try_vec {
     }};
 }
 
+#[cfg(target_os = "android")]
 use crate::WeaverPreferredColorConfig;
+#[cfg(any(target_os = "android", test))]
 pub(crate) use try_vec;
 
+#[cfg(target_os = "android")]
 pub(crate) const MIN_OS_F16: i32 = 26;
+#[cfg(target_os = "android")]
 pub(crate) const MIN_OS_AR30: i32 = 33;
 
+#[cfg(target_os = "android")]
 pub(crate) struct PackedImageBuffer {
     pub(crate) data: Vec<u8>,
     pub(crate) width: usize,
@@ -153,12 +104,14 @@ pub(crate) fn android_os_version() -> i32 {
     })
 }
 
+#[cfg(target_os = "android")]
 macro_rules! dbg_log {
     ($level:ident, $($arg:tt)*) => {
         #[cfg(feature = "logging")]
         log::$level!(target: "avifweaver", $($arg)*);
     };
 }
+#[cfg(target_os = "android")]
 pub(crate) use dbg_log;
 
 #[cfg(all(target_os = "android", feature = "logging"))]
@@ -177,6 +130,7 @@ pub(crate) fn init_logging() {
 }
 
 #[inline]
+#[cfg(target_os = "android")]
 pub(crate) fn panic_payload_to_string(payload: &(dyn std::any::Any + Send + 'static)) -> String {
     payload
         .downcast_ref::<&str>()
@@ -239,7 +193,10 @@ pub(crate) unsafe fn throw_runtime_exception_raw(
     }
 }
 
-#[cfg(target_os = "android")]
+#[cfg(all(
+    target_os = "android",
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
 pub(crate) fn optional_bytebuffer_to_vec(
     env: &mut Env,
     obj: jobject,
@@ -276,35 +233,4 @@ pub(crate) fn optional_bytebuffer_to_vec(
     )?;
 
     Ok(Some(env.convert_byte_array(&arr)?))
-}
-
-pub(crate) fn has_non_constant_alpha<
-    V: Copy + PartialEq + BitXor<V, Output = V> + 'static + AsPrimitive<J> + 'static,
-    J: Copy + AddAssign + Default + 'static + Eq + Ord,
-    const ALPHA_CHANNEL_INDEX: usize,
-    const CHANNELS: usize,
->(
-    store: &[V],
-    width: usize,
-) -> bool
-where
-    i32: AsPrimitive<V>,
-    u32: AsPrimitive<V> + AsPrimitive<J>,
-{
-    assert!(ALPHA_CHANNEL_INDEX < CHANNELS);
-    assert!(CHANNELS > 0 && CHANNELS <= 4);
-    if store.len() <= ALPHA_CHANNEL_INDEX || width == 0 {
-        return false;
-    }
-    let first = store[ALPHA_CHANNEL_INDEX];
-    let mut row_sums: J = 0u32.as_();
-    for row in store.chunks_exact(width * CHANNELS) {
-        for color in row.as_chunks::<CHANNELS>().0.iter() {
-            row_sums += color[ALPHA_CHANNEL_INDEX].bitxor(first).as_();
-        }
-        if row_sums != 0.as_() {
-            return true;
-        }
-    }
-    false
 }

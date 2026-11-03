@@ -44,6 +44,7 @@ pub unsafe extern "C" fn encode_jixel_file(
     lossless: bool,
     speed: JixelEncodingSpeed,
 ) -> jbyteArray {
+    let _ = (image, exif, color_space, quality, lossless, speed);
     init_logging();
     let message = format!(
         "JPEG XL encoding is not supported on target architecture '{}'. Supported targets: {SUPPORTED_JIXEL_TARGETS}",
