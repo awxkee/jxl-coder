@@ -305,9 +305,9 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jixel"
-version = "0.5.3"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b4c8e2788f88a120777bec5f9ea907b253a198d6266e54a2485c2487c38174c"
+checksum = "13cd3bce0467732222e6f78045b40e72ead8723d236f8707211c4b2d75d1b403"
 
 [[package]]
 name = "jni"
