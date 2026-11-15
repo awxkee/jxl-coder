@@ -190,6 +190,7 @@ pub(crate) fn decode_gainmap_base(data: &[u8]) -> Result<GainmapBase, WeaverErro
     let info = decoder
         .basic_info()
         .ok_or_else(|| decode_error("Missing image metadata"))?;
+    let intensity_target = info.tone_mapping.intensity_target;
     let (width, height) = info.size;
     validate_jxl_dimensions(width, height)?;
     let has_real_alpha = info
@@ -227,7 +228,7 @@ pub(crate) fn decode_gainmap_base(data: &[u8]) -> Result<GainmapBase, WeaverErro
         .map_err(decode_error)?;
     let icc = decoder
         .output_color_profile()
-        .and_then(|p| p.try_as_icc())
+        .and_then(|p| p.try_as_icc(intensity_target))
         .map(|p| p.into_owned());
     let event = decoder
         .process(&mut input, None, Some(&mut runner))
@@ -288,6 +289,7 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
     let info = decoder
         .basic_info()
         .ok_or_else(|| decode_error("missing image metadata"))?;
+    let intensity_target = info.tone_mapping.intensity_target;
     let (width, height) = info.size;
     validate_jxl_dimensions(width, height)?;
     let source_bit_depth = info.bit_depth.bits_per_sample();
@@ -327,7 +329,7 @@ pub(crate) fn decode_packed_jxl(data: &[u8]) -> Result<PackedJxl, WeaverError> {
     // sRGB output, so using the embedded profile here would double-transform.
     let icc = decoder
         .output_color_profile()
-        .and_then(|profile| profile.try_as_icc())
+        .and_then(|profile| profile.try_as_icc(intensity_target))
         .map(|profile| profile.into_owned());
 
     match decoder
