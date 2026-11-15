@@ -173,16 +173,22 @@ pub(crate) fn read_gainmap(data: &[u8]) -> Result<Option<DecodedGainMap>> {
         .color_profile
         .as_ref()
         .map(|p| {
+            // The alternate profile has no absolute intensity metadata.
             let icc = p
-                .try_as_icc()
+                .try_as_icc(203.0)
                 .context("Gainmap alternate profile has no ICC representation")?;
             Ok::<_, anyhow::Error>(rgba_profile(ColorProfile::new_from_slice(&icc)?))
         })
         .transpose()?;
     let image = into_u16(decode_packed_jxl(bundle.gain_map)?);
+    let intensity_target = decoder
+        .basic_info()
+        .context("Missing image metadata")?
+        .tone_mapping
+        .intensity_target;
     let base_profile = decoder
         .embedded_color_profile()
-        .and_then(|p| p.try_as_icc())
+        .and_then(|p| p.try_as_icc(intensity_target))
         .map(|p| ColorProfile::new_from_slice(&p))
         .transpose()?
         .map(rgba_profile)

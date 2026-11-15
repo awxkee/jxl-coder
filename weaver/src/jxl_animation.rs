@@ -375,23 +375,20 @@ impl JxlAnimationCoordinator {
             Event::BasicInfo,
             "image metadata",
         )?;
+        let info = decoder
+            .basic_info()
+            .ok_or_else(|| AnimationError::decode("Missing image metadata"))?;
+        let intensity_target = info.tone_mapping.intensity_target;
         decoder
             .set_pixel_format(JxlPixelFormat {
                 color_type: JxlColorType::Rgba,
                 color_data_format: Some(JxlDataFormat::U8 { bit_depth: 8 }),
-                extra_channel_format: vec![
-                    None;
-                    decoder
-                        .basic_info()
-                        .ok_or_else(|| AnimationError::decode("Missing image metadata"))?
-                        .extra_channels
-                        .len()
-                ],
+                extra_channel_format: vec![None; info.extra_channels.len()],
             })
             .map_err(AnimationError::decode)?;
         let icc = decoder
             .output_color_profile()
-            .and_then(|profile| profile.try_as_icc())
+            .and_then(|profile| profile.try_as_icc(intensity_target))
             .map_or_else(Vec::new, |profile| profile.into_owned());
 
         // Read preceding frames without producing output so their reference

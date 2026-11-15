@@ -305,9 +305,12 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jixel"
-version = "0.5.7"
+version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13cd3bce0467732222e6f78045b40e72ead8723d236f8707211c4b2d75d1b403"
+checksum = "80641f217584549be6d983ac20112cace5d598e6a02d83ab436d7ee50e029061"
+dependencies = [
+ "msssim-lite",
+]
 
 [[package]]
 name = "jni"
@@ -370,7 +373,7 @@ dependencies = [
 [[package]]
 name = "jxl"
 version = "0.8.0"
-source = "git+https://github.com/libjxl/jxl-rs.git?rev=08bb971ff493cbd77642a7f3de3398a2744c4405#08bb971ff493cbd77642a7f3de3398a2744c4405"
+source = "git+https://github.com/libjxl/jxl-rs.git?rev=cd9babf1898260a74a28cc50bfe3309e59238456#cd9babf1898260a74a28cc50bfe3309e59238456"
 dependencies = [
  "array-init",
  "brotli-decompressor",
@@ -386,7 +389,7 @@ dependencies = [
 [[package]]
 name = "jxl_macros"
 version = "0.8.0"
-source = "git+https://github.com/libjxl/jxl-rs.git?rev=08bb971ff493cbd77642a7f3de3398a2744c4405#08bb971ff493cbd77642a7f3de3398a2744c4405"
+source = "git+https://github.com/libjxl/jxl-rs.git?rev=cd9babf1898260a74a28cc50bfe3309e59238456#cd9babf1898260a74a28cc50bfe3309e59238456"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -396,12 +399,12 @@ dependencies = [
 [[package]]
 name = "jxl_simd"
 version = "0.8.0"
-source = "git+https://github.com/libjxl/jxl-rs.git?rev=08bb971ff493cbd77642a7f3de3398a2744c4405#08bb971ff493cbd77642a7f3de3398a2744c4405"
+source = "git+https://github.com/libjxl/jxl-rs.git?rev=cd9babf1898260a74a28cc50bfe3309e59238456#cd9babf1898260a74a28cc50bfe3309e59238456"
 
 [[package]]
 name = "jxl_transforms"
 version = "0.8.0"
-source = "git+https://github.com/libjxl/jxl-rs.git?rev=08bb971ff493cbd77642a7f3de3398a2744c4405#08bb971ff493cbd77642a7f3de3398a2744c4405"
+source = "git+https://github.com/libjxl/jxl-rs.git?rev=cd9babf1898260a74a28cc50bfe3309e59238456#cd9babf1898260a74a28cc50bfe3309e59238456"
 dependencies = [
  "jxl_simd",
 ]
@@ -438,13 +441,19 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "moxcms"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "396077b717181ce3f9a6b66739b269b82d756be5ec0f76be0bc40a7c51775830"
+checksum = "561875e11b3d8618524f974f85e4bbd05a64a112b8f7541ffcc236b5166c0564"
 dependencies = [
  "num-traits",
  "pxfm",
 ]
+
+[[package]]
+name = "msssim-lite"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d263eaaf8ffe950431edabf34ca3fdf9739f72c026b7fe5f6fb16ba75329d25"
 
 [[package]]
 name = "ndk-sys"
@@ -852,9 +861,9 @@ checksum = "23b97319f7b8343df12cc98938e5c3eb436064524c8d2b4e30a1d3a36eecdf81"
 
 [[package]]
 name = "yuv"
-version = "0.8.19"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a295923535c00a4e72a50a0a1130097f93160b39892dd4d2d006b1e2b90d6bf9"
+checksum = "3d109d1eacc7b034329873d2d848039b365c65ab7d751b19ee84e4921c62c607"
 dependencies = [
  "num-traits",
 ]
